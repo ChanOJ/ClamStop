@@ -21,6 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = AppModel()
     private var settingsWindow: NSWindow?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
+        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000])
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Agent app (LSUIElement in the bundle); also when run outside a bundle during development.
         NSApp.setActivationPolicy(.accessory)
