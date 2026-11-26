@@ -237,6 +237,7 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
 | Low Power Mode, crash watchdog in a daemon (B6, E4) | yes | no (sessions use assertions, released by macOS when the app quits) |
 | CLI, agent hook installer (I3, I5) | yes | no (URL scheme and Shortcuts instead) |
 | Payment | license key | In-App Purchase; no mention of the full edition (guideline 3.1.1) |
+| Link to the website | anywhere | App Store listing (marketing and support URLs) may point to the home page; inside the app only a neutral "Help" link to a help page, never to a download or purchase page, and no text pointing to the full edition |
 
 ## 7. Non-functional requirements
 
