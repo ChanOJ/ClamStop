@@ -20,6 +20,7 @@ enum ServiceState: Equatable {
 enum DefaultsKey {
     static let showMenuBarIcon = "showMenuBarIcon"
     static let hasLaunchedBefore = "hasLaunchedBefore"
+    static let pauseAudio = "pauseAudioWhileAsleep"
 }
 
 @MainActor
@@ -32,6 +33,7 @@ final class AppModel: ObservableObject {
     // macro plugin behind @State is missing on recent SDKs, and plain `swift build` must work.
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
+    @Published var showAudioHelp = false
 
     /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
     static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
@@ -54,7 +56,12 @@ final class AppModel: ObservableObject {
             serviceState = .requiresApproval
             return
         }
-        registerDaemonIfNeeded()
+        if CommandLine.arguments.contains("--reinstall-service") {
+            // Development aid after replacing an ad-hoc signed build: fresh registration.
+            reinstallService()
+        } else {
+            registerDaemonIfNeeded()
+        }
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -191,6 +198,7 @@ final class AppModel: ObservableObject {
             try? await SMAppService.mainApp.unregister()
             UserDefaults.standard.removeObject(forKey: DefaultsKey.hasLaunchedBefore)
             UserDefaults.standard.removeObject(forKey: DefaultsKey.showMenuBarIcon)
+            UserDefaults.standard.removeObject(forKey: DefaultsKey.pauseAudio)
             NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
             NSApp.terminate(nil)
         }

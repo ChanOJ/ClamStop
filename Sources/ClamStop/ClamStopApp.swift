@@ -20,19 +20,26 @@ struct ClamStopApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = AppModel()
+    private let audioPauser = AudioPauser()
     private var settingsWindow: NSWindow?
     private var hostingController: NSHostingController<SettingsView>?
     private var modelObserver: AnyCancellable?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
-        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000])
+        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000, DefaultsKey.pauseAudio: true])
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Agent app (LSUIElement in the bundle); also when run outside a bundle during development.
         NSApp.setActivationPolicy(.accessory)
         model.start()
+        audioPauser.shouldPause = { [model] in
+            UserDefaults.standard.bool(forKey: DefaultsKey.pauseAudio)
+                && model.serviceState == .running && model.enabled
+                && model.delayMinutes != ClamStopSettings.never
+        }
+        audioPauser.start()
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)
@@ -45,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         snapshotIfRequested()
     }
 
-    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help]` renders the visible windows to
+    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help [audio]]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         let args = CommandLine.arguments
@@ -53,7 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let url = URL(fileURLWithPath: args[i + 1])
         showSettings()
         if args.contains("--show-help") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.model.showLidHelp = true }
+            let audio = args.contains("audio")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                if audio { self.model.showAudioHelp = true } else { self.model.showLidHelp = true }
+            }
         }
         // Each visible window (settings, popover) to file.png, file.1.png, …
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {

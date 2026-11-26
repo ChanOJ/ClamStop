@@ -4,6 +4,7 @@ import ClamStopShared
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
+    @AppStorage(DefaultsKey.pauseAudio) private var pauseAudio = true
 
     var body: some View {
         Form {
@@ -40,6 +41,26 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(!model.enabled || model.serviceState != .running)
+                HStack(spacing: 6) {
+                    Text("Pause audio while the Mac sleeps")
+                    Button {
+                        model.showAudioHelp.toggle()
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Why pause audio?")
+                    .accessibilityLabel("Why pause audio?")
+                    .popover(isPresented: $model.showAudioHelp, arrowEdge: .bottom) {
+                        AudioHelpView()
+                    }
+                    Spacer()
+                    Toggle("Pause audio while the Mac sleeps", isOn: $pauseAudio)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .disabled(!model.enabled || model.delayMinutes == ClamStopSettings.never)
+                }
             } footer: {
                 Text("Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used.")
                     .font(.footnote)
@@ -89,7 +110,14 @@ struct SettingsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .accessibilityLabel("The ClamStop switch to turn on in System Settings")
                     }
-                    Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                    HStack {
+                        Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                        Button("Reinstall Background Service") { model.reinstallService() }
+                    }
+                    Text("Already turned on? After an update, use Reinstall Background Service, then turn ClamStop on again if asked.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 case .notRegistered:
                     Button("Install Background Service") { model.installService() }
                 case .notResponding:
@@ -154,6 +182,21 @@ struct LidHelpView: View {
             Text("When a MacBook is connected to an external display, macOS keeps it awake after the lid closes (clamshell mode). Since macOS 26 Tahoe, there is no longer a setting to turn this off.")
             Text("With ClamStop, closing the lid always puts the Mac to sleep, as it does when nothing is connected. Open the lid or press a key to wake it.")
             Text("After the chosen delay, the Mac hibernates: the content of its memory is saved to disk and it stops drawing power, which spares the battery. Waking up then takes a few seconds longer.")
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: 320, alignment: .leading)
+        .padding(16)
+    }
+}
+
+/// Help popover next to "Pause audio while the Mac sleeps".
+struct AudioHelpView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Why pause audio?")
+                .font(.headline)
+            Text("To hibernate after the delay, the Mac wakes up for a moment and goes straight back to sleep. During that wake, music that was playing when the lid closed can be heard for about half a second.")
+            Text("With this option, ClamStop pauses playback when the lid closes and resumes it when you open the lid.")
         }
         .fixedSize(horizontal: false, vertical: true)
         .frame(width: 320, alignment: .leading)
