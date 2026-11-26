@@ -57,7 +57,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
     }
 
     @Test func timeLimitSleepsEvenIfAgentsStillWork() {
-        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, agentMaxHours: 2))
+        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, maxAwakeHours: 2))
         c.agentsChanged(working: true)
         closeLid(c, e)
         e.advance(2 * 3600)
@@ -74,7 +74,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
     }
 
     @Test func noLimitKeepsAwake() {
-        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, agentMaxHours: 0))
+        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, maxAwakeHours: 0))
         c.agentsChanged(working: true)
         closeLid(c, e)
         e.advance(48 * 3600)
@@ -85,7 +85,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
 
     @Test func lowBatteryEndsKeepAwake() {
         var context = PowerContext(onPowerAdapter: false, batteryPercent: 50)
-        let (c, e, _) = controller(context: context)
+        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, onlyWhileCharging: false), context: context)
         c.agentsChanged(working: true)
         closeLid(c, e)
         #expect(c.keepingAwakeForAgents)
@@ -127,13 +127,38 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(e.sleepRequests == 1)
     }
 
-    @Test func lockedFeatureMeansNormalSleep() {
+    @Test func unpluggingEndsKeepAwake() {
         let (c, e, _) = controller()
-        c.isUnlocked = { $0 != .agentKeepAwake }
         c.agentsChanged(working: true)
-        #expect(!e.sleepDisabled)
         closeLid(c, e)
+        #expect(c.keepingAwakeForAgents)
+        e.context.onPowerAdapter = false
+        e.context.batteryPercent = 90
+        c.reevaluate(trigger: "agent check")
+        #expect(!c.keepingAwakeForAgents)
         #expect(e.sleepRequests == 1)
+        #expect(!e.sleepDisabled)
+    }
+
+    @Test func heatGuardCanBeTurnedOff() {
+        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, heatGuard: false))
+        c.agentsChanged(working: true)
+        closeLid(c, e)
+        e.context.thermalPressure = true
+        c.reevaluate(trigger: "agent check")
+        #expect(c.keepingAwakeForAgents)
+    }
+
+    @Test func sleepNowWhileKeepingAwake() {
+        let (c, e, _) = controller()
+        c.agentsChanged(working: true)
+        closeLid(c, e)
+        c.sleepNow()
+        #expect(!e.sleepDisabled)
+        #expect(e.sleepRequests == 1)
+        #expect(!c.keepingAwakeForAgents)
+        c.reevaluate(trigger: "agent check")  // agents still work: no new hold until the lid opens
+        #expect(!e.sleepDisabled)
     }
 
     @Test func foreignDisableSleepIsLeftAlone() {
@@ -191,9 +216,9 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
     }
 }
 
-// MARK: Other Pro rules in the controller
+// MARK: Other rules in the controller
 
-@Suite struct ProRuleControllerTests {
+@Suite struct RuleControllerTests {
     @Test func batteryProfileDelay() {
         let s = ClamStopSettings(hibernateDelayMinutes: 120, separateBatterySettings: true,
                                  battery: PowerSourceProfile(enabled: true, hibernateDelayMinutes: 5))
@@ -237,43 +262,25 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(c.state.phase == .hibernating)
     }
 
-    @Test func displayExceptionLeavesTheMacAlone() {
-        let s = ClamStopSettings(displayExceptions: ["DELL S2719DM"])
-        let (c, e, _) = controller(s, context: PowerContext(connectedDisplays: ["DELL S2719DM"]))
-        closeLid(c, e)
-        #expect(e.sleepRequests == 0)
-        #expect(c.lastLidDecision?.contains("DELL S2719DM") == true)
-    }
-
-    @Test func freeEditionUsesOneHour() {
-        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10))
-        c.isUnlocked = { _ in false }
-        closeLid(c, e)
+    @Test func hibernateNowWithTheLidOpen() {
+        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: ClamStopSettings.never))
+        c.hibernateNow()
+        #expect(e.hibernateMode == 25)
+        #expect(c.state.phase == .hibernating)
+        #expect(e.sleepRequests == 1)
         c.systemWillSleep()
-        #expect(e.scheduled == [e.clock.addingTimeInterval(3600)])
+        e.advance(600)
+        c.systemDidWake()
+        #expect(e.hibernateMode == 3)
+        #expect(c.state.phase == .idle)
     }
 }
 
 // MARK: Policy
 
 @Suite struct SleepPolicyTests {
-    private let calendar: Calendar = {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "Europe/Paris")!
-        return c
-    }()
-
-    private func date(_ string: String) -> Date {
-        let f = DateFormatter()
-        f.calendar = calendar
-        f.timeZone = calendar.timeZone
-        f.dateFormat = "yyyy-MM-dd HH:mm"
-        return f.date(from: string)!
-    }
-
-    private func decide(_ s: ClamStopSettings, _ context: PowerContext = PowerContext(), agents: Bool = false,
-                        at when: String = "2026-11-26 20:00") -> LidDecision {
-        SleepPolicy.decide(settings: s, context: context, agentsWorking: agents, now: date(when), calendar: calendar)
+    private func decide(_ s: ClamStopSettings, _ context: PowerContext = PowerContext(), agents: Bool = false) -> LidDecision {
+        SleepPolicy.decide(settings: s, context: context, agentsWorking: agents)
     }
 
     @Test func basics() {
@@ -283,87 +290,54 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(decide(ClamStopSettings(), agents: true) == .keepAwakeForAgents)
     }
 
-    @Test func agentBatteryFloorOnlyOnBattery() {
-        #expect(decide(ClamStopSettings(), PowerContext(onPowerAdapter: false, batteryPercent: 19), agents: true)
+    @Test func batteryGuardsOnlyOnBattery() {
+        // Default: staying awake with the lid closed needs the power adapter.
+        #expect(decide(ClamStopSettings(), PowerContext(onPowerAdapter: false, batteryPercent: 90), agents: true)
+            == .sleep(hibernateAfter: 3600, reason: "on battery"))
+        let onBattery = ClamStopSettings(onlyWhileCharging: false)
+        #expect(decide(onBattery, PowerContext(onPowerAdapter: false, batteryPercent: 19), agents: true)
             == .sleep(hibernateAfter: 3600, reason: "battery below 20 %"))
+        #expect(decide(onBattery, PowerContext(onPowerAdapter: false, batteryPercent: 20), agents: true)
+            == .keepAwakeForAgents)
         #expect(decide(ClamStopSettings(), PowerContext(onPowerAdapter: true, batteryPercent: 5), agents: true)
             == .keepAwakeForAgents)
     }
 
-    @Test func lowBatteryWinsOverExceptionsAndAgents() {
-        let s = ClamStopSettings(lowBatteryHibernation: true, lowBatteryPercent: 30,
-                                 timeRange: TimeRangeException(enabled: true, startMinutes: 0, endMinutes: 1439,
-                                                               weekdaysOnly: false, onPowerAdapterOnly: false))
+    @Test func lowBatteryWinsOverAgents() {
+        let s = ClamStopSettings(lowBatteryHibernation: true, lowBatteryPercent: 30, onlyWhileCharging: false)
         #expect(decide(s, PowerContext(onPowerAdapter: false, batteryPercent: 30), agents: true)
             == .sleep(hibernateAfter: 0, reason: "battery at 30 %"))
         // On power adapter the level does not matter.
-        #expect(decide(s, PowerContext(onPowerAdapter: true, batteryPercent: 10)) == .leaveAlone(reason: "time range exception"))
-    }
-
-    @Test func timeRange() {
-        let range = TimeRangeException(enabled: true, startMinutes: 9 * 60, endMinutes: 18 * 60,
-                                       weekdaysOnly: true, onPowerAdapterOnly: true)
-        let s = ClamStopSettings(timeRange: range)
-        // 2026-11-26 is a Thursday.
-        #expect(decide(s, at: "2026-11-26 10:00") == .leaveAlone(reason: "time range exception"))
-        #expect(decide(s, at: "2026-11-26 18:00") != .leaveAlone(reason: "time range exception"))
-        #expect(decide(s, at: "2026-11-28 10:00") != .leaveAlone(reason: "time range exception"))  // Saturday
-        #expect(decide(s, PowerContext(onPowerAdapter: false), at: "2026-11-26 10:00")
-            != .leaveAlone(reason: "time range exception"))
-    }
-
-    @Test func timeRangeOverMidnight() {
-        let range = TimeRangeException(enabled: true, startMinutes: 22 * 60, endMinutes: 6 * 60,
-                                       weekdaysOnly: true, onPowerAdapterOnly: false)
-        #expect(range.applies(at: date("2026-11-26 23:00"), onPowerAdapter: false, calendar: calendar))  // Thu night
-        #expect(range.applies(at: date("2026-11-27 05:00"), onPowerAdapter: false, calendar: calendar))  // still Thu's
-        #expect(!range.applies(at: date("2026-11-29 05:00"), onPowerAdapter: false, calendar: calendar))  // Sat night
-        #expect(range.applies(at: date("2026-11-24 05:00"), onPowerAdapter: false, calendar: calendar))  // Mon night
-        #expect(!range.applies(at: date("2026-11-26 12:00"), onPowerAdapter: false, calendar: calendar))
+        #expect(decide(s, PowerContext(onPowerAdapter: true, batteryPercent: 10)) == .sleep(hibernateAfter: 3600, reason: "lid closed"))
     }
 }
 
 // MARK: Settings model
 
-@Suite struct ProSettingsModelTests {
+@Suite struct SettingsModelTests {
     @Test func oldSettingsFileMigrates() throws {
-        let old = Data(#"{"enabled":false,"hibernateDelayMinutes":10}"#.utf8)
+        let old = Data(#"{"enabled":false,"hibernateDelayMinutes":10,"agentMaxHours":8,"displayExceptions":["A"]}"#.utf8)
         let s = try JSONDecoder().decode(ClamStopSettings.self, from: old)
         #expect(!s.enabled)
         #expect(s.hibernateDelayMinutes == 10)
         #expect(s.keepAwakeForAgents)
-        #expect(s.agentMaxHours == 8)
+        #expect(s.maxAwakeHours == 0)
         #expect(!s.separateBatterySettings)
-        #expect(s.displayExceptions.isEmpty)
+        #expect(s.batteryFloorPercent == 20)
+        #expect(s.heatGuard)
+        #expect(s.onlyWhileCharging)
     }
 
     @Test func roundTrip() throws {
-        let s = ClamStopSettings(hibernateDelayMinutes: 5, agentMaxHours: 2, separateBatterySettings: true,
+        let s = ClamStopSettings(hibernateDelayMinutes: 5, separateBatterySettings: true,
                                  battery: PowerSourceProfile(enabled: false, hibernateDelayMinutes: 0),
-                                 lowBatteryHibernation: true, lowBatteryPercent: 20,
-                                 timeRange: TimeRangeException(enabled: true), displayExceptions: ["A"])
+                                 lowBatteryHibernation: true, lowBatteryPercent: 20, batteryFloorPercent: 30,
+                                 heatGuard: false, onlyWhileCharging: false, maxAwakeHours: 4)
         #expect(try JSONDecoder().decode(ClamStopSettings.self, from: JSONEncoder().encode(s)) == s)
     }
 
-    @Test func effectiveStripsLockedFeatures() {
-        let s = ClamStopSettings(hibernateDelayMinutes: 5, separateBatterySettings: true,
-                                 battery: PowerSourceProfile(enabled: true, hibernateDelayMinutes: 0),
-                                 lowBatteryHibernation: true, timeRange: TimeRangeException(enabled: true),
-                                 displayExceptions: ["A"])
-        let free = s.effective { _ in false }
-        #expect(free.hibernateDelayMinutes == 60)
-        #expect(free.battery.hibernateDelayMinutes == 60)
-        #expect(!free.keepAwakeForAgents)
-        #expect(!free.separateBatterySettings)
-        #expect(!free.lowBatteryHibernation)
-        #expect(!free.timeRange.enabled)
-        #expect(free.displayExceptions.isEmpty)
-        #expect(ClamStopSettings(hibernateDelayMinutes: -1).effective { _ in false }.hibernateDelayMinutes == -1)
-        #expect(s.effective { _ in true } == s)
-    }
-
-    @Test func entitlementIsOpenUntilLicensing() {
-        #expect(ProFeature.allCases.allSatisfy(Entitlement.isUnlocked))
+    @Test func batteryFloorHasAMinimum() {
+        #expect(ClamStopSettings(batteryFloorPercent: 1).batteryFloorPercent == 5)
     }
 
     @Test func olderStatusDecodes() throws {
@@ -583,6 +557,12 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(sessions[1].batteryUsed == 2)
         #expect(sessions[1].end == t0 + 7200)
         #expect(sessions[1].wakes == 0)
+    }
+
+    @Test func retention() {
+        let old = SleepEvent(date: t0, kind: .sleep)
+        let events = SleepLog.appending(SleepEvent(date: t0 + SleepLog.retention + 1, kind: .wake), to: [old])
+        #expect(events.map(\.kind) == [.wake])
     }
 
     @Test func capacity() {

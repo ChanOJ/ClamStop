@@ -62,8 +62,12 @@ final class DaemonClient {
         return try await call { $0.setSettings(data, reply: $1) }
     }
 
-    func setProUnlocked(_ unlocked: Bool) async throws -> DaemonStatus {
-        try await call { $0.setProUnlocked(unlocked, reply: $1) }
+    func sleepNow() async throws -> DaemonStatus {
+        try await call { $0.sleepNow(reply: $1) }
+    }
+
+    func hibernateNow() async throws -> DaemonStatus {
+        try await call { $0.hibernateNow(reply: $1) }
     }
 
     func sleepLog() async throws -> [SleepEvent] {

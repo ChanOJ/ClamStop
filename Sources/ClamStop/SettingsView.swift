@@ -1,53 +1,185 @@
 import SwiftUI
 import ClamStopShared
 
-struct SettingsView: View {
+/// Content of the settings window: a tab bar over seven tabs (spec section 5, mockup
+/// `SettingsMockupView`). Only settings with real behavior behind them are shown.
+struct SettingsRootView: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SettingsTabBar(selection: $model.settingsTab)
+            Divider()
+            Group {
+                switch model.settingsTab {
+                case .general: GeneralTab(model: model)
+                case .sessions: StayAwakeTab(model: model)
+                case .rules: RulesTab(model: model)
+                case .safety: SafetyTab(model: model)
+                case .actions: ActionsTab(model: model)
+                case .automation: AutomationTab(model: model)
+                case .journal: JournalTab(model: model)
+                }
+            }
+            .formStyle(.grouped)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(width: 580)
+        .confirmationDialog("Uninstall ClamStop?", isPresented: $model.confirmUninstall) {
+            Button("Uninstall", role: .destructive) { model.uninstall() }
+        } message: {
+            Text("ClamStop restores the default sleep settings, removes its background service and login item, then quits. To finish, move ClamStop from the Applications folder to the Trash.")
+        }
+        .confirmationDialog("Install the AI agent hooks?", isPresented: $model.confirmAgentHooks) {
+            Button("Install Hooks") { model.setAgentHooks(installed: true) }
+        } message: {
+            Text("ClamStop adds one hook to \(model.agentHookFiles.formatted(.list(type: .and))), so the agents tell it when a task starts and ends. Your other settings stay as they are, and a backup copy is kept next to each file.")
+        }
+        .alert("ClamStop", isPresented: Binding(
+            get: { model.errorMessage != nil },
+            set: { if !$0 { model.errorMessage = nil } }
+        )) {
+            Button("OK") { model.errorMessage = nil }
+        } message: {
+            Text(model.errorMessage ?? "")
+        }
+        .onAppear { model.refresh() }
+    }
+}
+
+/// Tabs of the settings window (also used by the mockups).
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case general
+    case sessions
+    case rules
+    case safety
+    case actions
+    case automation
+    case journal
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .general: "General"
+        case .sessions: "Stay Awake"
+        case .rules: "Rules"
+        case .safety: "Safety"
+        case .actions: "Actions"
+        case .automation: "Automation"
+        case .journal: "Journal"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .sessions: "cup.and.saucer"
+        case .rules: "list.bullet.rectangle"
+        case .safety: "checkmark.shield"
+        case .actions: "bolt"
+        case .automation: "keyboard"
+        case .journal: "book"
+        }
+    }
+
+    /// `--tab <name>` (previews and snapshots), otherwise General.
+    static var initial: SettingsTab {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--tab"), i + 1 < args.count else { return .general }
+        return SettingsTab(rawValue: args[i + 1]) ?? .general
+    }
+}
+
+/// Tab bar at the top of the settings window, in the style of macOS settings toolbars.
+private struct SettingsTabBar: View {
+    @Binding var selection: SettingsTab
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(SettingsTab.allCases) { tab in
+                let selected = selection == tab
+                Button {
+                    selection = tab
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.symbol)
+                            .font(.title2)
+                            .frame(height: 24)
+                        Text(tab.title)
+                            .font(.caption)
+                    }
+                    .frame(width: 74, height: 50)
+                    .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                    .background(RoundedRectangle(cornerRadius: 6)
+                        .fill(selected ? Color.primary.opacity(0.1) : Color.clear))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
+            }
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// General: the live sentence, the simple settings, the background service, the donation link.
+struct GeneralTab: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(DefaultsKey.menuBarIconStyle) private var menuBarIconStyle = MenuBarIconStyle.laptop
-    @AppStorage(DefaultsKey.pauseAudio) private var pauseAudio = true
+
+    private var settings: ClamStopSettings { model.settings }
 
     var body: some View {
         Form {
             Section {
-                HStack(spacing: 6) {
-                    Text("Sleep when the lid closes")
-                        .accessibilityHidden(true)  // the switch carries the same label
-                    HelpButton("Why ClamStop?", isPresented: $model.showLidHelp) { LidHelpView() }
-                    Spacer()
-                    Toggle("Sleep when the lid closes", isOn: Binding(
-                        get: { model.enabled },
-                        set: { model.setEnabled($0) }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .disabled(model.serviceState != .running)
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "moon.zzz.fill")
+                        .font(.title)
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
+                    Text(model.summary)
+                        .font(.title3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Picker("Hibernate", selection: Binding(
-                    get: { model.delayMinutes },
-                    set: { model.setDelay(minutes: $0) }
-                )) {
-                    ForEach(delayChoices, id: \.self) { minutes in
-                        Text(pickerLabel(minutes)).tag(minutes)
-                    }
-                }
-                .disabled(!model.enabled || model.serviceState != .running)
-                HStack(spacing: 6) {
-                    Text("Pause audio while the Mac sleeps")
-                        .accessibilityHidden(true)  // the switch carries the same label
-                    HelpButton("Why pause audio?", isPresented: $model.showAudioHelp) { AudioHelpView() }
-                    Spacer()
-                    Toggle("Pause audio while the Mac sleeps", isOn: $pauseAudio)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .disabled(!model.enabled || model.delayMinutes == ClamStopSettings.never)
-                }
-            } footer: {
-                Footnote("Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used.")
+                .padding(.vertical, 4)
             }
 
             Section {
-                Toggle("Show icon in the menu bar", isOn: $showMenuBarIcon)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Picker("When I close the lid", selection: Binding(
+                            get: { settings.enabled },
+                            set: { model.setEnabled($0) }
+                        )) {
+                            Text("Sleep, even with a screen plugged in").tag(true)
+                            Text("Do what macOS does").tag(false)
+                        }
+                        HelpButton("Why ClamStop?", isPresented: $model.showLidHelp) { LidHelpView() }
+                    }
+                    Footnote(settings.enabled
+                             ? "Like a MacBook with nothing connected: close the lid and it sleeps."
+                             : "ClamStop does nothing when you close the lid.")
+                }
+                .disabled(!model.serviceRunning)
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker("Hibernate", selection: Binding(
+                        get: { model.delayMinutes },
+                        set: { model.setDelay(minutes: $0) }
+                    )) {
+                        ForEach(delayChoices(current: model.delayMinutes), id: \.self) { minutes in
+                            Text(AppModel.delayTitle(minutes)).tag(minutes)
+                        }
+                    }
+                    Footnote("After this time asleep, your Mac saves its memory to disk and stops using the battery completely (hibernation).")
+                }
+                .disabled(!model.serviceRunning || !settings.enabled)
+                Toggle("Show in the menu bar", isOn: $showMenuBarIcon)
+                    .toggleStyle(.switch)
                 Picker("Menu bar icon", selection: $menuBarIconStyle) {
                     ForEach(MenuBarIconStyle.allCases) { style in
                         Label {
@@ -63,82 +195,88 @@ struct SettingsView: View {
                     get: { model.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
                 ))
+                .toggleStyle(.switch)
             } footer: {
                 if !showMenuBarIcon {
                     Footnote("To change these settings later, open ClamStop again from the Applications folder.")
                 }
             }
 
-            Section("Background service") {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: model.statusIsOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(model.statusIsOK ? .green : .orange)
-                        .accessibilityHidden(true)  // the text says the same
-                    Text(model.statusLine)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                switch model.serviceState {
-                case .requiresApproval:
-                    Footnote("Allow ClamStop in System Settings > General > Login Items & Extensions: turn the ClamStop switch on.")
-                    ApprovalIllustration()
-                    HStack {
-                        Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
-                        Button("Reinstall Background Service") { model.reinstallService() }
-                    }
-                    Footnote("Already turned on? After an update, use Reinstall Background Service, then turn ClamStop on again if asked.")
-                case .notRegistered:
-                    Button("Install Background Service") { model.installService() }
-                case .notResponding:
-                    HStack {
-                        Button("Reinstall Background Service") { model.reinstallService() }
-                        Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
-                    }
-                default:
-                    EmptyView()
-                }
-            }
+            ServiceSection(model: model)
+        }
+    }
+}
 
-            Section {
+/// Background service state and approval, uninstall, and the donation link (full edition).
+private struct ServiceSection: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        Section {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: model.statusIsOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(model.statusIsOK ? .green : .orange)
+                    .accessibilityHidden(true)  // the text says the same
+                Text(model.serviceRunning ? String(localized: "Background service running") : model.statusLine)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            switch model.serviceState {
+            case .requiresApproval:
+                Footnote("Allow ClamStop in System Settings > General > Login Items & Extensions: turn the ClamStop switch on.")
+                ApprovalIllustration()
                 HStack {
-                    Spacer()
-                    Button("Uninstall ClamStop…", role: .destructive) { model.confirmUninstall = true }
+                    Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                    Button("Reinstall Background Service") { model.reinstallService() }
                 }
+                Footnote("Already turned on? After an update, use Reinstall Background Service, then turn ClamStop on again if asked.")
+            case .notRegistered:
+                Button("Install Background Service") { model.installService() }
+            case .notResponding:
+                HStack {
+                    Button("Reinstall Background Service") { model.reinstallService() }
+                    Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                }
+            default:
+                EmptyView()
+            }
+            HStack {
+                Spacer()
+                Button("Uninstall ClamStop…", role: .destructive) { model.confirmUninstall = true }
+            }
+        } footer: {
+            if Edition.current == .full {
+                DonationLink(text: "ClamStop is free. A coffee helps pay for the developer account and the time spent designing and building it.")
+                    .padding(.top, 4)
             }
         }
-        .formStyle(.grouped)
-        .frame(width: 440)
-        .fixedSize(horizontal: false, vertical: true)
-        .confirmationDialog("Uninstall ClamStop?", isPresented: $model.confirmUninstall) {
-            Button("Uninstall", role: .destructive) { model.uninstall() }
-        } message: {
-            Text("ClamStop restores the default sleep settings, removes its background service and login item, then quits. To finish, move ClamStop from the Applications folder to the Trash.")
-        }
-        .alert("ClamStop", isPresented: Binding(
-            get: { model.errorMessage != nil },
-            set: { if !$0 { model.errorMessage = nil } }
-        )) {
-            Button("OK") { model.errorMessage = nil }
-        } message: {
-            Text(model.errorMessage ?? "")
-        }
-        .onAppear { model.refresh() }
     }
+}
 
-    /// The standard choices, plus the current value if it was set some other way; "Never" last.
-    private var delayChoices: [Int] {
-        var choices = AppModel.delayChoices
-        if !choices.contains(model.delayMinutes) {
-            choices.insert(model.delayMinutes, at: choices.firstIndex { $0 > model.delayMinutes } ?? choices.count - 1)
-        }
-        return choices
-    }
+/// Discreet "Buy me a coffee" link (full edition only, spec J6): never a pop-up or a reminder.
+struct DonationLink: View {
+    let text: LocalizedStringKey
 
-    private func pickerLabel(_ minutes: Int) -> String {
-        if minutes < 0 { return String(localized: "Never") }
-        if minutes == 0 { return String(localized: "Immediately") }
-        return String(localized: "after \(AppModel.delayLabel(minutes))")
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(text)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Link("Buy me a coffee", destination: Links.donation)
+        }
+        .font(.footnote)
+        .frame(maxWidth: .infinity)
     }
+}
+
+/// Hibernation delays offered, plus the current value if it was set some other way; "Never" last.
+func delayChoices(current: Int) -> [Int] {
+    var choices = ClamStopSettings.delayChoices
+    if !choices.contains(current) {
+        choices.insert(current, at: choices.firstIndex { $0 > current } ?? choices.count - 1)
+    }
+    return choices
 }
 
 /// Secondary text under a setting, wrapping and leading-aligned (grouped form footers are
@@ -203,37 +341,29 @@ struct LidHelpView: View {
     }
 }
 
-/// Help popover next to "Pause audio while the Mac sleeps".
-struct AudioHelpView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Why pause audio?")
-                .font(.headline)
-            Text("To hibernate after the delay, the Mac wakes up for a moment and goes straight back to sleep. During that wake, music that was playing when the lid closed can be heard for about half a second.")
-            Text("With this option, ClamStop pauses playback when the lid closes and resumes it when you open the lid.")
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(width: 320, alignment: .leading)
-        .padding(16)
-    }
-}
-
+/// Menu bar menu (spec section 5 "Menu bar menu").
 struct MenuContent: View {
     @ObservedObject var model: AppModel
     let openSettings: () -> Void
+    let openAbout: () -> Void
 
     var body: some View {
         Text(model.statusLine)
+        if let detail = model.menuDetail {
+            Text(detail)
+        }
         Divider()
-        Toggle("Sleep When the Lid Closes", isOn: Binding(
-            get: { model.enabled },
-            set: { model.setEnabled($0) }
-        ))
-        .disabled(model.serviceState != .running)
+        Button { model.sleepNow() } label: { Label("Sleep Now", systemImage: "moon") }
+            .disabled(!model.serviceRunning)
+        if Edition.current.hasBackgroundService {
+            Button { model.hibernateNow() } label: { Label("Hibernate Now", systemImage: "snowflake") }
+                .disabled(!model.serviceRunning)
+        }
         Divider()
-        Button("Settings…") { openSettings() }
+        Button { openAbout() } label: { Label("About ClamStop", systemImage: "info.circle") }
+        Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
-        Button("Quit ClamStop") { NSApp.terminate(nil) }
+        Button { NSApp.terminate(nil) } label: { Label("Quit ClamStop", systemImage: "door.left.hand.open") }
             .keyboardShortcut("q")
     }
 }

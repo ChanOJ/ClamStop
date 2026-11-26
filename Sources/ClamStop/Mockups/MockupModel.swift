@@ -95,43 +95,6 @@ enum FirstRunLidChoice: String {
     case agents
 }
 
-/// Tabs of the settings window.
-enum SettingsTab: String, CaseIterable, Identifiable {
-    case general
-    case sessions
-    case rules
-    case safety
-    case actions
-    case automation
-    case journal
-
-    var id: String { rawValue }
-
-    var title: LocalizedStringKey {
-        switch self {
-        case .general: "General"
-        case .sessions: "Stay Awake"
-        case .rules: "Rules"
-        case .safety: "Safety"
-        case .actions: "Actions"
-        case .automation: "Automation"
-        case .journal: "Journal"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .general: "gearshape"
-        case .sessions: "cup.and.saucer"
-        case .rules: "list.bullet.rectangle"
-        case .safety: "checkmark.shield"
-        case .actions: "bolt"
-        case .automation: "keyboard"
-        case .journal: "book"
-        }
-    }
-}
-
 /// Menu state shown by the menu mockup.
 enum MenuMockState {
     case idle

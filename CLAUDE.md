@@ -91,15 +91,23 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - Ready: no network, `PrivacyInfo.xcprivacy` (UserDefaults CA92.1), `SMAppService.mainApp`
   login item, template menu bar icon, settings window. Sparkle must stay out of that edition.
 
-## Pro features (2026-11-26)
+## Features and settings (2026-11-26)
 
-- Free: sleep on lid close, hibernation after 1 h or never. Pro (`ProFeature` in
-  `Sources/ClamStopShared/ProFeature.swift`): agent keep-awake, other delays, per power source,
-  low battery hibernation, time range and display exceptions, sleep log. Every check goes through
-  `Entitlement.isUnlocked` (licensing replaces its body); the daemon decides on
-  `ClamStopSettings.effective()` only, through the pure `SleepPolicy.decide`.
-- Settings window: tabs (`SettingsRootView`), General = `SettingsView`, Pro = `ProSettingsView`.
-  Preview with `--preview-pro` (+ `--snapshot`, `--show-help agent|history`).
+- Everything is free (no Pro tier, no license). Full edition: "Buy me a coffee" (`Links.donation`)
+  in the About window and at the bottom of General; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
+  turns it off for a future Store build.
+- Settings window: seven tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
+  tabs in `SettingsTabs.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with
+  `scripts/mockups.sh`). Only settings with real behavior are shown; others arrive with their feature.
+  Preview with `--preview-settings --tab general|sessions|rules|safety|actions|automation|journal`
+  (+ `--snapshot`, `--show-help agent|history`, `--welcome 1|2|3 [agents]`, `--about`).
+- First launch opens the first-run assistant (`WelcomeView`); its choices reach the daemon once
+  the service answers (`AppModel.applyPendingFirstRun`). Audio pause is automatic (spec F1).
+- The daemon decides through the pure `SleepPolicy.decide`: power-source profile, low battery
+  hibernation, then agents with the safety guards (time limit, heat, only on power adapter,
+  battery floor). Menu Sleep Now / Hibernate Now go through XPC (`sleepNow`, `hibernateNow`).
+- Windows are sized with `NSHostingController.sizeThatFits` (`FittedWindow`): `view.fittingSize`
+  stays zero for them on macOS 27.2.
 - Agent keep-awake, adapted from `IshaanChamoli/clamshut` (MIT, notice in
   `THIRD_PARTY_NOTICES.md`, copied into the app; never reuse its Noto Emoji logo): the app writes
   a hook (`ClamStop.app/Contents/MacOS/ClamStop --agent-hook claude|codex`, entry point
@@ -112,7 +120,7 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - Hook stdout is added to Claude's context on UserPromptSubmit: the hook prints nothing and
   always exits 0. Process anchor: the nearest ancestor named `claude`/`codex`, never the outermost
   (the Claude desktop app, "Claude", hosts Code sessions and is always busy).
-- External displays from IOKit: `IOMobileFramebufferShim` > `DisplayAttributes` >
-  `ProductAttributes` > `ProductName` (Apple Silicon; "DELL S2719DM" here, same name as in
-  System Settings). Wi-Fi exception dropped: the SSID is `<redacted>` without Location Services
+- External display names, if a rule needs them: IOKit `IOMobileFramebufferShim` >
+  `DisplayAttributes` > `ProductAttributes` > `ProductName` (Apple Silicon; "DELL S2719DM" here,
+  same name as in System Settings). Wi-Fi condition dropped: the SSID is `<redacted>` without Location Services
   permission (checked on macOS 27.2 with `ipconfig getsummary en0`), not worth asking for it.

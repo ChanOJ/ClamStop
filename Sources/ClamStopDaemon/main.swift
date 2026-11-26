@@ -22,7 +22,6 @@ final class DaemonService {
         self.store = store
         settings = store.loadSettings()
         sleepLog = store.loadSleepLog()
-        if let unlocked = store.loadProUnlocked() { Entitlement.isProUnlocked = unlocked }
         controller = PowerController(settings: settings, effects: power, store: store, log: Log.info)
         controller.delayOverride = delayOverride
         controller.record = { [unowned self] kind, detail in self.record(kind, detail) }
@@ -48,15 +47,6 @@ final class DaemonService {
     }
 
     /// Uninstall: macOS defaults back, then delete the daemon's files.
-    /// The app sends its license state; kept on disk so that a restart before the app
-    /// connects (boot) keeps the same behavior.
-    func setProUnlocked(_ unlocked: Bool) {
-        guard unlocked != Entitlement.isProUnlocked else { return }
-        Entitlement.isProUnlocked = unlocked
-        store.saveProUnlocked(unlocked)
-        Log.info("Pro \(unlocked ? "unlocked" : "locked")")
-        controller.reevaluate(trigger: "license changed")
-    }
 
     func restoreDefaults() {
         agents.reset()
@@ -73,10 +63,9 @@ final class DaemonService {
             pendingWake: controller.state.pendingWake, lidClosed: power.isLidClosed(),
             sleepDisabled: power.sleepDisabled, hibernateMode: power.currentHibernateMode(),
             sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
-            proUnlocked: Entitlement.isProUnlocked,
             agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
-            connectedDisplays: context.connectedDisplays, lastLidDecision: controller.lastLidDecision)
+            lastLidDecision: controller.lastLidDecision)
     }
 }
 
@@ -110,7 +99,7 @@ if arguments.contains("--status") {
 
 Log.info("ClamStopDaemon \(ClamStopVersion.current) starting (pid \(getpid()), foreground=\(foreground))")
 Log.info("settings: enabled=\(service.settings.enabled) delay=\(service.settings.hibernateDelayMinutes) min"
-         + " agents=\(service.controller.effectiveSettings.keepAwakeForAgents)"
+         + " agents=\(service.controller.settings.keepAwakeForAgents)"
          + (delayOverride.map { ", delay override \(Int($0)) s" } ?? ""))
 if service.power.sleepDisabled {
     Log.error("SleepDisabled is set (pmset disablesleep 1): lid close cannot put the Mac to sleep")

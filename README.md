@@ -16,31 +16,33 @@ stops drawing power, which spares the battery. Waking up then takes a few second
 
 Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
-## Pro features
+## Settings
 
-Sleep on lid close, with hibernation after 1 hour or never, is free. ClamStop Pro adds, in the
-**Pro** tab of the settings:
+Everything is free. The settings window has seven tabs:
 
-- **Stay awake while AI agents work.** Close the lid while Claude Code or Codex is working: the
-  Mac stays awake until the task ends, then sleeps and hibernates as usual. See
-  [AI agents](#ai-agents).
-- **Other hibernation delays**: immediately, or after 5 minutes to 4 hours.
-- **Separate settings on battery**: sleep or not, and a different hibernation delay, on battery
-  and on power adapter.
-- **Low battery**: hibernate at once when the lid closes below a battery level.
-- **Exceptions**: do not force sleep during set hours (for example 9:00 to 18:00 on weekdays,
-  on power adapter), or while a given external display is connected. During an exception,
-  closing the lid does what macOS does on its own.
-- **Sleep history**: when the Mac slept, for how long, whether it hibernated and how much battery
-  it used.
+- **General**: what happens when you close the lid (sleep, or do what macOS does), the
+  hibernation delay (immediately, after 5 minutes to 4 hours, or never), the menu bar icon,
+  opening at login, and the background service.
+- **Stay Awake**: stay awake with the lid closed while AI agents work. See [AI agents](#ai-agents).
+- **Rules**: different settings on battery (sleep or not, and another hibernation delay).
+- **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
+  default), heat, power adapter unplugged (on by default), longest time (no limit by default).
+- **Actions**: hibernate at once when the lid closes on battery below a level.
+- **Automation**: install or remove the AI agent hooks.
+- **Journal**: when the Mac slept, for how long, whether it hibernated and how much battery it
+  used. Kept for 30 days, on this Mac only.
+
+The menu bar menu also has **Sleep Now** and **Hibernate Now**. While the Mac sleeps with
+hibernation planned, ClamStop pauses audio and video and resumes them on wake, so the short
+wake before hibernation stays silent.
 
 ### AI agents
 
-When the switch is turned on, ClamStop adds a hook to the agents' settings
+When you install the hooks (Automation tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
 (`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
 app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
-is written next to it (`.clamstop-backup`). Turning the switch off, or uninstalling ClamStop,
-removes the hook.
+is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling ClamStop, removes the
+hook.
 
 The agent runs the hook when a task starts and ends; the hook passes the event to ClamStop's
 background service. While a task runs, the service sets `pmset disablesleep 1`, the only setting
@@ -51,8 +53,8 @@ soon as no task runs. To avoid keeping the Mac awake for nothing, the service al
 build). A task counts as finished 90 seconds after the agent's turn ends, or after 30 minutes
 without any sign of work.
 
-For safety, the Mac sleeps anyway after the chosen time limit (8 hours by default), on battery
-below 20 %, or under heavy thermal pressure.
+The guards of the Safety tab apply: by default the Mac only stays awake for agents on power
+adapter, and sleeps when it gets hot. On battery (guard turned off), it sleeps below 20 %.
 
 Codex support follows the hook format Codex documents; it has not been tested with Codex yet.
 

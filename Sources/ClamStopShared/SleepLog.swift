@@ -41,13 +41,15 @@ public struct SleepSession: Equatable, Sendable, Identifiable {
 }
 
 public enum SleepLog {
-    /// Events kept by the daemon.
+    /// Events kept by the daemon: at most this many, and none older than `retention`.
     public static let capacity = 500
+    public static let retention: TimeInterval = 30 * 86_400
     /// `detail` of a wake event with the lid open: the end of a sleep session.
     public static let wakeLidOpen = "lid open"
 
     public static func appending(_ event: SleepEvent, to events: [SleepEvent]) -> [SleepEvent] {
-        Array((events + [event]).suffix(capacity))
+        let oldest = event.date.addingTimeInterval(-retention)
+        return Array((events.filter { $0.date >= oldest } + [event]).suffix(capacity))
     }
 
     /// Group events into sleep sessions, newest first. A session ends at a wake with the lid open

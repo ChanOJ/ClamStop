@@ -20,6 +20,7 @@ enum ServiceState: Equatable {
 enum DefaultsKey {
     static let showMenuBarIcon = "showMenuBarIcon"
     static let hasLaunchedBefore = "hasLaunchedBefore"
+    /// No longer a setting (audio pause is automatic, spec F1); listed so uninstall removes it.
     static let pauseAudio = "pauseAudioWhileAsleep"
     static let menuBarIconStyle = "menuBarIconStyle"
 
@@ -37,20 +38,19 @@ final class AppModel: ObservableObject {
     // macro plugin behind @State is missing on recent SDKs, and plain `swift build` must work.
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
-    @Published var showAudioHelp = false
-    // Pro (see AppModel+Pro.swift)
-    @Published var settingsTab: SettingsTab = CommandLine.arguments.contains("--preview-pro") ? .pro : .general
+    // Settings tabs, agents, journal (see AppModel+Settings.swift)
+    @Published var settingsTab = SettingsTab.initial
     @Published var showAgentHelp = false
     @Published var showSleepLog = false
+    @Published var confirmAgentHooks = false
     @Published var agentHookStates: [AgentKind: AgentHookSettings.State] = [:]
     @Published var sleepLog: [SleepEvent] = []
-
-    /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
-    static let allDelayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
-    /// The free edition offers "after 1 h" and "never" (Pro: every delay).
-    static var delayChoices: [Int] {
-        Entitlement.isUnlocked(.hibernationDelays) ? allDelayChoices : ClamStopSettings.freeDelayChoices
-    }
+    // First run (see FirstRunView.swift)
+    @Published var firstRunStep = 1
+    @Published var firstRunChoice = FirstRunChoice.sleep
+    @Published var firstRunDelay = ClamStopSettings.defaultDelayMinutes
+    /// Choices made in the first-run assistant, sent once the background service answers.
+    var pendingFirstRun: FirstRunResult?
 
     let client = DaemonClient()
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
@@ -59,15 +59,15 @@ final class AppModel: ObservableObject {
     private var registrationDenied = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
-    var delayMinutes: Int { status?.settings.effective().hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
+    var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
 
     /// Development aid (`--preview-approval`, with `--snapshot`): show the approval state
     /// without touching the real registration.
     static let previewApproval = CommandLine.arguments.contains("--preview-approval")
 
     func start() {
-        if Self.previewPro {
-            startProPreview()
+        if Self.previewSettings {
+            startSettingsPreview()
             return
         }
         if Self.previewApproval {
@@ -88,7 +88,7 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() {
-        guard !Self.previewApproval, !Self.previewPro else { return }
+        guard !Self.previewApproval, !Self.previewSettings else { return }
         refreshAgentHooks()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         switch daemonService.status {
@@ -105,12 +105,9 @@ final class AppModel: ObservableObject {
         case .enabled:
             Task {
                 do {
-                    var status = try await client.status()
-                    if status.proUnlocked != nil, status.proUnlocked != Entitlement.isProUnlocked {
-                        status = try await client.setProUnlocked(Entitlement.isProUnlocked)
-                    }
-                    self.status = status
+                    self.status = try await client.status()
                     self.serviceState = .running
+                    self.applyPendingFirstRun()
                 } catch {
                     self.status = nil
                     self.serviceState = .notResponding
@@ -121,7 +118,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Previews only (`--preview-pro`): show this status as if the service answered.
+    /// Previews only (`--preview-settings`): show this status as if the service answered.
     func setPreviewStatus(_ status: DaemonStatus) {
         self.status = status
         serviceState = .running
@@ -255,17 +252,14 @@ final class AppModel: ObservableObject {
             return String(localized: "Background service not responding")
         case .running:
             guard let status else { return String(localized: "Checking…") }
-            if !status.settings.enabled { return String(localized: "Off: the lid works as usual") }
+            if !status.settings.enabled { return String(localized: "Off: macOS decides when you close the lid") }
             if status.keepingAwakeForAgents == true {
                 return String(localized: "Lid closed: staying awake while AI agents work")
             }
             if status.sleepDisabled && status.sleepDisabledByClamStop != true {
                 return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
             }
-            let minutes = delayMinutes
-            if minutes < 0 { return String(localized: "On: sleeps when the lid closes") }
-            if minutes == 0 { return String(localized: "On: hibernates when the lid closes") }
-            return String(localized: "On: sleeps when the lid closes, hibernates after \(Self.delayLabel(minutes))")
+            return String(localized: "Sleeps when you close the lid")
         }
     }
 

@@ -56,8 +56,6 @@ public final class PowerController {
     public private(set) var state: PersistedState
     /// Test hook: delay in seconds instead of the hibernation delay (except "immediately").
     public var delayOverride: TimeInterval?
-    /// Pro check; the daemon only acts on `effectiveSettings`.
-    public var isUnlocked: (ProFeature) -> Bool = Entitlement.isUnlocked
     /// Sleep log: called on each lid, sleep, wake and agent event.
     public var record: (SleepEvent.Kind, String?) -> Void = { _, _ in }
     /// An AI agent session holds a lease (see `AgentTracker`).
@@ -94,21 +92,16 @@ public final class PowerController {
         self.state = store.load()
     }
 
-    /// The settings with locked Pro features turned off.
-    public var effectiveSettings: ClamStopSettings {
-        settings.effective(isUnlocked: isUnlocked)
-    }
-
     private var agentTimeUp: Bool {
         if keepAwakeReleased { return true }
-        guard let since = keepAwakeSince, effectiveSettings.agentMaxHours > 0 else { return false }
-        return effects.now().timeIntervalSince(since) >= TimeInterval(effectiveSettings.agentMaxHours * 3600)
+        guard let since = keepAwakeSince, settings.maxAwakeHours > 0 else { return false }
+        return effects.now().timeIntervalSince(since) >= TimeInterval(settings.maxAwakeHours * 3600)
     }
 
     /// What to do with the lid closed, now.
     public func decide(agentsWorking working: Bool? = nil) -> LidDecision {
-        SleepPolicy.decide(settings: effectiveSettings, context: effects.powerContext(),
-                           agentsWorking: working ?? agentsWorking, agentTimeUp: agentTimeUp, now: effects.now())
+        SleepPolicy.decide(settings: settings, context: effects.powerContext(),
+                           agentsWorking: working ?? agentsWorking, agentTimeUp: agentTimeUp)
     }
 
     // MARK: Lifecycle
@@ -220,6 +213,30 @@ public final class PowerController {
         act(on: decision)
     }
 
+    /// "Sleep Now" from the menu: also works while staying awake for agents (`disablesleep`
+    /// would block the Apple menu's Sleep). With the lid closed, hibernation follows as usual.
+    public func sleepNow() {
+        log("sleep now requested")
+        if keepingAwakeForAgents {
+            keepAwakeReleased = true
+            stopKeepingAwake()
+        }
+        releaseSleepPrevention()
+        effects.requestSleep(after: 0)
+    }
+
+    /// "Hibernate Now" from the menu (full edition): save memory to disk and power off now.
+    public func hibernateNow() {
+        log("hibernate now requested")
+        if keepingAwakeForAgents {
+            keepAwakeReleased = true
+            stopKeepingAwake()
+        }
+        cancelPendingWake()
+        update(phase: .idle, pendingWake: nil)
+        act(on: .sleep(hibernateAfter: 0, reason: "hibernate now"))
+    }
+
     private func act(on decision: LidDecision) {
         switch decision {
         case .leaveAlone:
@@ -249,7 +266,7 @@ public final class PowerController {
         keepAwakeGeneration += 1
         updateSleepPrevention()
         record(.keptAwakeForAgents, nil)
-        let hours = effectiveSettings.agentMaxHours
+        let hours = settings.maxAwakeHours
         guard hours > 0 else { return }
         let generation = keepAwakeGeneration
         effects.run(at: effects.now().addingTimeInterval(TimeInterval(hours * 3600))) { [weak self] in
@@ -308,7 +325,7 @@ public final class PowerController {
             log("will sleep while keeping awake for agents")
             stopKeepingAwake()
         }
-        guard effectiveSettings.enabled else { return }
+        guard settings.enabled else { return }
         switch state.phase {
         case .hibernating:
             log("will sleep: going into hibernation")

@@ -117,7 +117,6 @@ final class SystemPower: PowerEffects {
         let battery = Self.battery()
         let thermal = ProcessInfo.processInfo.thermalState
         return PowerContext(onPowerAdapter: battery.onPowerAdapter, batteryPercent: battery.percent,
-                            connectedDisplays: Self.externalDisplayNames(),
                             thermalPressure: thermal == .serious || thermal == .critical)
     }
 
@@ -150,27 +149,6 @@ final class SystemPower: PowerEffects {
             return (onAdapter, current * 100 / max)
         }
         return (onAdapter, nil)
-    }
-
-    /// Names of the connected external displays, from the display controllers' EDID product
-    /// names (Apple Silicon: `IOMobileFramebufferShim` > DisplayAttributes > ProductAttributes).
-    /// The built-in display has no product name there. Verified on macOS 27.2 ("DELL S2719DM").
-    static func externalDisplayNames() -> [String] {
-        var iterator: io_iterator_t = 0
-        guard IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOMobileFramebufferShim"),
-                                           &iterator) == kIOReturnSuccess else { return [] }
-        defer { IOObjectRelease(iterator) }
-        var names: [String] = []
-        while case let service = IOIteratorNext(iterator), service != 0 {
-            defer { IOObjectRelease(service) }
-            guard let attributes = IORegistryEntryCreateCFProperty(service, "DisplayAttributes" as CFString,
-                                                                   kCFAllocatorDefault, 0)?
-                    .takeRetainedValue() as? [String: Any],
-                  let product = attributes["ProductAttributes"] as? [String: Any],
-                  let name = product["ProductName"] as? String, !name.isEmpty else { continue }
-            names.append(name)
-        }
-        return names.sorted()
     }
 
     // MARK: Helpers

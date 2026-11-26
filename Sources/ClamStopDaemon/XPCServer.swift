@@ -85,9 +85,16 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
         }
     }
 
-    func setProUnlocked(_ unlocked: Bool, reply: @escaping (Data) -> Void) {
+    func sleepNow(reply: @escaping (Data) -> Void) {
         DispatchQueue.main.async {
-            self.service.setProUnlocked(unlocked)
+            self.service.controller.sleepNow()
+            reply(self.service.status().encoded())
+        }
+    }
+
+    func hibernateNow(reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            self.service.controller.hibernateNow()
             reply(self.service.status().encoded())
         }
     }
