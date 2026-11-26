@@ -45,6 +45,10 @@ paragraphs of `README.md` carry the same text: change both together.
    sleep again; on a user wake or after hibernation restore `hibernatemode 3`. NOT yet verified:
    scheduled wake while lid closed, and whether the re-sleep happens before the display wakes.
 
+5. Sandboxed app, no root (Mac App Store, `spike/store-sandbox/`, 2026-11-26): lid notification and
+   `IOPMSleepSystem` work with only `com.apple.security.app-sandbox` (lid test passed in clamshell);
+   `IOPMSchedulePowerEvent` and `hibernatemode` need root, so no hibernation. See `docs/app-store-edition.md`.
+
 ## Defaults to restore on uninstall
 
 `hibernatemode 3`, cancel any wake the daemon scheduled. Do not write `standbydelay*` (no effect
