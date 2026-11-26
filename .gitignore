@@ -24,3 +24,4 @@ spike/probe
 
 # Personal Claude Code settings
 .claude/settings.local.json
+/spike/store-sandbox/build/
