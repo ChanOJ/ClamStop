@@ -3,8 +3,10 @@
 macOS menu bar app that puts a MacBook to sleep when its lid closes, even in clamshell mode,
 then hibernates it after a configurable delay.
 
+<!-- Keep the next three paragraphs identical to the in-app help (LidHelpView in
+     Sources/ClamStop/SettingsView.swift). -->
 When a MacBook is connected to an external display, macOS keeps it awake after the lid closes
-(clamshell mode). Recent versions of macOS offer no setting to turn this off.
+(clamshell mode). Since macOS 26 Tahoe, there is no longer a setting to turn this off.
 
 With ClamStop, closing the lid always puts the Mac to sleep, as it does when nothing is
 connected. Open the lid or press a key to wake it.
