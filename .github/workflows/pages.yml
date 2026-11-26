@@ -1,5 +1,8 @@
 name: Pages
 
+# Nothing is published until the repository variable PUBLISH_SITE is set to "true": the site
+# goes online only once the app is ready. Until then this workflow only checks that it builds.
+
 on:
   push:
     branches: [main]
@@ -42,13 +45,13 @@ jobs:
           rm -rf "$RUNNER_TEMP/site/src"
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.PUBLISH_SITE == 'true'
         with:
           path: ${{ runner.temp }}/site
 
   deploy:
     name: Deploy to GitHub Pages
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.PUBLISH_SITE == 'true'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15

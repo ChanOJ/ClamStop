@@ -3,6 +3,18 @@
 Published at <https://chanoj.github.io/ClamStop/> by `.github/workflows/pages.yml`, which runs
 the generator and deploys `site/` (without `src/`) on every push to `main` that touches it.
 
+## Going online
+
+The deployment is off until the app is ready. To publish:
+
+1. **Settings > Pages > Build and deployment > Source**: **GitHub Actions**.
+2. **Settings > Secrets and variables > Actions > Variables > New repository variable**: name
+   `PUBLISH_SITE`, value `true`.
+3. **Actions > Pages > Run workflow** on `main`.
+
+Before that, check that a stable release exists (the download buttons point to it) and set the
+direct App Store link of ClamStop Light in `APP_STORE_URL` (`build.py`).
+
 ## Edit
 
 Change `template.html`, `404.html`, `strings/*.json` or `../style.css`, then build and commit the

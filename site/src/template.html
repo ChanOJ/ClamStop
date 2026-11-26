@@ -40,6 +40,7 @@
       <nav aria-label="{{nav.label}}">
         <ul>
           <li><a href="#features">{{nav.features}}</a></li>
+          <li><a href="#editions">{{nav.editions}}</a></li>
           <li><a href="#install">{{nav.install}}</a></li>
           <li><a href="#faq">{{nav.faq}}</a></li>
           <li><a href="{{@repo}}">GitHub</a></li>
@@ -77,11 +78,38 @@
         <li><h3>{{features.clamshell.title}}</h3><p>{{features.clamshell.text}}</p></li>
         <li><h3>{{features.assertions.title}}</h3><p>{{features.assertions.text}}</p></li>
         <li><h3>{{features.hibernate.title}}</h3><p>{{features.hibernate.text}}</p></li>
-        <li><h3>{{features.audio.title}}</h3><p>{{features.audio.text}}</p></li>
+        <li><h3>{{features.custom.title}}</h3><p>{{features.custom.text}}</p></li>
         <li><h3>{{features.menu.title}}</h3><p>{{features.menu.text}}</p></li>
         <li><h3>{{features.private.title}}</h3><p>{{features.private.text}}</p></li>
       </ul>
       {{@shot_menu}}
+    </section>
+
+    <section id="editions" class="wrap" aria-labelledby="editions-title">
+      <h2 id="editions-title">{{editions.title}}</h2>
+      <p>{{editions.intro}}</p>
+      <ul class="cards editions">
+        <li>
+          <h3>ClamStop</h3>
+          <p>{{editions.full.text}}</p>
+          <ul>
+            <li>{{editions.sleep}}</li>
+            <li>{{editions.full.hibernation}}</li>
+            <li>{{editions.full.source}}</li>
+          </ul>
+          <p class="actions"><a class="button primary" href="{{@download}}">{{hero.download}}</a></p>
+        </li>
+        <li>
+          <h3>ClamStop Light</h3>
+          <p>{{editions.light.text}}</p>
+          <ul>
+            <li>{{editions.sleep}}</li>
+            <li>{{editions.light.hibernation}}</li>
+            <li>{{editions.light.source}}</li>
+          </ul>
+          <p class="actions"><a class="button primary" href="{{@app_store}}">{{editions.light.download}}</a></p>
+        </li>
+      </ul>
     </section>
 
     <!-- PRO SLOT (planned: freemium with license keys, prices not decided). Hidden for now:
@@ -93,6 +121,7 @@
 
     <section id="install" class="wrap narrow" aria-labelledby="install-title">
       <h2 id="install-title">{{install.title}}</h2>
+      <p>{{install.scope}}</p>
       <h3>{{requirements.title}}</h3>
       <ul>
         <li>{{requirements.macos}}</li>

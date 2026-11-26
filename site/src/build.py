@@ -25,6 +25,8 @@ BASE_URL = "https://chanoj.github.io/ClamStop/"
 BASE_PATH = "/ClamStop/"
 REPO_URL = "https://github.com/ChanOJ/ClamStop"
 DEFAULT_LANG = "en"
+# Placeholder: replace with the direct link to ClamStop Light once it is on the Mac App Store.
+APP_STORE_URL = "https://www.apple.com/app-store/"
 
 # Pixel size of the PNG to extract -> icns entry that holds it.
 ICONS = {64: b"ic12", 256: b"ic08"}
@@ -198,6 +200,7 @@ def main():
             "@repo": REPO_URL,
             "@download": f"{REPO_URL}/releases/latest",
             "@releases": f"{REPO_URL}/releases",
+            "@app_store": APP_STORE_URL,
             "@url": f"{BASE_URL}{page_path(lang)}",
             "@og_image": f"{BASE_URL}{og_image}",
             "@og_width": str(og_width),

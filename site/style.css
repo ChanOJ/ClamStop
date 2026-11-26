@@ -141,12 +141,16 @@ main > section { padding-block: 3rem; scroll-margin-top: 1rem; }
   padding: 0;
   list-style: none;
 }
-.cards li { padding: 1.25rem; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.cards > li { padding: 1.25rem; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .cards h3 { margin-top: 0; }
 .cards p { margin: 0; color: var(--muted); }
 
 li { margin-block: 0.35rem; }
-.cards li { margin: 0; }
+.cards > li { margin: 0; }
+
+.editions > li { display: flex; flex-direction: column; }
+.editions ul { padding-left: 1.25rem; }
+.editions .actions { margin: auto 0 0; padding-top: 0.5rem; color: inherit; }
 
 details {
   margin-block: 0.75rem;
