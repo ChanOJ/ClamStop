@@ -36,9 +36,7 @@ expect "$daemon" BundleProgram "Contents/MacOS/$DAEMON_NAME"
 expect "$daemon" "MachServices:$MACH_SERVICE" true
 expect "$daemon" AssociatedBundleIdentifiers:0 "$APP_ID"
 [ -f "$CONTENTS/Resources/AppIcon.icns" ] || die "missing AppIcon.icns"
-for image in "$ROOT"/Resources/Images/*.png; do
-    [ -f "$CONTENTS/Resources/$(basename "$image")" ] || die "missing image $(basename "$image")"
-done
+plutil -lint -s "$CONTENTS/Resources/PrivacyInfo.xcprivacy" || die "missing or invalid PrivacyInfo.xcprivacy"
 
 log "Localizations"
 for lproj in "$ROOT/Sources/$APP_NAME/Localization"/*.lproj "$ROOT"/Resources/*.lproj; do

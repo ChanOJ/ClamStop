@@ -1,6 +1,5 @@
-// Draws the placeholder app icon and writes Resources/AppIcon.icns.
+// Draws the app icon (a closed laptop with a pause sign) and writes Resources/AppIcon.icns.
 // Usage (from the repository root): swift scripts/make-icon.swift
-// Replace Resources/AppIcon.icns to ship a real icon; the build only copies that file.
 
 import AppKit
 

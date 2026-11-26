@@ -54,8 +54,7 @@ done
 cp "$ROOT/Resources/Info.plist" "$CONTENTS/Info.plist"
 cp "$ROOT/Resources/$DAEMON_PLIST" "$CONTENTS/Library/LaunchDaemons/$DAEMON_PLIST"
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
-# Images shown in the app (also used by README.md).
-cp "$ROOT"/Resources/Images/*.png "$CONTENTS/Resources/"
+cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$CONTENTS/Resources/PrivacyInfo.xcprivacy"
 printf 'APPL????' >"$CONTENTS/PkgInfo"
 
 # Localizations of the main bundle (app strings, then packaging ones such as

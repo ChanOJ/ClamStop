@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Agent app (LSUIElement in the bundle); also when run outside a bundle during development.
         NSApp.setActivationPolicy(.accessory)
+        if runDevelopmentCommands() { return }
         model.start()
         audioPauser.shouldPause = { [model] in
             UserDefaults.standard.bool(forKey: DefaultsKey.pauseAudio)
@@ -52,12 +53,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         snapshotIfRequested()
     }
 
+    /// Development aids, for docs and reviews (no Screen Recording permission needed):
+    /// - `--appearance light|dark`: force the appearance;
+    /// - `--export-illustration file.png`: write `ApprovalIllustration` to a PNG and quit
+    ///   (README images); returns true then.
+    private func runDevelopmentCommands() -> Bool {
+        switch Self.argument(after: "--appearance") {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: break
+        }
+        guard let path = Self.argument(after: "--export-illustration") else { return false }
+        do {
+            try ApprovalIllustration.export(to: URL(fileURLWithPath: path))
+        } catch {
+            FileHandle.standardError.write(Data("cannot write \(path): \(error)\n".utf8))
+        }
+        NSApp.terminate(nil)
+        return true
+    }
+
+    private static func argument(after name: String) -> String? {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }
+
     /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help [audio]]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
+        guard let path = Self.argument(after: "--snapshot") else { return }
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
-        let url = URL(fileURLWithPath: args[i + 1])
+        let url = URL(fileURLWithPath: path)
         showSettings()
         if args.contains("--show-help") {
             let audio = args.contains("audio")
@@ -96,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // ("update constraints" exception, seen on first launch). Size the window by hand.
             controller.sizingOptions = []
             hostingController = controller
-            let window = NSWindow(contentViewController: controller)
+            let window = SettingsWindow(contentViewController: controller)
             window.title = String(localized: "ClamStop Settings")
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
@@ -131,5 +158,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return true
         }
         return false
+    }
+}
+
+/// The settings window of an agent app has no menu bar, hence no File > Close item:
+/// handle ⌘W here (HIG: every window closes with ⌘W).
+final class SettingsWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           event.charactersIgnoringModifiers == "w" {
+            performClose(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }

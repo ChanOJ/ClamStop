@@ -56,6 +56,32 @@ Apple Developer Program: the user will enroll later. Until then CI builds unsign
 artifacts and the README documents opening the app despite Gatekeeper; signing (Developer ID) and
 notarization are wired in CI behind secrets and skipped when they are absent.
 
+## Appearance and images
+
+- Menu bar icon: template images only (`MenuBarIconStyle` in `Sources/ClamStop/MenuBarIcon.swift`),
+  so macOS tints them for light, dark, tinted and opaque ("Reduce transparency") menu bars. The
+  clam is drawn in code (`ClamGlyph`, line art in isometric view); crossed-out variants mean "not working".
+- No screenshots of System Settings in the app: `ApprovalIllustration` draws the row to turn on,
+  so it follows the appearance and the language. The README PNGs in `docs/images/` are exports of
+  it: `dist/ClamStop.app/Contents/MacOS/ClamStop --appearance light|dark --export-illustration <png>`.
+- Check the settings window in both appearances with
+  `--preview-approval --appearance light|dark --snapshot <png>` (no registration, no Screen
+  Recording permission). `screencapture` from Claude's shell returns a black image: the menu bar
+  itself must be checked by eye.
+
+## Blockers for a sandboxed Mac App Store edition (not verified on a sandboxed build)
+
+- No privileged helper: a sandboxed App Store app cannot install a root LaunchDaemon
+  (`SMAppService.daemon`). Without root: no `pmset -a hibernatemode`, no
+  `IOPMSchedulePowerEvent`, so no delayed hibernation; sleep-on-lid-close only.
+- `pmset sleepnow` runs as a child process (inherits the sandbox, may be refused); a store
+  edition would try `IOPMSleepSystem` instead. Lid notifications on `IOPMrootDomain` probably
+  still work (IOKit registry reads), to verify.
+- `AudioPauser` uses the private MediaRemote framework (`dlopen`): App Review rejects private API.
+- Uninstall flow (restore power settings through the daemon) and the approval UI disappear.
+- Ready: no network, `PrivacyInfo.xcprivacy` (UserDefaults CA92.1), `SMAppService.mainApp`
+  login item, template menu bar icon, settings window. Sparkle must stay out of that edition.
+
 ## Later
 
 Ideas from `IshaanChamoli/clamshut` (MIT, credit its copyright notice if code is reused; do not

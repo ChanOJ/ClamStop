@@ -4,6 +4,7 @@ import ClamStopShared
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
+    @AppStorage(DefaultsKey.menuBarIconStyle) private var menuBarIconStyle = MenuBarIconStyle.laptop
     @AppStorage(DefaultsKey.pauseAudio) private var pauseAudio = true
 
     var body: some View {
@@ -11,18 +12,8 @@ struct SettingsView: View {
             Section {
                 HStack(spacing: 6) {
                     Text("Sleep when the lid closes")
-                    Button {
-                        model.showLidHelp.toggle()
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Why ClamStop?")
-                    .accessibilityLabel("Why ClamStop?")
-                    .popover(isPresented: $model.showLidHelp, arrowEdge: .bottom) {
-                        LidHelpView()
-                    }
+                        .accessibilityHidden(true)  // the switch carries the same label
+                    HelpButton("Why ClamStop?", isPresented: $model.showLidHelp) { LidHelpView() }
                     Spacer()
                     Toggle("Sleep when the lid closes", isOn: Binding(
                         get: { model.enabled },
@@ -43,18 +34,8 @@ struct SettingsView: View {
                 .disabled(!model.enabled || model.serviceState != .running)
                 HStack(spacing: 6) {
                     Text("Pause audio while the Mac sleeps")
-                    Button {
-                        model.showAudioHelp.toggle()
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Why pause audio?")
-                    .accessibilityLabel("Why pause audio?")
-                    .popover(isPresented: $model.showAudioHelp, arrowEdge: .bottom) {
-                        AudioHelpView()
-                    }
+                        .accessibilityHidden(true)  // the switch carries the same label
+                    HelpButton("Why pause audio?", isPresented: $model.showAudioHelp) { AudioHelpView() }
                     Spacer()
                     Toggle("Pause audio while the Mac sleeps", isOn: $pauseAudio)
                         .labelsHidden()
@@ -62,28 +43,29 @@ struct SettingsView: View {
                         .disabled(!model.enabled || model.delayMinutes == ClamStopSettings.never)
                 }
             } footer: {
-                Text("Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Footnote("Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used.")
             }
 
             Section {
                 Toggle("Show icon in the menu bar", isOn: $showMenuBarIcon)
+                Picker("Menu bar icon", selection: $menuBarIconStyle) {
+                    ForEach(MenuBarIconStyle.allCases) { style in
+                        Label {
+                            Text(style.title)
+                        } icon: {
+                            Image(nsImage: style.image(active: true))
+                        }
+                        .tag(style)
+                    }
+                }
+                .disabled(!showMenuBarIcon)
                 Toggle("Open at login", isOn: Binding(
                     get: { model.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
                 ))
             } footer: {
                 if !showMenuBarIcon {
-                    Text("To change these settings later, open ClamStop again from the Applications folder.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Footnote("To change these settings later, open ClamStop again from the Applications folder.")
                 }
             }
 
@@ -91,33 +73,20 @@ struct SettingsView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: model.statusIsOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(model.statusIsOK ? .green : .orange)
+                        .accessibilityHidden(true)  // the text says the same
                     Text(model.statusLine)
                         .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 switch model.serviceState {
                 case .requiresApproval:
-                    Text("Allow ClamStop in System Settings > General > Login Items & Extensions: turn the ClamStop switch on.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    // Copied into Contents/Resources by scripts/build-app.sh; absent outside the bundle.
-                    if let image = NSImage(named: "allow-background-service") {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .accessibilityLabel("The ClamStop switch to turn on in System Settings")
-                    }
+                    Footnote("Allow ClamStop in System Settings > General > Login Items & Extensions: turn the ClamStop switch on.")
+                    ApprovalIllustration()
                     HStack {
                         Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
                         Button("Reinstall Background Service") { model.reinstallService() }
                     }
-                    Text("Already turned on? After an update, use Reinstall Background Service, then turn ClamStop on again if asked.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Footnote("Already turned on? After an update, use Reinstall Background Service, then turn ClamStop on again if asked.")
                 case .notRegistered:
                     Button("Install Background Service") { model.installService() }
                 case .notResponding:
@@ -172,6 +141,51 @@ struct SettingsView: View {
     }
 }
 
+/// Secondary text under a setting, wrapping and leading-aligned (grouped form footers are
+/// trailing-aligned by default).
+struct Footnote: View {
+    let text: LocalizedStringKey
+
+    init(_ text: LocalizedStringKey) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// ⓘ button that opens a help popover; its title is the tooltip and the VoiceOver label.
+struct HelpButton<Content: View>: View {
+    let title: LocalizedStringKey
+    @Binding var isPresented: Bool
+    @ViewBuilder let content: () -> Content
+
+    init(_ title: LocalizedStringKey, isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        _isPresented = isPresented
+        self.content = content
+    }
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.borderless)
+        .help(title)
+        .accessibilityLabel(title)
+        .popover(isPresented: $isPresented, arrowEdge: .bottom, content: content)
+    }
+}
+
 /// Help popover next to "Sleep when the lid closes".
 /// Keep this text identical to the opening paragraphs of README.md (see CLAUDE.md).
 struct LidHelpView: View {
@@ -221,14 +235,5 @@ struct MenuContent: View {
             .keyboardShortcut(",")
         Button("Quit ClamStop") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
-    }
-}
-
-struct MenuBarIcon: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Image(systemName: model.statusIsOK ? "laptopcomputer" : "laptopcomputer.slash")
-            .accessibilityLabel("ClamStop")
     }
 }
