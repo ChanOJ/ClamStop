@@ -134,7 +134,7 @@ struct LidHelpView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Why ClamStop?")
                 .font(.headline)
-            Text("When a MacBook is connected to an external display, macOS keeps it awake after the lid closes (clamshell mode), and System Settings has no option to change that.")
+            Text("When a MacBook is connected to an external display, macOS keeps it awake after the lid closes (clamshell mode). Recent versions of macOS offer no setting to turn this off.")
             Text("With ClamStop, closing the lid always puts the Mac to sleep, as it does when nothing is connected. Open the lid or press a key to wake it.")
             Text("After the chosen delay, the Mac hibernates: the content of its memory is saved to disk and it stops drawing power, which spares the battery. Waking up then takes a few seconds longer.")
         }
