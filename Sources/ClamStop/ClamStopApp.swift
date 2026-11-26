@@ -63,6 +63,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
         default: break
         }
+        if let directory = Self.argument(after: "--mockups") {
+            if let icon = Self.argument(after: "--icon"), let image = NSImage(contentsOfFile: icon) {
+                NSApp.applicationIconImage = image  // when run outside the app bundle
+            }
+            MockupRenderer.run(outputDirectory: URL(fileURLWithPath: directory))
+            return true
+        }
         guard let path = Self.argument(after: "--export-illustration") else { return false }
         do {
             try ApprovalIllustration.export(to: URL(fileURLWithPath: path))

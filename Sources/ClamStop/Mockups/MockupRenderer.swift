@@ -1,0 +1,184 @@
+import AppKit
+import SwiftUI
+
+/// Development aid: `ClamStop --mockups <dir> [--icon <icns>]` renders every mockup screen to
+/// PNG files in `<dir>` plus an `index.html` contact sheet, then quits. Windows are drawn with
+/// `cacheDisplay` (no Screen Recording permission), kept invisible (alpha 0). Dark appearance
+/// only, as asked during the review. Used by `scripts/mockups.sh`.
+@MainActor
+enum MockupRenderer {
+    struct Screen {
+        let id: String
+        let title: String
+        let note: String
+        /// Window title; nil = no window frame (the menu drawing).
+        let windowTitle: String?
+        var editions: [Edition] = Edition.allCases
+        var tiers: [Bool] = [false, true]
+        let configure: (MockupModel) -> Void
+        let view: (MockupModel) -> AnyView
+    }
+
+    struct Rendered {
+        let screen: Screen
+        let edition: Edition
+        let isPro: Bool
+        let file: String
+        let size: NSSize
+    }
+
+    static var screens: [Screen] {
+        let firstRun: (MockupModel) -> AnyView = { AnyView(FirstRunView(model: $0)) }
+        let settings: (MockupModel) -> AnyView = { AnyView(SettingsMockupView(model: $0)) }
+        let menu: (MockupModel) -> AnyView = { AnyView(MenuMockupView(model: $0)) }
+        return [
+            Screen(id: "first-run-1", title: "First run 1: what happens when the lid closes",
+                   note: "The Store edition has no battery choice and no step counter (single screen).",
+                   windowTitle: "Welcome to ClamStop", configure: { _ in }, view: firstRun),
+            Screen(id: "first-run-1-battery", title: "First run 1: battery choice picked",
+                   note: "The consequence is said next to the risky choice.",
+                   windowTitle: "Welcome to ClamStop", editions: [.full], tiers: [false],
+                   configure: { $0.firstRunLidChoice = .keepWorking }, view: firstRun),
+            Screen(id: "first-run-1-pro", title: "First run 1: Pro choice picked without Pro",
+                   note: "Shows what Pro unlocks; one Unlock Pro button, or continue with Sleep.",
+                   windowTitle: "Welcome to ClamStop", tiers: [false],
+                   configure: { $0.firstRunLidChoice = .agents }, view: firstRun),
+            Screen(id: "first-run-2-waiting", title: "First run 2: allow the background service (waiting)",
+                   note: "Full edition only. Detected automatically when the switch is turned on.",
+                   windowTitle: "Welcome to ClamStop", editions: [.full], tiers: [false],
+                   configure: { $0.firstRunStep = 2 }, view: firstRun),
+            Screen(id: "first-run-2-done", title: "First run 2: allowed",
+                   note: "Full edition only.",
+                   windowTitle: "Welcome to ClamStop", editions: [.full], tiers: [false],
+                   configure: { $0.firstRunStep = 2; $0.serviceApproved = true }, view: firstRun),
+            Screen(id: "first-run-3", title: "First run 3: hibernation",
+                   note: "Full edition only. Free choices only; the footnote differs with Pro.",
+                   windowTitle: "Welcome to ClamStop", editions: [.full],
+                   configure: { $0.firstRunStep = 3 }, view: firstRun),
+            Screen(id: "menu", title: "Menu bar menu, Stay Awake submenu open",
+                   note: "Drawn in SwiftUI: a real NSMenu cannot be rendered to an image. Until… and While an App Runs… are Pro.",
+                   windowTitle: nil, configure: { _ in }, view: menu),
+            Screen(id: "menu-session", title: "Menu bar menu while staying awake",
+                   note: "With Pro, the remaining time also shows next to the icon.",
+                   windowTitle: nil, editions: [.full],
+                   configure: { $0.menuState = .session }, view: menu),
+            Screen(id: "settings", title: "Settings, More options collapsed",
+                   note: "The Store edition has no Hibernate picker.",
+                   windowTitle: "ClamStop Settings", configure: { _ in }, view: settings),
+            Screen(id: "settings-more", title: "Settings, More options expanded",
+                   note: "Pro controls carry a badge and stay readable but disabled; one Unlock Pro button.",
+                   windowTitle: "ClamStop Settings",
+                   configure: { $0.showMoreOptions = true }, view: settings),
+        ]
+    }
+
+    static func run(outputDirectory: URL) {
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        Task { @MainActor in
+            do {
+                try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+                var rendered: [Rendered] = []
+                for screen in screens {
+                    for edition in screen.editions {
+                        for isPro in screen.tiers {
+                            let file = "\(screen.id)-\(edition.rawValue)-\(isPro ? "pro" : "free").png"
+                            let size = try await render(screen, edition: edition, isPro: isPro,
+                                                        to: outputDirectory.appendingPathComponent(file))
+                            rendered.append(Rendered(screen: screen, edition: edition, isPro: isPro, file: file, size: size))
+                        }
+                    }
+                }
+                try contactSheet(rendered).write(to: outputDirectory.appendingPathComponent("index.html"),
+                                                 atomically: true, encoding: .utf8)
+                print("\(rendered.count) mockups in \(outputDirectory.path)")
+            } catch {
+                FileHandle.standardError.write(Data("mockups failed: \(error)\n".utf8))
+            }
+            NSApp.terminate(nil)
+        }
+    }
+
+    /// Renders one screen; returns its size in points.
+    private static func render(_ screen: Screen, edition: Edition, isPro: Bool, to url: URL) async throws -> NSSize {
+        let model = MockupModel(edition: edition, isPro: isPro)
+        screen.configure(model)
+        let controller = NSHostingController(rootView: screen.view(model))
+        controller.sizingOptions = []
+        let hosting = controller.view
+        let window = NSWindow(
+            contentRect: NSRect(x: 200, y: 200, width: 400, height: 300),
+            styleMask: screen.windowTitle == nil ? [.borderless] : [.titled, .closable],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = screen.windowTitle ?? ""
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.alphaValue = 0
+        window.contentView = hosting
+        // Size to the content, let SwiftUI lay out, then size again (wrapping text can change it).
+        for _ in 0..<2 {
+            window.setContentSize(controller.sizeThatFits(in: NSSize(width: 2000, height: 5000)))
+            window.orderFrontRegardless()
+            try await Task.sleep(for: .milliseconds(400))
+        }
+        let view: NSView = screen.windowTitle == nil ? hosting : (hosting.superview ?? hosting)
+        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let png = rep.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
+        try png.write(to: url)
+        window.orderOut(nil)
+        return view.bounds.size
+    }
+
+    /// One HTML page with every screen, filterable by edition and tier; refresh it after each run.
+    private static func contactSheet(_ items: [Rendered]) -> String {
+        func esc(_ s: String) -> String {
+            s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
+        }
+        var html = """
+        <!doctype html><html lang="en"><head><meta charset="utf-8"><title>ClamStop mockups</title>
+        <style>
+        body{background:#1b1b1d;color:#ddd;font:14px -apple-system,system-ui;margin:24px}
+        h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:36px 0 2px;color:#fff}
+        .note{color:#999;margin:0 0 12px} .grid{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+        figure{margin:0} figcaption{color:#aaa;font-size:12px;margin-top:6px}
+        .bar{position:sticky;top:0;background:#1b1b1d;padding:8px 0;border-bottom:1px solid #333;z-index:1}
+        label{margin-right:16px} .hidden{display:none}
+        </style></head><body>
+        <h1>ClamStop mockups</h1>
+        <div class="note">Dark appearance. Generated \(Date().formatted(date: .abbreviated, time: .shortened)) by scripts/mockups.sh; refresh after each run.</div>
+        <div class="bar">
+        <label><input type="checkbox" data-f="full" checked> Full edition</label>
+        <label><input type="checkbox" data-f="store" checked> Store edition</label>
+        <label><input type="checkbox" data-f="free" checked> Free</label>
+        <label><input type="checkbox" data-f="pro" checked> Pro</label>
+        </div>
+        """
+        var currentID = ""
+        for item in items {
+            if item.screen.id != currentID {
+                if !currentID.isEmpty { html += "</div>\n" }
+                currentID = item.screen.id
+                html += "<h2 id=\"\(item.screen.id)\">\(esc(item.screen.title))</h2><p class=\"note\">\(esc(item.screen.note))</p><div class=\"grid\">\n"
+            }
+            let edition = item.edition == .full ? "Full" : "Store"
+            let tier = item.isPro ? "Pro" : "Free"
+            html += """
+            <figure data-edition="\(item.edition.rawValue)" data-tier="\(item.isPro ? "pro" : "free")">\
+            <img src="\(item.file)?t=\(Int(Date().timeIntervalSince1970))" width="\(Int(item.size.width))" alt="\(esc(item.screen.title)), \(edition), \(tier)">\
+            <figcaption>\(edition) edition · \(tier)</figcaption></figure>\n
+            """
+        }
+        html += """
+        </div>
+        <script>
+        const boxes=[...document.querySelectorAll('.bar input')];
+        function apply(){const on=Object.fromEntries(boxes.map(b=>[b.dataset.f,b.checked]));
+        document.querySelectorAll('figure').forEach(f=>f.classList.toggle('hidden',!(on[f.dataset.edition]&&on[f.dataset.tier])));}
+        boxes.forEach(b=>b.addEventListener('change',apply));
+        </script></body></html>
+        """
+        return html
+    }
+}
