@@ -33,8 +33,8 @@ final class AppModel: ObservableObject {
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
 
-    /// Hibernation delays offered in the settings (minutes, 0 = never).
-    static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240]
+    /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
+    static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
 
     private let client = DaemonClient()
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
@@ -191,9 +191,8 @@ final class AppModel: ObservableObject {
 
     // MARK: Text
 
-    /// Picker label: "Never", "10 min", "2 h".
+    /// Duration label: "10 min", "2 h" (positive minutes only).
     static func delayLabel(_ minutes: Int) -> String {
-        if minutes == 0 { return String(localized: "Never") }
         if minutes % 60 == 0 { return String(localized: "\(minutes / 60) h") }
         return String(localized: "\(minutes) min")
     }
@@ -216,7 +215,8 @@ final class AppModel: ObservableObject {
             if !status.settings.enabled { return String(localized: "Off: the lid works as usual") }
             if status.sleepDisabled { return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)") }
             let minutes = status.settings.hibernateDelayMinutes
-            if minutes == 0 { return String(localized: "On: sleeps when the lid closes") }
+            if minutes < 0 { return String(localized: "On: sleeps when the lid closes") }
+            if minutes == 0 { return String(localized: "On: hibernates when the lid closes") }
             return String(localized: "On: sleeps when the lid closes, hibernates after \(Self.delayLabel(minutes))")
         }
     }

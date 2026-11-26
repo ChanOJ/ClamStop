@@ -36,8 +36,7 @@ struct SettingsView: View {
                     set: { model.setDelay(minutes: $0) }
                 )) {
                     ForEach(delayChoices, id: \.self) { minutes in
-                        Text(minutes == 0 ? String(localized: "Never") : String(localized: "after \(AppModel.delayLabel(minutes))"))
-                            .tag(minutes)
+                        Text(pickerLabel(minutes)).tag(minutes)
                     }
                 }
                 .disabled(!model.enabled || model.serviceState != .running)
@@ -129,14 +128,19 @@ struct SettingsView: View {
         .onAppear { model.refresh() }
     }
 
-    /// The standard choices, plus the current value if it was set some other way.
+    /// The standard choices, plus the current value if it was set some other way; "Never" last.
     private var delayChoices: [Int] {
         var choices = AppModel.delayChoices
         if !choices.contains(model.delayMinutes) {
-            choices.append(model.delayMinutes)
-            choices.sort()
+            choices.insert(model.delayMinutes, at: choices.firstIndex { $0 > model.delayMinutes } ?? choices.count - 1)
         }
         return choices
+    }
+
+    private func pickerLabel(_ minutes: Int) -> String {
+        if minutes < 0 { return String(localized: "Never") }
+        if minutes == 0 { return String(localized: "Immediately") }
+        return String(localized: "after \(AppModel.delayLabel(minutes))")
     }
 }
 
