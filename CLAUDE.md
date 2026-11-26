@@ -62,6 +62,16 @@ Apple Developer Program: the user will enroll later. Until then CI builds unsign
 artifacts and the README documents opening the app despite Gatekeeper; signing (Developer ID) and
 notarization are wired in CI behind secrets and skipped when they are absent.
 
+## Updates
+
+- Sparkle 2 (exact pin in `Package.swift`, full edition only; `CLAMSTOP_EDITION=appstore swift build`
+  drops it and defines `APPSTORE`). `build-app.sh` embeds `Sparkle.framework` in
+  `Contents/Frameworks` (adds the rpath) and signs its helpers inside out. Feed: `appcast.xml` asset
+  of the latest GitHub Release, written by `scripts/make-appcast.sh` only for Developer ID builds
+  (Sparkle cannot update ad-hoc builds: their requirement is a cdhash). Public key in
+  `Resources/sparkle-public-ed-key.txt`; private key only in Proton Pass and the
+  `SPARKLE_ED_PRIVATE_KEY` secret. See `docs/updates.md`.
+
 ## Appearance and images
 
 - Menu bar icon: template images only (`MenuBarIconStyle` in `Sources/ClamStop/MenuBarIcon.swift`),

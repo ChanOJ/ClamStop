@@ -223,6 +223,9 @@ Pushing a `v*` tag builds the DMG and publishes a GitHub Release with its SHA-25
 Once the Apple credentials are configured, the same workflow signs and notarizes it: see
 [docs/signing.md](docs/signing.md).
 
+Signed releases also publish the feed that installed copies check for updates (Sparkle), see
+[docs/updates.md](docs/updates.md).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

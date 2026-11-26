@@ -1,5 +1,6 @@
 #!/bin/bash
-# CI only: writes the SHA-256 of the DMG and publishes the GitHub Release of a tag.
+# CI only: writes the SHA-256 of the DMG and publishes the GitHub Release of a tag, with the
+# Sparkle appcast when there is one.
 # Safe to run again after a partial failure.
 #
 # Environment: TAG (e.g. v1.2.3), GH_TOKEN.
@@ -26,6 +27,10 @@ notes="$notes
 
 SHA-256: \`$(cut -d ' ' -f 1 "$dmg.sha256")\`"
 
+assets=("$dmg" "$dmg.sha256")
+# Sparkle feed (scripts/make-appcast.sh), absent when the EdDSA key secret is not set.
+[ -f appcast.xml ] && assets+=(appcast.xml)
+
 flags=()
 case "$VERSION" in
     *-*) flags=(--prerelease) ;;
@@ -34,10 +39,10 @@ esac
 # Create the release, or complete it when an earlier attempt already did.
 publish() {
     if gh release view "$TAG" >/dev/null 2>&1; then
-        gh release upload "$TAG" "$dmg" "$dmg.sha256" --clobber &&
+        gh release upload "$TAG" "${assets[@]}" --clobber &&
             gh release edit "$TAG" --draft=false
     else
-        gh release create "$TAG" "$dmg" "$dmg.sha256" --verify-tag \
+        gh release create "$TAG" "${assets[@]}" --verify-tag \
             --title "$APP_NAME $VERSION" --notes "$notes" --generate-notes \
             ${flags[@]+"${flags[@]}"}
     fi

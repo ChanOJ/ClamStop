@@ -1,7 +1,9 @@
 name: Release
 
 # Pushing a tag such as v1.2.3 publishes a GitHub Release. The build is signed and notarized
-# when the secrets described in docs/signing.md exist, ad-hoc signed otherwise.
+# when the secrets described in docs/signing.md exist, ad-hoc signed otherwise. With the
+# SPARKLE_ED_PRIVATE_KEY secret (docs/updates.md), the release also carries appcast.xml, the
+# feed installed apps check for updates.
 on:
   push:
     tags: ["v*"]
@@ -59,6 +61,12 @@ jobs:
           NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
           NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
         run: scripts/notarize.sh "dist/ClamStop-$VERSION.dmg"
+
+      # After notarization: stapling changes the DMG, and the signature covers its final bytes.
+      - name: Sparkle appcast (EdDSA signature of the DMG)
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: scripts/make-appcast.sh "dist/ClamStop-$VERSION.dmg"
 
       - name: Gatekeeper assessment (notarized builds)
         run: |

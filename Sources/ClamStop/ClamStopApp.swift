@@ -37,6 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         if runDevelopmentCommands() { return }
         model.start()
+        UpdaterModel.shared.start()
+        // Development aid: `--check-for-updates` (testing an appcast).
+        if CommandLine.arguments.contains("--check-for-updates") { UpdaterModel.shared.checkForUpdates() }
         // Automatic and hidden (spec F1): only to avoid the half second of sound during the
         // wake that leads to hibernation.
         audioPauser.shouldPause = { [model] in

@@ -63,13 +63,30 @@ for name in "$APP_NAME" "$DAEMON_NAME"; do
     echo "$name: $(lipo -archs "$binary"), macOS $MIN_MACOS+"
 done
 
+log "Sparkle (updates)"
+sparkle="$CONTENTS/Frameworks/Sparkle.framework"
+for part in Versions/B/Sparkle Versions/B/Autoupdate Versions/B/Updater.app \
+    Versions/B/XPCServices/Installer.xpc Versions/B/XPCServices/Downloader.xpc; do
+    [ -e "$sparkle/$part" ] || die "missing $sparkle/$part"
+done
+otool -l "$CONTENTS/MacOS/$APP_NAME" | grep '@executable_path/../Frameworks' >/dev/null ||
+    die "$APP_NAME: no rpath to Contents/Frameworks (Sparkle would not load)"
+/usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$info" >/dev/null 2>&1 || die "$info: missing SUFeedURL"
+if /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$info" >/dev/null 2>&1; then
+    echo "Updates on (SUPublicEDKey set)"
+else
+    echo "Updates off (no SUPublicEDKey)"
+fi
+
 log "Signatures"
 codesign --verify --deep --strict --verbose=2 "$APP"
 daemon_details=$(codesign --display --verbose=2 "$CONTENTS/MacOS/$DAEMON_NAME" 2>&1)
 grep -qx "Identifier=$DAEMON_ID" <<<"$daemon_details" ||
     die "daemon signed with the wrong identifier"
 if is_developer_id_signed "$APP"; then
-    for target in "$APP" "$CONTENTS/MacOS/$DAEMON_NAME"; do
+    for target in "$APP" "$CONTENTS/MacOS/$DAEMON_NAME" "$sparkle" \
+        "$sparkle/Versions/B/Autoupdate" "$sparkle/Versions/B/Updater.app" \
+        "$sparkle/Versions/B/XPCServices/Installer.xpc" "$sparkle/Versions/B/XPCServices/Downloader.xpc"; do
         details=$(codesign --display --verbose=2 "$target" 2>&1)
         grep -q 'flags=.*runtime' <<<"$details" || die "$target: hardened runtime missing"
         grep -q '^Timestamp=' <<<"$details" || die "$target: secure timestamp missing"

@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: scripts/test.sh
 
+      - name: Build the Mac App Store edition (no Sparkle)
+        run: CLAMSTOP_EDITION=appstore swift build --scratch-path .build/appstore
+
       - name: Assemble the app (ad-hoc signature)
         run: scripts/build-app.sh
 
