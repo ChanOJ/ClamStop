@@ -20,6 +20,7 @@ enum ServiceState: Equatable {
 enum DefaultsKey {
     static let showMenuBarIcon = "showMenuBarIcon"
     static let hasLaunchedBefore = "hasLaunchedBefore"
+    static let pauseAudio = "pauseAudioWhileAsleep"
 }
 
 @MainActor
@@ -191,6 +192,7 @@ final class AppModel: ObservableObject {
             try? await SMAppService.mainApp.unregister()
             UserDefaults.standard.removeObject(forKey: DefaultsKey.hasLaunchedBefore)
             UserDefaults.standard.removeObject(forKey: DefaultsKey.showMenuBarIcon)
+            UserDefaults.standard.removeObject(forKey: DefaultsKey.pauseAudio)
             NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
             NSApp.terminate(nil)
         }

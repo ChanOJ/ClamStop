@@ -20,19 +20,26 @@ struct ClamStopApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = AppModel()
+    private let audioPauser = AudioPauser()
     private var settingsWindow: NSWindow?
     private var hostingController: NSHostingController<SettingsView>?
     private var modelObserver: AnyCancellable?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
-        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000])
+        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000, DefaultsKey.pauseAudio: true])
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Agent app (LSUIElement in the bundle); also when run outside a bundle during development.
         NSApp.setActivationPolicy(.accessory)
         model.start()
+        audioPauser.shouldPause = { [model] in
+            UserDefaults.standard.bool(forKey: DefaultsKey.pauseAudio)
+                && model.serviceState == .running && model.enabled
+                && model.delayMinutes != ClamStopSettings.never
+        }
+        audioPauser.start()
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)

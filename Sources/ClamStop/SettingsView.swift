@@ -4,6 +4,7 @@ import ClamStopShared
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
+    @AppStorage(DefaultsKey.pauseAudio) private var pauseAudio = true
 
     var body: some View {
         Form {
@@ -40,6 +41,9 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(!model.enabled || model.serviceState != .running)
+                Toggle("Pause audio while the Mac sleeps", isOn: $pauseAudio)
+                    .disabled(!model.enabled || model.delayMinutes == ClamStopSettings.never)
+                    .help("Pauses playback when the lid closes and resumes it when the lid opens, so no sound plays during the short wake before hibernation.")
             } footer: {
                 Text("Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used.")
                     .font(.footnote)
