@@ -96,7 +96,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | C2 | Keep working with the lid closed during a session (on power; on battery in the full edition) | F (S: power only, to verify) | M | `disablesleep` (root); Lidwork claims a sandboxed method, to verify | Insomnia (krishhgg), Lidless, Sleepless, ClamDown, double-shot, Lidwork, NeverFold, InsomniaZ, MacMiniMode, dozens more |
 | C3 | Screen policy during a session: let screens sleep, keep them on, or switch the built-in screen off when the lid is closed | F+S | M | Display assertions; brightness 0 | Amphetamine, Capsomnia, MacMiniMode, agent-lid-closed, LidSleepToggle |
 | C4 | Session end: reminder 5 min before, "+30 min" button, optional sleep at the end if the lid is closed | F+S | 1 | | Insomnio, Insomnia (krishhgg), Capsomnia |
-| C5 | Stay awake while an app or command runs (by name, path or PID; optionally only while it uses the processor), with a ready-made list of known long jobs: HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro, Blender, ffmpeg, Xcode builds, Ollama, LM Studio | F+S | M | Process list (sandbox: to verify for CLI processes) | Amphetamine, Lchika, Fermata, Insomnio, LidAwake (Vladimir-Podgornyi) |
+| C5 | Stay awake while an app or command is open (by name, path or PID; optionally only while it is busy, that is while it uses the processor), with a ready-made list of known long jobs: HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro, Blender, ffmpeg, Xcode builds, Ollama, LM Studio | F+S | M | Process list (sandbox: to verify for CLI processes) | Amphetamine, Lchika, Fermata, Insomnio, LidAwake (Vladimir-Podgornyi) |
 | C6 | Stay awake while a download or upload is in progress | F+S | 1 | Network throughput | Amphetamine, Insomnio, LidAwake (Vladimir-Podgornyi) |
 | C7 | Stay awake while AI coding agents work, then sleep when they all wait or finish: hooks for Claude Code, Codex, Gemini CLI, Cursor, Copilot CLI, OpenCode, Aider; leases that expire if an agent is killed | F (S: to verify) | M (in progress) | Agent hooks + process activity | clamshut, adrafinil, double-shot, LidSleepToggle, agent-lid-closed, Lidless, Lockpaw, No Sleep for AI, Keep Awake: AI Agents, lidsleep (DerekYeh) |
 | C8 | "Sleep when idle" ending: stay awake while work happens (processor busy, another app holding sleep, input), then sleep | F+S | 1 | Load, assertions, HID idle | LidAwake (Vladimir-Podgornyi), Sleep Expert (Force Sleep) |
@@ -121,14 +121,14 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | E3 | Only while charging: end a lid-closed session when the power adapter is disconnected (option, default on) | F+S | M | | MacMiniMode, Lidless, turnintoserver, Insomnio |
 | E4 | Crash recovery: a watchdog in the daemon restores normal sleep within seconds if the app quits, crashes or hangs; the next launch undoes leftovers | F | M | Daemon heartbeat | Lidless, double-shot, Insomnia (krishhgg), ClamshellToggle, StayAwake, PeachPocket, Lidwork |
 | E5 | Maximum session length (option, off by default) | F+S | 1 | | ClamshellToggle |
-| E6 | "Mac in a bag" warning: lid closed, no display, not charging, session on: notification and sleep after a short delay | F+S | 1 | | double-shot |
+| E6 | ~~"Mac in a bag" warning~~ dropped after the mockup review (2026-11-26): a bag cannot be told from a desk, and the heat guard (E2) and battery floor (E1) already cover the risk | - | - | | double-shot |
 | E7 | Restore every system setting the app changed (`hibernatemode`, `disablesleep`, Low Power Mode, scheduled wakes) on quit, uninstall and reboot | F | M (exists) | Persisted state | ClamStop, ClamDown, Insomnia (krishhgg) |
 
 ### F. Actions on lid close, sleep and wake
 
 | ID | Feature | Ed. | Prio | Tech | Seen in |
 |---|---|---|---|---|---|
-| F1 | Pause audio and video while the Mac sleeps, resume on wake | F+S | M (exists) | MediaRemote (private) | ClamStop, Insomnia (krishhgg, mute), Latch |
+| F1 | Pause audio and video while the Mac sleeps, resume on wake: automatic and hidden (no setting), only to avoid the half second of sound during the wake that leads to hibernation | F | M (exists) | MediaRemote (private) | ClamStop, Insomnia (krishhgg, mute), Latch |
 | F2 | Lock the screen when the lid closes during a session | F+S | 1 | Private lock call, fallback display sleep | ClamshellToggle, ClamDown, SleeperX, mac-autolock, Lockpaw |
 | F3 | Run a Shortcut or a script on lid close, lid open, sleep, wake | F+S | 1 | Shortcuts; scripts sandbox-limited | sleepwatcher, Latch, clamshell (treydempsey), Fermata |
 | F4 | Disconnect chosen Bluetooth devices on sleep, reconnect on wake | F | L | | BlueBed |

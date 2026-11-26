@@ -32,7 +32,7 @@ struct TagBadge: View {
 }
 
 /// Large selectable choice of the first-run screens: icon, title, one line of explanation,
-/// optional badge and warning. Selection is shown by a check mark and a border, not color alone.
+/// optional badge and an information line shown once selected. Selection is shown by a check mark and a border, not color alone.
 struct ChoiceCard: View {
     enum Badge {
         case recommended
@@ -43,7 +43,7 @@ struct ChoiceCard: View {
     let title: LocalizedStringKey
     let detail: LocalizedStringKey
     var badge: Badge?
-    var warning: LocalizedStringKey?
+    var info: LocalizedStringKey?
     let isSelected: Bool
     let action: () -> Void
 
@@ -68,12 +68,17 @@ struct ChoiceCard: View {
                     Text(detail)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if isSelected, let warning {
-                        Label(warning, systemImage: "exclamationmark.triangle")
-                            .font(.callout)
-                            .foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 2)
+                    if isSelected, let info {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .foregroundStyle(Color.accentColor)
+                                .accessibilityHidden(true)
+                            Text(info)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(.callout)
+                        .padding(.top, 2)
                     }
                 }
                 Spacer(minLength: 8)
@@ -142,15 +147,5 @@ struct ToggleRow: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
         }
-    }
-}
-
-/// Section header with a symbol, as in System Settings.
-struct SectionHeader: View {
-    let title: LocalizedStringKey
-    let symbol: String
-
-    var body: some View {
-        Label(title, systemImage: symbol)
     }
 }

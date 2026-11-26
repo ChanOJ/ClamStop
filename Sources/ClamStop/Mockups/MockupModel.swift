@@ -11,6 +11,15 @@ enum Edition: String, CaseIterable {
     case store
 
     var hasBackgroundService: Bool { self == .full }
+
+    /// Page listing every Pro feature. The Store edition links to a help page without any
+    /// purchase or download link (App Store guideline 3.1.1, spec section 6). Pages to create.
+    var proFeaturesURL: URL {
+        switch self {
+        case .full: URL(string: "https://chanoj.github.io/ClamStop/pro/")!
+        case .store: URL(string: "https://chanoj.github.io/ClamStop/help/pro-features/")!
+        }
+    }
 }
 
 /// What the lid does (spec A2).
@@ -101,6 +110,43 @@ enum FirstRunLidChoice: String {
     case agents
 }
 
+/// Tabs of the settings window.
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case general
+    case sessions
+    case rules
+    case safety
+    case actions
+    case automation
+    case journal
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .general: "General"
+        case .sessions: "Stay Awake"
+        case .rules: "Rules"
+        case .safety: "Safety"
+        case .actions: "Actions"
+        case .automation: "Automation"
+        case .journal: "Journal"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .sessions: "cup.and.saucer"
+        case .rules: "list.bullet.rectangle"
+        case .safety: "checkmark.shield"
+        case .actions: "bolt"
+        case .automation: "keyboard"
+        case .journal: "book"
+        }
+    }
+}
+
 /// Menu state shown by the menu mockup.
 enum MenuMockState {
     case idle
@@ -122,13 +168,12 @@ struct MockOptions {
     var heatGuard = true
     var onlyWhileCharging = true
     var maxSessionHours = 0
-    var bagWarning = true
-    var pauseAudio = true
     var lockOnClose = false
     var hibernateOnLowBattery = false
     var lowPowerMode = false
     var keepJournal = true
     var morningReport = false
+    var busyOnly = false
 }
 
 @MainActor
@@ -146,7 +191,7 @@ final class MockupModel: ObservableObject {
     @Published var hibernateDelay = HibernateDelay.oneHour
     @Published var showInMenuBar = true
     @Published var openAtLogin = true
-    @Published var showMoreOptions = false
+    @Published var settingsTab = SettingsTab.general
     @Published var options = MockOptions()
 
     // Menu
@@ -186,9 +231,9 @@ final class MockupModel: ObservableObject {
         switch hibernateDelay {
         case .never: return lid
         case .immediately:
-            hibernation = String(localized: "It saves everything to disk right away and stops using the battery.")
+            hibernation = String(localized: "Right away, it stops using the battery completely (hibernation).")
         default:
-            hibernation = String(localized: "\(hibernateDelay.title) asleep, it saves everything to disk and stops using the battery.")
+            hibernation = String(localized: "\(hibernateDelay.title) asleep, it stops using the battery completely (hibernation).")
         }
         return lid + " " + hibernation
     }

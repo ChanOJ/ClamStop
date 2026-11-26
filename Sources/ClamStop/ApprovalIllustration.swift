@@ -15,7 +15,8 @@ struct ApprovalIllustration: View {
                     .resizable()
                     .frame(width: 32, height: 32)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(verbatim: "ClamStop.app")
+                    // Without ".app": Finder hides extensions by default, and so does System Settings then.
+                    Text(verbatim: "ClamStop")
                     Text("Not running in background")
                         .font(.caption)
                         .foregroundStyle(.secondary)

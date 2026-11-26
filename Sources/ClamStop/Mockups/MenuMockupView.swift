@@ -16,13 +16,13 @@ struct MenuMockupView: View {
                 mainMenu
                 if showsSubmenu {
                     stayAwakeSubmenu
-                        .padding(.top, model.menuState == .idle ? 64 : 0)
+                        .padding(.top, 52)
                 }
             }
-            .padding(.leading, 180)
+            .padding(.leading, 150)
         }
         .padding(.bottom, 24)
-        .frame(width: 760, alignment: .topLeading)
+        .frame(width: 800, alignment: .topLeading)
         .background(LinearGradient(
             colors: colorScheme == .dark
                 ? [Color(red: 0.10, green: 0.13, blue: 0.22), Color(red: 0.20, green: 0.12, blue: 0.24)]
@@ -39,7 +39,7 @@ struct MenuMockupView: View {
                 Image(nsImage: ClamGlyph.image)
                     .renderingMode(.template)
                 if model.menuState == .session && model.isPro {
-                    Text(verbatim: "1:42")
+                    Text(verbatim: "1h42")
                         .font(.system(size: 12, weight: .medium).monospacedDigit())
                 }
             }
@@ -60,24 +60,29 @@ struct MenuMockupView: View {
     // MARK: Menus
 
     private var mainMenu: some View {
-        MenuPanel(width: 270) {
+        MenuPanel(width: 330) {
             switch model.menuState {
             case .idle:
                 MenuStatus(title: "Sleeps when you close the lid",
-                           detail: model.edition.hasBackgroundService ? "Saves to disk after 1 hour asleep" : nil)
+                           detail: model.edition.hasBackgroundService ? "Stops using the battery after 1 hour asleep" : nil)
                 MenuSeparator()
-                MenuItem(title: "Stay Awake", hasSubmenu: true, highlighted: true)
+                MenuItem(title: "Stay Awake", icon: .symbol("cup.and.saucer"), hasSubmenu: true, highlighted: true)
             case .session:
+                // Free: the lid-closed part of a session needs power (spec C2).
                 MenuStatus(title: "Staying awake: 1 h 42 min left",
-                           detail: "Then sleeps when you close the lid")
+                           detail: model.isPro ? "Even if you close the lid" : "Even if you close the lid, while charging")
                 MenuSeparator()
-                MenuItem(title: "Stop Staying Awake")
-                MenuItem(title: "Stay Awake", hasSubmenu: true)
+                MenuItem(title: "Stop Staying Awake", icon: .symbol("cup.and.saucer.fill"))
+                MenuItem(title: "Stay Awake", icon: .symbol("cup.and.saucer"), hasSubmenu: true)
             }
-            MenuItem(title: "Sleep Now")
+            MenuItem(title: "Sleep Now", icon: .symbol("moon"))
+            if model.edition.hasBackgroundService {
+                MenuItem(title: "Hibernate Now", icon: .symbol("snowflake"),
+                         pro: !model.isPro, disabled: !model.isPro)
+            }
             MenuSeparator()
-            MenuItem(title: "Settings…", shortcut: "⌘,")
-            MenuItem(title: "Quit ClamStop", shortcut: "⌘Q")
+            MenuItem(title: "Settings…", icon: .symbol("gearshape"), shortcut: "⌘,")
+            MenuItem(title: "Quit ClamStop", icon: .symbol("door.left.hand.open"), shortcut: "⌘Q")
         }
     }
 
@@ -125,13 +130,16 @@ private struct MenuStatus: View {
     let detail: LocalizedStringKey?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(title)
-                .fontWeight(.semibold)
-            if let detail {
-                Text(detail)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 6) {
+            MenuIcon(icon: .clam)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .fontWeight(.semibold)
+                if let detail {
+                    Text(detail)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .font(.system(size: 13))
@@ -140,8 +148,30 @@ private struct MenuStatus: View {
     }
 }
 
+/// Leading icon of a menu item: an SF Symbol, or the ClamStop clam.
+private enum MenuIconKind {
+    case symbol(String)
+    case clam
+}
+
+private struct MenuIcon: View {
+    let icon: MenuIconKind
+
+    var body: some View {
+        Group {
+            switch icon {
+            case .symbol(let name): Image(systemName: name)
+            case .clam: Image(nsImage: ClamGlyph.image).renderingMode(.template)
+            }
+        }
+        .frame(width: 18)
+        .accessibilityHidden(true)
+    }
+}
+
 private struct MenuItem: View {
     let title: LocalizedStringKey
+    var icon: MenuIconKind?
     var shortcut: String?
     var hasSubmenu = false
     var highlighted = false
@@ -150,6 +180,7 @@ private struct MenuItem: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            if let icon { MenuIcon(icon: icon) }
             Text(title)
             if pro { ProBadge() }
             Spacer(minLength: 16)

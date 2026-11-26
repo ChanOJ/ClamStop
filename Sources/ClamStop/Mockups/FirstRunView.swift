@@ -49,7 +49,7 @@ private struct LidChoiceStep: View {
                         symbol: "display",
                         title: "Keep working when a screen is plugged in",
                         detail: "Use your Mac lid closed with an external screen, even on battery. On its own, macOS needs the power adapter for this.",
-                        warning: "On battery, your Mac uses its battery while the lid is closed. Without a screen, it sleeps as usual.",
+                        info: "On battery, your Mac uses its battery while the lid is closed. Without a screen, it sleeps as usual.",
                         isSelected: model.firstRunLidChoice == .keepWorking
                     ) { model.firstRunLidChoice = .keepWorking }
                 }
@@ -91,9 +91,10 @@ private struct UnlockProPanel: View {
                     .font(.headline)
                 ProBadge()
             }
-            Text("Pro also keeps your Mac awake while chosen apps run, adds rules, a sleep journal and keyboard shortcuts. Sleep on lid close stays free.")
+            Text("Pro also keeps your Mac awake while chosen apps run, adds rules, a sleep journal, keyboard shortcuts and more. Sleep on lid close stays free.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Link("See all Pro features", destination: edition.proFeaturesURL)
             HStack {
                 Button("Unlock Pro…") {}
                 if edition == .full {
@@ -118,7 +119,7 @@ private struct ApprovalStep: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Allow ClamStop in System Settings")
                     .font(.title2.bold())
-                Text("To put your Mac to sleep and save it to disk, ClamStop uses a small background service. macOS asks you to allow it once.")
+                Text("To put your Mac to sleep and stop it using the battery, ClamStop uses a small background service. macOS asks you to allow it once.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -162,10 +163,10 @@ private struct HibernationStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("When your Mac has been asleep for a while, should it save everything to disk?")
+                Text("When your Mac has been asleep for a while, should it stop using the battery completely?")
                     .font(.title2.bold())
                     .fixedSize(horizontal: false, vertical: true)
-                Text("It then stops using the battery, so it is still charged days later. Waking up takes a few seconds longer.")
+                Text("To do this, it saves its memory to disk and turns itself off (this is called hibernation), so the battery is still charged days later. Waking up then takes a few seconds longer.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

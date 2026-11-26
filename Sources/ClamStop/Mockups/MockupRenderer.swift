@@ -25,7 +25,14 @@ enum MockupRenderer {
         let isPro: Bool
         let file: String
         let size: NSSize
+        /// Unique sequential number shown on the contact sheet, for quick references.
+        let number: Int
     }
+
+    private static let tabNames: [SettingsTab: String] = [
+        .sessions: "Stay Awake", .rules: "Rules", .safety: "Safety", .actions: "Actions",
+        .automation: "Automation", .journal: "Journal",
+    ]
 
     static var screens: [Screen] {
         let firstRun: (MockupModel) -> AnyView = { AnyView(FirstRunView(model: $0)) }
@@ -62,14 +69,15 @@ enum MockupRenderer {
                    note: "With Pro, the remaining time also shows next to the icon.",
                    windowTitle: nil, editions: [.full],
                    configure: { $0.menuState = .session }, view: menu),
-            Screen(id: "settings", title: "Settings, More options collapsed",
-                   note: "The Store edition has no Hibernate picker.",
+            Screen(id: "settings-general", title: "Settings: General tab",
+                   note: "The Store edition has no Hibernate picker and no background service.",
                    windowTitle: "ClamStop Settings", configure: { _ in }, view: settings),
-            Screen(id: "settings-more", title: "Settings, More options expanded",
-                   note: "Pro controls carry a badge and stay readable but disabled; one Unlock Pro button.",
-                   windowTitle: "ClamStop Settings",
-                   configure: { $0.showMoreOptions = true }, view: settings),
-        ]
+        ] + SettingsTab.allCases.dropFirst().map { tab in
+            Screen(id: "settings-\(tab.rawValue)", title: "Settings: \(tabNames[tab] ?? tab.rawValue) tab",
+                   note: tab == .safety ? "Free, on by default." : "Pro controls carry a badge and stay readable but disabled; one Unlock Pro button.",
+                   windowTitle: "ClamStop Settings", tiers: tab == .safety ? [false] : [false, true],
+                   configure: { $0.settingsTab = tab }, view: settings)
+        }
     }
 
     static func run(outputDirectory: URL) {
@@ -81,10 +89,11 @@ enum MockupRenderer {
                 for screen in screens {
                     for edition in screen.editions {
                         for isPro in screen.tiers {
-                            let file = "\(screen.id)-\(edition.rawValue)-\(isPro ? "pro" : "free").png"
+                            let file = "\(String(format: "%02d", rendered.count + 1))-\(screen.id)-\(edition.rawValue)-\(isPro ? "pro" : "free").png"
                             let size = try await render(screen, edition: edition, isPro: isPro,
                                                         to: outputDirectory.appendingPathComponent(file))
-                            rendered.append(Rendered(screen: screen, edition: edition, isPro: isPro, file: file, size: size))
+                            rendered.append(Rendered(screen: screen, edition: edition, isPro: isPro, file: file, size: size,
+                                                     number: rendered.count + 1))
                         }
                     }
                 }
@@ -142,7 +151,7 @@ enum MockupRenderer {
         body{background:#1b1b1d;color:#ddd;font:14px -apple-system,system-ui;margin:24px}
         h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:36px 0 2px;color:#fff}
         .note{color:#999;margin:0 0 12px} .grid{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
-        figure{margin:0} figcaption{color:#aaa;font-size:12px;margin-top:6px}
+        figure{margin:0} figcaption{color:#aaa;font-size:12px;margin-top:6px} figcaption b{color:#fff;font-size:15px;margin-right:6px}
         .bar{position:sticky;top:0;background:#1b1b1d;padding:8px 0;border-bottom:1px solid #333;z-index:1}
         label{margin-right:16px} .hidden{display:none}
         </style></head><body>
@@ -165,9 +174,9 @@ enum MockupRenderer {
             let edition = item.edition == .full ? "Full" : "Store"
             let tier = item.isPro ? "Pro" : "Free"
             html += """
-            <figure data-edition="\(item.edition.rawValue)" data-tier="\(item.isPro ? "pro" : "free")">\
+            <figure id="\(item.number)" data-edition="\(item.edition.rawValue)" data-tier="\(item.isPro ? "pro" : "free")">\
             <img src="\(item.file)?t=\(Int(Date().timeIntervalSince1970))" width="\(Int(item.size.width))" alt="\(esc(item.screen.title)), \(edition), \(tier)">\
-            <figcaption>\(edition) edition · \(tier)</figcaption></figure>\n
+            <figcaption><b>#\(item.number)</b>\(edition) edition · \(tier)</figcaption></figure>\n
             """
         }
         html += """
