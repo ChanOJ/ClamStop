@@ -6,6 +6,8 @@ final class FileStore: StateStore {
     static let defaultDirectory = URL(fileURLWithPath: "/Library/Application Support/ClamStop", isDirectory: true)
 
     let directory: URL
+    /// Set after `removeAll()`: no more writes, so uninstall leaves nothing behind.
+    private var removed = false
     private var stateURL: URL { directory.appendingPathComponent("state.json") }
     private var settingsURL: URL { directory.appendingPathComponent("settings.json") }
 
@@ -33,6 +35,7 @@ final class FileStore: StateStore {
 
     /// Uninstall: forget everything.
     func removeAll() {
+        removed = true
         try? FileManager.default.removeItem(at: directory)
     }
 
@@ -49,6 +52,7 @@ final class FileStore: StateStore {
     }
 
     private func write<T: Encodable>(_ value: T, to url: URL) {
+        guard !removed else { return }
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

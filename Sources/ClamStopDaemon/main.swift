@@ -30,8 +30,11 @@ final class DaemonService {
         Log.info("settings: enabled=\(newSettings.enabled) delay=\(newSettings.hibernateDelayMinutes) min")
     }
 
+    /// Uninstall: macOS defaults back, then delete the daemon's files.
     func restoreDefaults() {
         controller.restoreDefaults()
+        store.removeAll()
+        Log.info("removed \(store.directory.path)")
     }
 
     func status() -> DaemonStatus {
