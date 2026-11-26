@@ -256,6 +256,25 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
         #expect(c.state.phase == .hibernating)
     }
 
+    @Test func notifiedDarkWakeBeforeDeadlineDoesNotBlockTimer() {
+        let (c, e, _) = makeController(delayMinutes: 10)
+        closeLidAndSleep(c, e)
+        e.advance(200)
+        c.systemDidWake(fullWake: false)  // maintenance wake, then maintenance sleep (no notification)
+        #expect(c.state.phase == .awaitingHibernation)
+        e.advance(400)  // deadline timer
+        #expect(c.state.phase == .hibernating)
+    }
+
+    @Test func notifiedDarkScheduledWakeHibernates() {
+        let (c, e, _) = makeController(delayMinutes: 10)
+        closeLidAndSleep(c, e)
+        e.timers.removeAll()
+        e.advance(600)
+        c.systemDidWake(fullWake: false)
+        #expect(c.state.phase == .hibernating)
+    }
+
     @Test func deadlineTimerIgnoredWhenFullyAwake() {
         let (c, e, _) = makeController(delayMinutes: 10)
         closeLidAndSleep(c, e)

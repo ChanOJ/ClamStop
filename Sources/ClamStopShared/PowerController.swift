@@ -168,8 +168,10 @@ public final class PowerController {
         }
     }
 
-    public func systemDidWake() {
-        awake = true
+    /// - Parameter fullWake: display/graphics available (user wake). False for a dark wake, which
+    ///   on AC power can also be notified (verified: capabilities 9 = CPU + network).
+    public func systemDidWake(fullWake: Bool = true) {
+        if fullWake { awake = true }
         let lidClosed = effects.isLidClosed()
         lastLidClosed = lidClosed
         switch state.phase {
@@ -194,6 +196,8 @@ public final class PowerController {
                 endHibernationPlan()
             } else if now >= wake.addingTimeInterval(-Self.wakeTolerance) {
                 hibernate()
+            } else if !fullWake {
+                log("dark wake with lid closed, \(Int(wake.timeIntervalSince(now))) s before deadline: keeping plan")
             } else {
                 // Maintenance (dark) wake or a wake from an external keyboard with the lid closed.
                 // Keep the plan; if the Mac is still awake after the deadline, the user is using it.

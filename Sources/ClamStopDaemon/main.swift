@@ -92,7 +92,7 @@ monitor.onWillSleep = {
 }
 monitor.onDidWake = {
     Log.info("power: has powered on, lid closed=\(service.power.isLidClosed()) \(service.power.wakeDescription)")
-    service.controller.systemDidWake()
+    service.controller.systemDidWake(fullWake: service.power.isFullWake)
 }
 guard monitor.start() else {
     Log.error("cannot register for power notifications")

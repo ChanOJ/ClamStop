@@ -27,6 +27,12 @@ final class SystemPower: PowerEffects {
         Self.rootDomainProperty("SleepDisabled") as? Bool ?? false
     }
 
+    /// "System Capabilities" bit 1 (kIOPMSystemCapabilityGraphics): set on a full wake, clear on a dark wake.
+    var isFullWake: Bool {
+        guard let caps = Self.rootDomainProperty("System Capabilities") as? Int else { return true }
+        return caps & 0x2 != 0
+    }
+
     /// Diagnostics: why and how the Mac last woke. "System Capabilities" bit 1 = graphics (full wake).
     var wakeDescription: String {
         let reason = Self.rootDomainProperty("Wake Reason") as? String ?? "?"
