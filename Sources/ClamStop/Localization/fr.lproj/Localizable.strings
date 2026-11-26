@@ -1,0 +1,44 @@
+/* ClamStop, French localization. Keys are the English strings from the source code. */
+
+/* Settings window */
+"ClamStop Settings" = "Réglages de ClamStop";
+"Sleep when the lid closes" = "Suspendre à la fermeture de l’écran";
+"Hibernate" = "Hiberner";
+"Never" = "Jamais";
+"after %@" = "après %@";
+"%lld min" = "%lld min";
+"%lld h" = "%lld h";
+"Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used." = "Même avec un écran externe branché, fermer l’écran du Mac le suspend. Passé le délai, il hiberne : la mémoire est enregistrée sur le disque et la batterie n’est plus sollicitée.";
+"Show icon in the menu bar" = "Afficher l’icône dans la barre des menus";
+"Open at login" = "Ouvrir à la connexion";
+"To change these settings later, open ClamStop again from the Applications folder." = "Pour modifier ces réglages plus tard, rouvrez ClamStop depuis le dossier Applications.";
+"Background service" = "Service d’arrière-plan";
+"Allow ClamStop in System Settings > General > Login Items & Extensions." = "Autorisez ClamStop dans Réglages Système > Général > Ouverture et extensions.";
+"Open Login Items Settings…" = "Ouvrir les réglages d’ouverture…";
+"Install Background Service" = "Installer le service d’arrière-plan";
+"Uninstall ClamStop…" = "Désinstaller ClamStop…";
+"Uninstall ClamStop?" = "Désinstaller ClamStop ?";
+"Uninstall" = "Désinstaller";
+"ClamStop restores the default sleep settings, removes its background service and login item, then quits. To finish, move ClamStop from the Applications folder to the Trash." = "ClamStop rétablit les réglages de suspension par défaut, retire son service d’arrière-plan et son ouverture automatique, puis se ferme. Pour terminer, placez ClamStop du dossier Applications dans la Corbeille.";
+"OK" = "OK";
+
+/* Status */
+"Checking…" = "Vérification…";
+"Waiting for approval in System Settings" = "En attente d’autorisation dans Réglages Système";
+"Background service not installed" = "Service d’arrière-plan non installé";
+"Background service missing: run ClamStop from the Applications folder" = "Service d’arrière-plan introuvable : lancez ClamStop depuis le dossier Applications";
+"Background service not responding" = "Le service d’arrière-plan ne répond pas";
+"Off: the lid works as usual" = "Désactivé : l’écran se ferme comme d’habitude";
+"Sleep is disabled on this Mac (pmset disablesleep)" = "La suspension est désactivée sur ce Mac (pmset disablesleep)";
+"On: sleeps when the lid closes" = "Activé : suspension à la fermeture de l’écran";
+"On: sleeps when the lid closes, hibernates after %@" = "Activé : suspension à la fermeture de l’écran, hibernation après %@";
+
+/* Errors */
+"ClamStop’s background service is not responding." = "Le service d’arrière-plan de ClamStop ne répond pas.";
+"The background service could not be installed: %@" = "Impossible d’installer le service d’arrière-plan : %@";
+"Open at login could not be changed: %@" = "Impossible de modifier l’ouverture à la connexion : %@";
+
+/* Menu bar */
+"Sleep When the Lid Closes" = "Suspendre à la fermeture de l’écran";
+"Settings…" = "Réglages…";
+"Quit ClamStop" = "Quitter ClamStop";

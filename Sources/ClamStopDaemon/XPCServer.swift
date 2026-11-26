@@ -1,0 +1,118 @@
+import Foundation
+import Security
+import ClamStopShared
+
+/// Mach service for the app. Only the ClamStop app may connect (see `clientRequirement`).
+final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
+    private let listener = NSXPCListener(machServiceName: ClamStopID.machServiceName)
+    private let requirement: String?
+    private let service: DaemonService
+
+    init(service: DaemonService) {
+        self.service = service
+        self.requirement = Self.clientRequirement()
+        super.init()
+        listener.delegate = self
+    }
+
+    func start() {
+        if let requirement {
+            Log.info("XPC client requirement: \(requirement)")
+        } else {
+            Log.error("no XPC client requirement could be built: every connection will be refused")
+        }
+        listener.resume()
+    }
+
+    func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
+        guard let requirement else { return false }
+        // The system checks the peer's code signature on each message; unsigned callers are dropped.
+        connection.setCodeSigningRequirement(requirement)
+        connection.exportedInterface = .clamStopDaemon()
+        connection.exportedObject = self
+        connection.resume()
+        return true
+    }
+
+    // MARK: ClamStopDaemonXPC (called on XPC queues; the service hops to the main queue)
+
+    func getStatus(reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async { reply(self.service.status().encoded()) }
+    }
+
+    func setEnabled(_ enabled: Bool, reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            var settings = self.service.settings
+            settings.enabled = enabled
+            self.service.apply(settings)
+            reply(self.service.status().encoded())
+        }
+    }
+
+    func setHibernateDelay(minutes: Int, reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            var settings = self.service.settings
+            settings.hibernateDelayMinutes = ClamStopSettings.clampDelay(minutes)
+            self.service.apply(settings)
+            reply(self.service.status().encoded())
+        }
+    }
+
+    func restoreDefaults(reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            self.service.restoreDefaults()
+            reply(self.service.status().encoded())
+        }
+    }
+
+    // MARK: Code signing
+
+    /// Requirement the connecting process must satisfy.
+    ///
+    /// - Developer ID builds (the daemon has a Team ID): Apple-anchored signature, the app's
+    ///   bundle identifier and the same Team ID.
+    /// - Ad-hoc builds (no Team ID, before the developer account exists): an ad-hoc signature
+    ///   proves nothing about its author, so the requirement pins the exact code: the app's
+    ///   bundle identifier plus the cdhash of the `ClamStop.app` that contains this daemon.
+    ///   Rebuilding the app changes the cdhash, and the daemon (started from the same bundle)
+    ///   picks up the new one on its next launch.
+    static func clientRequirement() -> String? {
+        let appID = ClamStopID.appBundleID
+        if let team = ownTeamID() {
+            return "anchor apple generic and identifier \"\(appID)\" and certificate leaf[subject.OU] = \"\(team)\""
+        }
+        guard let appURL = containingAppURL(), let cdhash = cdhash(of: appURL) else { return nil }
+        return "identifier \"\(appID)\" and cdhash H\"\(cdhash)\""
+    }
+
+    /// `ClamStop.app` when the daemon runs from `ClamStop.app/Contents/MacOS/ClamStopDaemon`.
+    static func containingAppURL() -> URL? {
+        let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+        let app = exe.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        return app.pathExtension == "app" ? app : nil
+    }
+
+    private static func signingInfo(_ code: SecStaticCode) -> [String: Any]? {
+        var info: CFDictionary?
+        guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess
+        else { return nil }
+        return info as? [String: Any]
+    }
+
+    private static func ownTeamID() -> String? {
+        var me: SecCode?
+        var staticMe: SecStaticCode?
+        guard SecCodeCopySelf([], &me) == errSecSuccess, let me,
+              SecCodeCopyStaticCode(me, [], &staticMe) == errSecSuccess, let staticMe,
+              let info = signingInfo(staticMe) else { return nil }
+        return info[kSecCodeInfoTeamIdentifier as String] as? String
+    }
+
+    private static func cdhash(of url: URL) -> String? {
+        var code: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess, let code,
+              let info = signingInfo(code),
+              let hash = info[kSecCodeInfoUnique as String] as? Data else { return nil }
+        return hash.map { String(format: "%02x", $0) }.joined()
+    }
+}
