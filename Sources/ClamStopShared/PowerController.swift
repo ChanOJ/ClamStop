@@ -57,6 +57,7 @@ public final class PowerController {
     /// Fully awake (user wake). Dark wakes leave it false.
     private var awake = true
     private var hibernationStartedAt: Date?
+    private var hibernationGeneration = 0
     /// Incremented on each sleep; lets timers know whether a sleep happened since they were armed.
     private var sleepGeneration = 0
 
@@ -69,8 +70,9 @@ public final class PowerController {
         self.state = store.load()
     }
 
-    public var hibernateDelay: TimeInterval {
-        delayOverride ?? TimeInterval(settings.hibernateDelayMinutes * 60)
+    /// Seconds before hibernating: 0 = at lid close, nil = never.
+    public var hibernateDelay: TimeInterval? {
+        delayOverride ?? settings.hibernateDelay
     }
 
     // MARK: Lifecycle
@@ -139,6 +141,13 @@ public final class PowerController {
             log("lid closed: ClamStop disabled, nothing to do")
             return
         }
+        if hibernateDelay == 0, state.phase == .idle {
+            // "Immediately": switch to hibernatemode 25 before the lid-close sleep. Not in
+            // systemWillSleep: pmset there would wait on powerd, which waits on our reply.
+            log("lid closed: hibernating immediately")
+            hibernate(after: 0)
+            return
+        }
         log("lid closed: requesting sleep")
         effects.requestSleep(after: 0)
     }
@@ -159,7 +168,7 @@ public final class PowerController {
             cancelPendingWake()
             schedule()
         case .idle:
-            guard hibernateDelay > 0 else { return }
+            guard let delay = hibernateDelay, delay > 0 else { return }
             guard effects.isLidClosed() else {
                 log("will sleep: lid open, no hibernation scheduled")
                 return
@@ -178,7 +187,10 @@ public final class PowerController {
         case .idle:
             restoreHibernateMode()  // safety net, normally a no-op
         case .hibernating:
-            if let started = hibernationStartedAt, effects.now().timeIntervalSince(started) < Self.sameWakeWindow {
+            // Same wake only if no sleep was seen since (a quick lid reopen after an immediate
+            // hibernation is a real wake from hibernation).
+            if let started = hibernationStartedAt, sleepGeneration == hibernationGeneration,
+               effects.now().timeIntervalSince(started) < Self.sameWakeWindow {
                 log("full wake notification for the scheduled wake: hibernation already requested")
                 return
             }
@@ -195,6 +207,7 @@ public final class PowerController {
                 log("user wake (lid open): cancelling hibernation wake")
                 endHibernationPlan()
             } else if now >= wake.addingTimeInterval(-Self.wakeTolerance) {
+                log("scheduled wake with lid closed: hibernating")
                 hibernate()
             } else if !fullWake {
                 log("dark wake with lid closed, \(Int(wake.timeIntervalSince(now))) s before deadline: keeping plan")
@@ -217,7 +230,7 @@ public final class PowerController {
         guard !awake else { return }  // fully awake: the user is here, systemDidWake decides
         guard effects.now() >= wake.addingTimeInterval(-Self.wakeTolerance) else { return }
         guard effects.isLidClosed() else { return }
-        log("deadline reached (\(trigger)) in a dark wake with the lid closed")
+        log("deadline reached (\(trigger)) in a dark wake with the lid closed: hibernating")
         hibernate()
     }
 
@@ -225,7 +238,7 @@ public final class PowerController {
 
     private func schedule() {
         // Whole seconds: the date is persisted and must match exactly to cancel the event.
-        let date = Date(timeIntervalSince1970: effects.now().addingTimeInterval(hibernateDelay)
+        let date = Date(timeIntervalSince1970: effects.now().addingTimeInterval(hibernateDelay ?? 0)
             .timeIntervalSince1970.rounded(.up))
         if effects.scheduleWake(at: date) {
             log("will sleep: hibernation wake scheduled at \(date)")
@@ -237,22 +250,22 @@ public final class PowerController {
         }
     }
 
-    private func hibernate() {
-        log("scheduled wake with lid closed: hibernating")
+    private func hibernate(after sleepDelay: TimeInterval = PowerController.resleepDelay) {
         cancelPendingWake()  // already fired; cancel in case it was coalesced
         if state.savedHibernateMode == nil {
             state.savedHibernateMode = effects.currentHibernateMode() ?? HibernateMode.default
         }
         hibernationStartedAt = effects.now()
+        hibernationGeneration = sleepGeneration
         update(phase: .hibernating, pendingWake: nil)  // persist before changing the system
         guard effects.setHibernateMode(HibernateMode.hibernate) else {
             log("could not set hibernatemode \(HibernateMode.hibernate); sleeping normally")
             restoreHibernateMode()
             update(phase: .idle, pendingWake: nil)
-            effects.requestSleep(after: Self.resleepDelay)
+            effects.requestSleep(after: sleepDelay)
             return
         }
-        effects.requestSleep(after: Self.resleepDelay)
+        effects.requestSleep(after: sleepDelay)
         let generation = sleepGeneration
         effects.run(at: effects.now().addingTimeInterval(Self.hibernationTimeout)) { [weak self] in
             guard let self, self.sleepGeneration == generation, self.state.phase == .hibernating else { return }

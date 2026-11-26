@@ -62,9 +62,13 @@ background service, which macOS asks you to approve.
    "Waiting for approval in System Settings".
 2. Click **Open Login Items Settings…**, or open **System Settings > General > Login Items &
    Extensions** (**Login Items** on macOS 14).
-3. Under **Allow in the Background**, turn **ClamStop** on and authenticate as an
-   administrator.
-4. Back in ClamStop, the status switches to "On" within a few seconds.
+3. Under **Background App Activity** (**Allow in the Background** on older macOS versions),
+   turn the **ClamStop** switch on, so that it turns blue, and authenticate as an administrator:
+
+   ![The ClamStop switch to turn on in System Settings](Resources/Images/allow-background-service.png)
+
+4. macOS may quit ClamStop at that moment: open it again from the Applications folder.
+   The status then shows "On" within a few seconds.
 
 After updating an unsigned build, if the service stays "not responding", turn ClamStop off and
 on again in the same list.

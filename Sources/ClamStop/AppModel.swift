@@ -33,17 +33,27 @@ final class AppModel: ObservableObject {
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
 
-    /// Hibernation delays offered in the settings (minutes, 0 = never).
-    static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240]
+    /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
+    static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
 
     private let client = DaemonClient()
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
+    /// register() was refused because the item is turned off in System Settings.
+    private var registrationDenied = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
 
+    /// Development aid (`--preview-approval`, with `--snapshot`): show the approval state
+    /// without touching the real registration.
+    static let previewApproval = CommandLine.arguments.contains("--preview-approval")
+
     func start() {
+        if Self.previewApproval {
+            serviceState = .requiresApproval
+            return
+        }
         registerDaemonIfNeeded()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
@@ -52,16 +62,18 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() {
+        guard !Self.previewApproval else { return }
         launchAtLogin = SMAppService.mainApp.status == .enabled
         switch daemonService.status {
         case .notRegistered:
-            serviceState = .notRegistered
+            serviceState = registrationDenied ? .requiresApproval : .notRegistered
             status = nil
         case .requiresApproval:
             serviceState = .requiresApproval
             status = nil
         case .notFound:
-            serviceState = .notFound
+            // Also what macOS reports for a daemon that was never registered (verified on 27.2).
+            serviceState = Self.daemonPlistInBundle ? (registrationDenied ? .requiresApproval : .notRegistered) : .notFound
             status = nil
         case .enabled:
             Task {
@@ -104,13 +116,32 @@ final class AppModel: ObservableObject {
     // MARK: Registration
 
     private func registerDaemonIfNeeded() {
-        guard daemonService.status == .notRegistered else { return }
-        installService()
+        switch daemonService.status {
+        case .notRegistered:
+            installService()
+        case .notFound where Self.daemonPlistInBundle:
+            installService()
+        default:
+            break
+        }
+    }
+
+    /// The LaunchDaemon plist ships inside the app bundle (false when run outside ClamStop.app).
+    static var daemonPlistInBundle: Bool {
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Library/LaunchDaemons")
+            .appendingPathComponent(ClamStopID.daemonPlistName)
+        return FileManager.default.fileExists(atPath: url.path)
     }
 
     func installService() {
         do {
             try daemonService.register()
+            registrationDenied = false
+        } catch let error as NSError where error.code == Int(EPERM) || error.code == kSMErrorLaunchDeniedByUser {
+            // Verified on macOS 27.2: after a reinstall the item stays turned off in System
+            // Settings and register() fails with EPERM until it is turned on again.
+            registrationDenied = true
         } catch {
             // requiresApproval is reported as an error on first registration; the status tells the rest.
             if daemonService.status != .requiresApproval {
@@ -118,6 +149,16 @@ final class AppModel: ObservableObject {
             }
         }
         refresh()
+    }
+
+    /// Unregister then register again. Needed after replacing an ad-hoc signed ClamStop.app:
+    /// launchd pins the daemon's code signature at registration and refuses the new binary
+    /// (exit reason OS_REASON_CODESIGNING, verified on macOS 27.2).
+    func reinstallService() {
+        Task {
+            try? await daemonService.unregister()
+            installService()
+        }
     }
 
     func openLoginItemsSettings() {
@@ -157,9 +198,8 @@ final class AppModel: ObservableObject {
 
     // MARK: Text
 
-    /// Picker label: "Never", "10 min", "2 h".
+    /// Duration label: "10 min", "2 h" (positive minutes only).
     static func delayLabel(_ minutes: Int) -> String {
-        if minutes == 0 { return String(localized: "Never") }
         if minutes % 60 == 0 { return String(localized: "\(minutes / 60) h") }
         return String(localized: "\(minutes) min")
     }
@@ -182,7 +222,8 @@ final class AppModel: ObservableObject {
             if !status.settings.enabled { return String(localized: "Off: the lid works as usual") }
             if status.sleepDisabled { return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)") }
             let minutes = status.settings.hibernateDelayMinutes
-            if minutes == 0 { return String(localized: "On: sleeps when the lid closes") }
+            if minutes < 0 { return String(localized: "On: sleeps when the lid closes") }
+            if minutes == 0 { return String(localized: "On: hibernates when the lid closes") }
             return String(localized: "On: sleeps when the lid closes, hibernates after \(Self.delayLabel(minutes))")
         }
     }

@@ -87,7 +87,9 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
 
     /// `ClamStop.app` when the daemon runs from `ClamStop.app/Contents/MacOS/ClamStopDaemon`.
     static func containingAppURL() -> URL? {
-        let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+        // Not argv[0]: launchd (BundleProgram) does not pass the full path there.
+        guard let path = Bundle.main.executablePath else { return nil }
+        let exe = URL(fileURLWithPath: path).resolvingSymlinksInPath()
         let app = exe.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         return app.pathExtension == "app" ? app : nil
     }

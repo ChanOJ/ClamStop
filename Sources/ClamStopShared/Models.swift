@@ -4,11 +4,17 @@ import Foundation
 public struct ClamStopSettings: Codable, Equatable, Sendable {
     /// Sleep when the lid closes, even in clamshell mode.
     public var enabled: Bool
-    /// Minutes of sleep before hibernating; 0 = never hibernate.
+    /// Minutes of sleep before hibernating: 0 = immediately, `never` (-1) = never hibernate.
     public var hibernateDelayMinutes: Int
 
     public static let defaultDelayMinutes = 10
     public static let maxDelayMinutes = 24 * 60
+    public static let never = -1
+
+    /// Seconds before hibernating, nil when hibernation is off.
+    public var hibernateDelay: TimeInterval? {
+        hibernateDelayMinutes < 0 ? nil : TimeInterval(hibernateDelayMinutes * 60)
+    }
 
     public init(enabled: Bool = true, hibernateDelayMinutes: Int = ClamStopSettings.defaultDelayMinutes) {
         self.enabled = enabled
@@ -16,7 +22,7 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     }
 
     public static func clampDelay(_ minutes: Int) -> Int {
-        min(max(minutes, 0), maxDelayMinutes)
+        min(max(minutes, never), maxDelayMinutes)
     }
 }
 

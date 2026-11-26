@@ -98,8 +98,8 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
         #expect(s.state.pendingWake == e.scheduled[0])
     }
 
-    @Test func noWakeWhenDelayIsZero() {
-        let (c, e, _) = makeController(delayMinutes: 0)
+    @Test func noWakeWhenHibernationIsNever() {
+        let (c, e, _) = makeController(delayMinutes: ClamStopSettings.never)
         closeLidAndSleep(c, e)
         #expect(e.sleepRequests == 1)
         #expect(e.scheduled.isEmpty)
@@ -285,6 +285,32 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
         #expect(e.hibernateMode == 3)
     }
 
+    @Test func immediateHibernationAtLidClose() {
+        let (c, e, s) = makeController(delayMinutes: 0)
+        e.lidClosed = true
+        c.lidChanged(closed: true)
+        #expect(e.hibernateMode == 25)
+        #expect(e.sleepRequests == 1)
+        #expect(s.state.savedHibernateMode == 3)
+        c.systemWillSleep()
+        #expect(e.scheduled.isEmpty)
+        e.advance(10)  // lid reopened quickly: still a wake from hibernation
+        e.lidClosed = false
+        c.lidChanged(closed: false)
+        c.systemDidWake()
+        #expect(e.hibernateMode == 3)
+        #expect(c.state == PersistedState())
+    }
+
+    @Test func immediateHibernationRolledBackIfNoSleep() {
+        let (c, e, _) = makeController(delayMinutes: 0)
+        e.lidClosed = true
+        c.lidChanged(closed: true)
+        e.advance(PowerController.hibernationTimeout)
+        #expect(e.hibernateMode == 3)
+        #expect(c.state.phase == .idle)
+    }
+
     @Test func delayOverrideInSeconds() {
         let (c, e, _) = makeController(delayMinutes: 10)
         c.delayOverride = 120
@@ -344,7 +370,9 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
 
 @Suite struct ModelTests {
     @Test func delayIsClamped() {
-        #expect(ClamStopSettings(hibernateDelayMinutes: -5).hibernateDelayMinutes == 0)
+        #expect(ClamStopSettings(hibernateDelayMinutes: -5).hibernateDelayMinutes == ClamStopSettings.never)
+        #expect(ClamStopSettings(hibernateDelayMinutes: ClamStopSettings.never).hibernateDelay == nil)
+        #expect(ClamStopSettings(hibernateDelayMinutes: 0).hibernateDelay == 0)
         #expect(ClamStopSettings(hibernateDelayMinutes: 100_000).hibernateDelayMinutes == ClamStopSettings.maxDelayMinutes)
     }
 
