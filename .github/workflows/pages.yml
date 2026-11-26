@@ -1,0 +1,63 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - Resources/AppIcon.icns
+      - .github/workflows/pages.yml
+  pull_request:
+    paths:
+      - site/**
+      - Resources/AppIcon.icns
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages-${{ github.ref }}
+  # A deployment in progress is left to finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate the pages
+        run: python3 site/src/build.py
+
+      - name: Gather the published files
+        run: |
+          cp -R site "$RUNNER_TEMP/site"
+          rm -rf "$RUNNER_TEMP/site/src"
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

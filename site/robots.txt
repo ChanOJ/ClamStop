@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chanoj.github.io/ClamStop/sitemap.xml
