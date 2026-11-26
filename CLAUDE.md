@@ -60,7 +60,7 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 
 - Menu bar icon: template images only (`MenuBarIconStyle` in `Sources/ClamStop/MenuBarIcon.swift`),
   so macOS tints them for light, dark, tinted and opaque ("Reduce transparency") menu bars. The
-  seashell is drawn in code (`SeashellGlyph`); crossed-out variants mean "not working".
+  clam is drawn in code (`ClamGlyph`, line art in isometric view); crossed-out variants mean "not working".
 - No screenshots of System Settings in the app: `ApprovalIllustration` draws the row to turn on,
   so it follows the appearance and the language. The README PNGs in `docs/images/` are exports of
   it: `dist/ClamStop.app/Contents/MacOS/ClamStop --appearance light|dark --export-illustration <png>`.

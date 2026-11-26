@@ -4,14 +4,14 @@ import SwiftUI
 /// Icon shown in the menu bar, chosen in the settings.
 enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     case laptop
-    case seashell
+    case clam
 
     var id: Self { self }
 
     var title: String {
         switch self {
         case .laptop: String(localized: "Laptop")
-        case .seashell: String(localized: "Seashell")
+        case .clam: String(localized: "Clam")
         }
     }
 
@@ -23,8 +23,8 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         case .laptop:
             image = NSImage(systemSymbolName: active ? "laptopcomputer" : "laptopcomputer.slash",
                             accessibilityDescription: nil) ?? NSImage()
-        case .seashell:
-            image = active ? SeashellGlyph.image : SeashellGlyph.slashedImage
+        case .clam:
+            image = active ? ClamGlyph.image : ClamGlyph.slashedImage
         }
         image.isTemplate = true
         return image
@@ -43,32 +43,37 @@ struct MenuBarIcon: View {
     }
 }
 
-/// Scallop shell drawn as a vector template image, the same weight as the SF Symbols of the
-/// menu bar. Original artwork (no third-party shapes): a fan of five scalloped ribs above a
-/// hinge with two small "ears", as seen on a scallop.
-enum SeashellGlyph {
+/// Closed clam in isometric view, drawn as a vector template image in the line style of the
+/// menu bar's SF Symbols. Original artwork: the domed top valve, the wavy seam where the two
+/// valves meet, the thin lower valve, and folds running from the hinge to the seam.
+enum ClamGlyph {
     /// Canvas in points; the menu bar centers it vertically.
-    static let size = NSSize(width: 19, height: 16)
+    static let size = NSSize(width: 20, height: 16)
 
     static let image = makeImage(slashed: false)
     static let slashedImage = makeImage(slashed: true)
 
+    private static let lineWidth: CGFloat = 1.2
+
     private static func makeImage(slashed: Bool) -> NSImage {
         let image = NSImage(size: size, flipped: false) { _ in
             NSColor.black.set()
-            shell().stroke()
-            ears().fill()
+            let path = shape()
+            path.lineWidth = lineWidth
+            path.lineJoinStyle = .round
+            path.lineCapStyle = .round
+            path.stroke()
             if slashed {
                 // Same convention as the ".slash" SF Symbols: a diagonal bar with a clear gap.
                 let slash = NSBezierPath()
-                slash.move(to: NSPoint(x: 3.5, y: 15))
-                slash.line(to: NSPoint(x: 16, y: 1))
+                slash.move(to: NSPoint(x: 4, y: 15.2))
+                slash.line(to: NSPoint(x: 16.5, y: 0.8))
                 slash.lineCapStyle = .round
-                slash.lineWidth = 3.6
+                slash.lineWidth = lineWidth + 2.2
                 NSGraphicsContext.current?.compositingOperation = .destinationOut
                 slash.stroke()
                 NSGraphicsContext.current?.compositingOperation = .sourceOver
-                slash.lineWidth = 1.4
+                slash.lineWidth = lineWidth
                 slash.stroke()
             }
             return true
@@ -78,52 +83,43 @@ enum SeashellGlyph {
         return image
     }
 
-    private static let hinge = NSPoint(x: 9.5, y: 3.4)
-    private static let radius: CGFloat = 9.8
-    private static let ribCount = 5
-    /// Angles of the fan's two straight sides, in degrees (0 = right).
-    private static let firstAngle: CGFloat = 152
-    private static let lastAngle: CGFloat = 28
+    /// Shape in points: the valves meet at both ends; the hinge is at the back, on top.
+    private static let left = NSPoint(x: 1, y: 7.4)
+    private static let right = NSPoint(x: 19, y: 8.4)
+    private static let hinge = NSPoint(x: 11.4, y: 13.6)
+    private static let scallops = 4
 
-    private static func point(angle: CGFloat, radius: CGFloat) -> NSPoint {
-        let a = angle * .pi / 180
-        return NSPoint(x: hinge.x + radius * cos(a), y: hinge.y + radius * sin(a))
+    private static func cubic(_ t: CGFloat, _ p0: NSPoint, _ p1: NSPoint, _ p2: NSPoint, _ p3: NSPoint) -> NSPoint {
+        let m = 1 - t
+        let a = m * m * m, b = 3 * m * m * t, c = 3 * m * t * t, d = t * t * t
+        return NSPoint(x: a * p0.x + b * p1.x + c * p2.x + d * p3.x, y: a * p0.y + b * p1.y + c * p2.y + d * p3.y)
     }
 
-    /// Outline with a scalloped edge, plus the ribs between the scallops.
-    private static func shell() -> NSBezierPath {
+    private static func shape() -> NSBezierPath {
         let path = NSBezierPath()
-        path.lineWidth = 1.3
-        path.lineJoinStyle = .round
-        path.lineCapStyle = .round
-        let step = (lastAngle - firstAngle) / CGFloat(ribCount)
-        path.move(to: hinge)
-        path.line(to: point(angle: firstAngle, radius: radius))
-        for i in 0..<ribCount {
-            let start = firstAngle + CGFloat(i) * step
-            let end = start + step
-            let bulge = point(angle: start + step / 2, radius: radius * 1.1)
-            path.curve(to: point(angle: end, radius: radius),
-                       controlPoint1: bulge, controlPoint2: bulge)
+        // Top valve, seen from above: a dome from one end, over the hinge, to the other.
+        path.move(to: left)
+        path.curve(to: hinge, controlPoint1: NSPoint(x: 2.2, y: 11.6), controlPoint2: NSPoint(x: 6.8, y: 13.9))
+        path.curve(to: right, controlPoint1: NSPoint(x: 15.6, y: 13.3), controlPoint2: NSPoint(x: 18.4, y: 11.2))
+        // Lower valve: a thin band under the seam.
+        path.move(to: left)
+        path.curve(to: right, controlPoint1: NSPoint(x: 4, y: -0.6), controlPoint2: NSPoint(x: 15.5, y: -0.4))
+        // Seam: the front of the margin, sagging toward the viewer, as scallops.
+        let c1 = NSPoint(x: 5, y: 3.6), c2 = NSPoint(x: 14.5, y: 3.9)
+        let joints = (0...scallops).map { cubic(CGFloat($0) / CGFloat(scallops), left, c1, c2, right) }
+        path.move(to: left)
+        for (start, end) in zip(joints, joints.dropFirst()) {
+            let bulge = NSPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 1.5)
+            path.curve(to: end, controlPoint1: bulge, controlPoint2: bulge)
         }
-        path.close()
-        // Ribs, stopping short of the hinge so they do not merge into a blob.
-        for i in 1..<ribCount {
-            let angle = firstAngle + CGFloat(i) * step
-            path.move(to: point(angle: angle, radius: 4.2))
-            path.line(to: point(angle: angle, radius: radius))
+        // Folds fanning out from the hinge to the joints between the scallops.
+        for joint in joints.dropFirst().dropLast() {
+            let start = NSPoint(x: hinge.x + (joint.x - hinge.x) * 0.28, y: hinge.y + (joint.y - hinge.y) * 0.28)
+            let control = NSPoint(x: (start.x + joint.x) / 2 + (joint.x - hinge.x) * 0.15,
+                                  y: (start.y + joint.y) / 2 + 0.8)
+            path.move(to: start)
+            path.curve(to: joint, controlPoint1: control, controlPoint2: control)
         }
-        return path
-    }
-
-    /// The hinge with its two flat "ears", wider than the tip of the fan.
-    private static func ears() -> NSBezierPath {
-        let path = NSBezierPath()
-        path.move(to: NSPoint(x: hinge.x - 4.4, y: hinge.y - 2.8))
-        path.line(to: NSPoint(x: hinge.x + 4.4, y: hinge.y - 2.8))
-        path.line(to: NSPoint(x: hinge.x + 2.4, y: hinge.y - 0.3))
-        path.line(to: NSPoint(x: hinge.x - 2.4, y: hinge.y - 0.3))
-        path.close()
         return path
     }
 }
