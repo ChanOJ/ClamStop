@@ -232,7 +232,7 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
 |---|---|---|
 | Sleep on lid close | yes | yes |
 | Hibernation (B1, B2, B3) | yes | no (needs root) |
-| Keep working with a screen on battery, lid-closed sessions on battery, delay after close (A2, A3, C2) | yes | power only, if feasible sandboxed (to verify) |
+| Keep working with a screen on battery, lid-closed sessions on battery, delay after close (A2, A3, C2) | yes (`pmset disablesleep`, root) | no on battery (tested 2026-11-26: no sandboxed method works); on power, assertions while a display is connected |
 | Schedules, wake at a time (D3, D4) | yes | no |
 | Low Power Mode, crash watchdog in a daemon (B6, E4) | yes | no (sessions use assertions, released by macOS when the app quits) |
 | CLI, agent hook installer (I3, I5) | yes | no (URL scheme and Shortcuts instead) |
