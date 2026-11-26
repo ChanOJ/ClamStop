@@ -33,6 +33,7 @@ final class AppModel: ObservableObject {
     // macro plugin behind @State is missing on recent SDKs, and plain `swift build` must work.
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
+    @Published var showAudioHelp = false
 
     /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
     static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]

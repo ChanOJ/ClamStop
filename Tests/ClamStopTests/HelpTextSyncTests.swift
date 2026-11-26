@@ -9,7 +9,7 @@ import Testing
     let readme = try String(contentsOf: root.appendingPathComponent("README.md"), encoding: .utf8)
 
     guard let start = view.range(of: "struct LidHelpView"),
-          let end = view.range(of: "struct MenuContent") else {
+          let end = view.range(of: "\n}\n", range: start.upperBound..<view.endIndex) else {
         Issue.record("LidHelpView not found")
         return
     }

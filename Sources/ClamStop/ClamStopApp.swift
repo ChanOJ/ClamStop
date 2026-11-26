@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         snapshotIfRequested()
     }
 
-    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help]` renders the visible windows to
+    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help [audio]]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         let args = CommandLine.arguments
@@ -60,7 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let url = URL(fileURLWithPath: args[i + 1])
         showSettings()
         if args.contains("--show-help") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.model.showLidHelp = true }
+            let audio = args.contains("audio")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                if audio { self.model.showAudioHelp = true } else { self.model.showLidHelp = true }
+            }
         }
         // Each visible window (settings, popover) to file.png, file.1.png, …
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
