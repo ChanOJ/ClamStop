@@ -3,14 +3,16 @@ import Combine
 import SwiftUI
 import ClamStopShared
 
-@main
+/// Started by `Main` (not `@main`, so that `--agent-hook` runs without any UI).
 struct ClamStopApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
 
     var body: some Scene {
         MenuBarExtra(isInserted: $showMenuBarIcon) {
-            MenuContent(model: delegate.model) { delegate.showSettings() }
+            MenuContent(model: delegate.model,
+                        openSettings: { delegate.showSettings() },
+                        openAbout: { delegate.showAbout() })
         } label: {
             MenuBarIcon(model: delegate.model)
         }
@@ -18,16 +20,16 @@ struct ClamStopApp: App {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
     private let audioPauser = AudioPauser()
-    private var settingsWindow: NSWindow?
-    private var hostingController: NSHostingController<SettingsView>?
-    private var modelObserver: AnyCancellable?
+    private var settingsWindow: FittedWindow?
+    private var welcomeWindow: FittedWindow?
+    private var aboutWindow: FittedWindow?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
-        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000, DefaultsKey.pauseAudio: true])
+        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000])
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -35,10 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.accessory)
         if runDevelopmentCommands() { return }
         model.start()
+        // Automatic and hidden (spec F1): only to avoid the half second of sound during the
+        // wake that leads to hibernation.
         audioPauser.shouldPause = { [model] in
-            UserDefaults.standard.bool(forKey: DefaultsKey.pauseAudio)
-                && model.serviceState == .running && model.enabled
-                && model.delayMinutes != ClamStopSettings.never
+            model.serviceState == .running && model.enabled && model.delayMinutes != ClamStopSettings.never
         }
         audioPauser.start()
 
@@ -47,7 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         defaults.set(true, forKey: DefaultsKey.hasLaunchedBefore)
         let iconHidden = defaults.object(forKey: DefaultsKey.showMenuBarIcon) as? Bool == false
         // Without an icon the settings window is the only way in, except at login (stay quiet).
-        if firstLaunch || (iconHidden && !launchedAsLoginItem(notification)) {
+        if firstLaunch, !CommandLine.arguments.contains("--snapshot") {
+            showWelcome()
+        } else if iconHidden && !launchedAsLoginItem(notification) {
             showSettings()
         }
         snapshotIfRequested()
@@ -86,17 +90,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return args[i + 1]
     }
 
-    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help [audio]]` renders the visible windows to
+    /// Development aid: `ClamStop --snapshot /path/to/file.png [--tab name]
+    /// [--show-help [agent|history]] [--welcome step] [--about]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         guard let path = Self.argument(after: "--snapshot") else { return }
         let args = CommandLine.arguments
         let url = URL(fileURLWithPath: path)
-        showSettings()
+        if let step = Self.argument(after: "--welcome").flatMap(Int.init) {
+            model.firstRunStep = step
+            if args.contains("agents") { model.firstRunChoice = .agents }
+            showWelcome()
+        } else if args.contains("--about") {
+            showAbout()
+        } else {
+            showSettings()
+        }
         if args.contains("--show-help") {
-            let audio = args.contains("audio")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                if audio { self.model.showAudioHelp = true } else { self.model.showLidHelp = true }
+                if args.contains("agent") {
+                    self.model.showAgentHelp = true
+                } else if args.contains("history") {
+                    self.model.showSleepLog = true
+                } else {
+                    self.model.showLidHelp = true
+                }
             }
         }
         // Each visible window (settings, popover) to file.png, file.1.png, …
@@ -125,37 +143,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showSettings() {
         if settingsWindow == nil {
-            let controller = NSHostingController(rootView: SettingsView(model: model))
-            // No constraint-driven window sizing: with a grouped Form it can loop forever
-            // ("update constraints" exception, seen on first launch). Size the window by hand.
-            controller.sizingOptions = []
-            hostingController = controller
-            let window = SettingsWindow(contentViewController: controller)
-            window.title = String(localized: "ClamStop Settings")
-            window.styleMask = [.titled, .closable]
-            window.isReleasedWhenClosed = false
-            window.delegate = self
-            settingsWindow = window
-            fitSettingsWindow()
-            window.center()
-            modelObserver = model.objectWillChange
-                .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
-                .sink { [weak self] _ in self?.fitSettingsWindow() }
+            settingsWindow = FittedWindow(title: String(localized: "ClamStop Settings"), model: model,
+                                          rootView: SettingsRootView(model: model))
         }
         model.refresh()
-        NSApp.activate()
-        settingsWindow?.makeKeyAndOrderFront(nil)
+        settingsWindow?.show()
     }
 
-    /// Resize the window to the SwiftUI content's ideal height, keeping its top edge in place.
-    private func fitSettingsWindow() {
-        guard let window = settingsWindow, let view = hostingController?.view else { return }
-        let size = view.fittingSize
-        guard size.width > 0, size.height > 0,
-              abs(window.contentLayoutRect.height - size.height) > 0.5 else { return }
-        let top = window.frame.maxY
-        window.setContentSize(size)
-        window.setFrameTopLeftPoint(NSPoint(x: window.frame.minX, y: top))
+    /// First-run assistant (first launch only).
+    func showWelcome() {
+        if welcomeWindow == nil {
+            welcomeWindow = FittedWindow(title: String(localized: "Welcome to ClamStop"), model: model,
+                                         rootView: WelcomeView(model: model) { [weak self] in
+                                             self?.welcomeWindow?.close()
+                                         })
+        }
+        welcomeWindow?.show()
+    }
+
+    func showAbout() {
+        if aboutWindow == nil {
+            aboutWindow = FittedWindow(title: String(localized: "About ClamStop"), model: model,
+                                       rootView: AboutWindowView())
+        }
+        aboutWindow?.show()
     }
 
     private func launchedAsLoginItem(_ notification: Notification) -> Bool {
@@ -165,6 +176,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return true
         }
         return false
+    }
+}
+
+/// A window sized by hand to its SwiftUI content. No constraint-driven window sizing: with a
+/// grouped Form it can loop forever ("update constraints" exception, seen on first launch).
+@MainActor
+final class FittedWindow {
+    private let window: SettingsWindow
+    private let measure: (NSSize) -> NSSize
+    private var observer: AnyCancellable?
+
+    init<Content: View>(title: String, model: AppModel, rootView: Content) {
+        let controller = NSHostingController(rootView: rootView)
+        controller.sizingOptions = []
+        window = SettingsWindow(contentViewController: controller)
+        // Not `view.fittingSize`: it stays zero for these windows (seen on macOS 27.2).
+        measure = { [unowned controller] in controller.sizeThatFits(in: $0) }
+        window.title = title
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        fit()
+        window.center()
+        observer = model.objectWillChange
+            .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.fit() }
+    }
+
+    func show() {
+        fit()
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func close() {
+        window.close()
+    }
+
+    /// Resize the window to the SwiftUI content's ideal height, keeping its top edge in place.
+    private func fit() {
+        let size = measure(NSSize(width: 2000, height: 5000))
+        guard size.width > 0, size.height > 0,
+              abs(window.contentLayoutRect.height - size.height) > 0.5
+                || abs(window.contentLayoutRect.width - size.width) > 0.5 else { return }
+        let top = window.frame.maxY
+        window.setContentSize(size)
+        window.setFrameTopLeftPoint(NSPoint(x: window.frame.minX, y: top))
     }
 }
 

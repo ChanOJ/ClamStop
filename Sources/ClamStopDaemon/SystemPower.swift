@@ -1,6 +1,7 @@
 import Foundation
 import IOKit
 import IOKit.pwr_mgt
+import IOKit.ps
 import ClamStopShared
 
 // IOKit message macros are not imported into Swift; values from IOMessage.h / IOPM.h.
@@ -110,6 +111,44 @@ final class SystemPower: PowerEffects {
     func run(at date: Date, _ block: @escaping () -> Void) {
         let seconds = max(0, date.timeIntervalSinceNow)
         DispatchQueue.main.asyncAfter(wallDeadline: .now() + seconds, execute: block)
+    }
+
+    func powerContext() -> PowerContext {
+        let battery = Self.battery()
+        let thermal = ProcessInfo.processInfo.thermalState
+        return PowerContext(onPowerAdapter: battery.onPowerAdapter, batteryPercent: battery.percent,
+                            thermalPressure: thermal == .serious || thermal == .critical)
+    }
+
+    func isSleepDisabled() -> Bool { sleepDisabled }
+
+    @discardableResult
+    func setSleepDisabled(_ disabled: Bool) -> Bool {
+        let (status, output) = Self.pmset(["-a", "disablesleep", disabled ? "1" : "0"])
+        for _ in 0..<5 {
+            if status == 0, sleepDisabled == disabled { return true }
+            usleep(200_000)
+        }
+        Log.error("pmset -a disablesleep \(disabled ? 1 : 0): exit=\(status) \(output)")
+        return false
+    }
+
+    /// Power source and battery level (IOKit power sources; works as root, no polling).
+    static func battery() -> (onPowerAdapter: Bool, percent: Int?) {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return (true, nil) }
+        let source = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String?
+        let onAdapter = source != kIOPMBatteryPowerKey
+        guard let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else {
+            return (onAdapter, nil)
+        }
+        for ps in list {
+            guard let desc = IOPSGetPowerSourceDescription(info, ps)?.takeUnretainedValue() as? [String: Any],
+                  desc[kIOPSTypeKey] as? String == kIOPSInternalBatteryType,
+                  let current = desc[kIOPSCurrentCapacityKey] as? Int,
+                  let max = desc[kIOPSMaxCapacityKey] as? Int, max > 0 else { continue }
+            return (onAdapter, current * 100 / max)
+        }
+        return (onAdapter, nil)
     }
 
     // MARK: Helpers

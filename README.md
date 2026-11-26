@@ -16,6 +16,48 @@ stops drawing power, which spares the battery. Waking up then takes a few second
 
 Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
+## Settings
+
+Everything is free. The settings window has seven tabs:
+
+- **General**: what happens when you close the lid (sleep, or do what macOS does), the
+  hibernation delay (immediately, after 5 minutes to 4 hours, or never), the menu bar icon,
+  opening at login, and the background service.
+- **Stay Awake**: stay awake with the lid closed while AI agents work. See [AI agents](#ai-agents).
+- **Rules**: different settings on battery (sleep or not, and another hibernation delay).
+- **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
+  default), heat, power adapter unplugged (on by default), longest time (no limit by default).
+- **Actions**: hibernate at once when the lid closes on battery below a level.
+- **Automation**: install or remove the AI agent hooks.
+- **Journal**: when the Mac slept, for how long, whether it hibernated and how much battery it
+  used. Kept for 30 days, on this Mac only.
+
+The menu bar menu also has **Sleep Now** and **Hibernate Now**. While the Mac sleeps with
+hibernation planned, ClamStop pauses audio and video and resumes them on wake, so the short
+wake before hibernation stays silent.
+
+### AI agents
+
+When you install the hooks (Automation tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
+(`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
+app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
+is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling ClamStop, removes the
+hook.
+
+The agent runs the hook when a task starts and ends; the hook passes the event to ClamStop's
+background service. While a task runs, the service sets `pmset disablesleep 1`, the only setting
+that also stops the lid-close sleep of a Mac without external display, and sets it back to `0` as
+soon as no task runs. To avoid keeping the Mac awake for nothing, the service also checks, every
+15 seconds and only while a task runs, that the agent process still exists and is still busy
+(its transcript is written, or it or its child processes use the CPU, for example during a long
+build). A task counts as finished 90 seconds after the agent's turn ends, or after 30 minutes
+without any sign of work.
+
+The guards of the Safety tab apply: by default the Mac only stays awake for agents on power
+adapter, and sleeps when it gets hot. On battery (guard turned off), it sleeps below 20 %.
+
+Codex support follows the hook format Codex documents; it has not been tested with Codex yet.
+
 ## Install
 
 1. Download `ClamStop-<version>.dmg` from the
@@ -114,20 +156,30 @@ sudo /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon --restore-defaults
    sudo pmset -a hibernatemode 3
    ```
 
-3. Delete the files of the background service:
+3. If AI agents were kept awake, make sure sleep is not left disabled: if `pmset -g` lists
+   `SleepDisabled 1`, run:
+
+   ```bash
+   sudo pmset -a disablesleep 0
+   ```
+
+   Then remove the ClamStop entries (commands containing `ClamStop` and `--agent-hook`) from the
+   `hooks` of `~/.claude/settings.json` and `~/.codex/hooks.json`.
+
+4. Delete the files of the background service:
 
    ```bash
    sudo rm -rf "/Library/Application Support/ClamStop"
    ```
 
-4. Check that no wake scheduled by ClamStop remains in the list (a leftover one only wakes the
+5. Check that no wake scheduled by ClamStop remains in the list (a leftover one only wakes the
    Mac once):
 
    ```bash
    pmset -g sched
    ```
 
-5. If ClamStop is still listed in **Login Items & Extensions**, turn it off there.
+6. If ClamStop is still listed in **Login Items & Extensions**, turn it off there.
 
 ## Build from source
 
@@ -174,3 +226,7 @@ Once the Apple credentials are configured, the same workflow signs and notarizes
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+The AI agent keep-awake feature adapts ideas and rules from
+[clamshut](https://github.com/IshaanChamoli/clamshut) by Ishaan Chamoli (MIT): see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

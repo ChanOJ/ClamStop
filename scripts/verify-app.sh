@@ -37,6 +37,7 @@ expect "$daemon" "MachServices:$MACH_SERVICE" true
 expect "$daemon" AssociatedBundleIdentifiers:0 "$APP_ID"
 [ -f "$CONTENTS/Resources/AppIcon.icns" ] || die "missing AppIcon.icns"
 plutil -lint -s "$CONTENTS/Resources/PrivacyInfo.xcprivacy" || die "missing or invalid PrivacyInfo.xcprivacy"
+[ -s "$CONTENTS/Resources/THIRD_PARTY_NOTICES.md" ] || die "missing THIRD_PARTY_NOTICES.md"
 
 log "Localizations"
 for lproj in "$ROOT/Sources/$APP_NAME/Localization"/*.lproj "$ROOT"/Resources/*.lproj; do

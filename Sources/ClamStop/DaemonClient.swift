@@ -57,6 +57,41 @@ final class DaemonClient {
         try await call { $0.setHibernateDelay(minutes: minutes, reply: $1) }
     }
 
+    func setSettings(_ settings: ClamStopSettings) async throws -> DaemonStatus {
+        let data = try JSONEncoder().encode(settings)
+        return try await call { $0.setSettings(data, reply: $1) }
+    }
+
+    func sleepNow() async throws -> DaemonStatus {
+        try await call { $0.sleepNow(reply: $1) }
+    }
+
+    func hibernateNow() async throws -> DaemonStatus {
+        try await call { $0.hibernateNow(reply: $1) }
+    }
+
+    func sleepLog() async throws -> [SleepEvent] {
+        try await withCheckedThrowingContinuation { continuation in
+            let once = Once()
+            let proxy = proxy { error in
+                once.run { continuation.resume(throwing: DaemonClientError.unreachable(error.localizedDescription)) }
+            }
+            guard let proxy else {
+                once.run { continuation.resume(throwing: DaemonClientError.badReply) }
+                return
+            }
+            proxy.getSleepLog { data in
+                once.run {
+                    if let events = try? JSONDecoder().decode([SleepEvent].self, from: data) {
+                        continuation.resume(returning: events)
+                    } else {
+                        continuation.resume(throwing: DaemonClientError.badReply)
+                    }
+                }
+            }
+        }
+    }
+
     func restoreDefaults() async throws -> DaemonStatus {
         try await call { $0.restoreDefaults(reply: $1) }
     }

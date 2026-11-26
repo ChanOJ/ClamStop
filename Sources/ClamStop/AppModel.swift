@@ -20,6 +20,7 @@ enum ServiceState: Equatable {
 enum DefaultsKey {
     static let showMenuBarIcon = "showMenuBarIcon"
     static let hasLaunchedBefore = "hasLaunchedBefore"
+    /// No longer a setting (audio pause is automatic, spec F1); listed so uninstall removes it.
     static let pauseAudio = "pauseAudioWhileAsleep"
     static let menuBarIconStyle = "menuBarIconStyle"
 
@@ -37,16 +38,26 @@ final class AppModel: ObservableObject {
     // macro plugin behind @State is missing on recent SDKs, and plain `swift build` must work.
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
-    @Published var showAudioHelp = false
+    // Settings tabs, agents, journal (see AppModel+Settings.swift)
+    @Published var settingsTab = SettingsTab.initial
+    @Published var showAgentHelp = false
+    @Published var showSleepLog = false
+    @Published var confirmAgentHooks = false
+    @Published var agentHookStates: [AgentKind: AgentHookSettings.State] = [:]
+    @Published var sleepLog: [SleepEvent] = []
+    // First run (see FirstRunView.swift)
+    @Published var firstRunStep = 1
+    @Published var firstRunChoice = FirstRunChoice.sleep
+    @Published var firstRunDelay = ClamStopSettings.defaultDelayMinutes
+    /// Choices made in the first-run assistant, sent once the background service answers.
+    var pendingFirstRun: FirstRunResult?
 
-    /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
-    static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
-
-    private let client = DaemonClient()
+    let client = DaemonClient()
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
+    private var lastRegistrationRetry = Date.distantPast
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -56,6 +67,10 @@ final class AppModel: ObservableObject {
     static let previewApproval = CommandLine.arguments.contains("--preview-approval")
 
     func start() {
+        if Self.previewSettings {
+            startSettingsPreview()
+            return
+        }
         if Self.previewApproval {
             serviceState = .requiresApproval
             return
@@ -66,6 +81,7 @@ final class AppModel: ObservableObject {
         } else {
             registerDaemonIfNeeded()
         }
+        updateOutdatedAgentHooks()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -73,8 +89,15 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() {
-        guard !Self.previewApproval else { return }
+        guard !Self.previewApproval, !Self.previewSettings else { return }
+        refreshAgentHooks()
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        // Turned on in System Settings while the app kept running (macOS does not always quit
+        // it): nothing registers the daemon again, so retry while waiting (seen 2026-11-26).
+        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 10 {
+            lastRegistrationRetry = Date()
+            retryRegistration()
+        }
         switch daemonService.status {
         case .notRegistered:
             serviceState = registrationDenied ? .requiresApproval : .notRegistered
@@ -89,9 +112,9 @@ final class AppModel: ObservableObject {
         case .enabled:
             Task {
                 do {
-                    let status = try await client.status()
-                    self.status = status
+                    self.status = try await client.status()
                     self.serviceState = .running
+                    self.applyPendingFirstRun()
                 } catch {
                     self.status = nil
                     self.serviceState = .notResponding
@@ -100,6 +123,12 @@ final class AppModel: ObservableObject {
         @unknown default:
             serviceState = .notResponding
         }
+    }
+
+    /// Previews only (`--preview-settings`): show this status as if the service answered.
+    func setPreviewStatus(_ status: DaemonStatus) {
+        self.status = status
+        serviceState = .running
     }
 
     // MARK: Daemon settings
@@ -112,7 +141,7 @@ final class AppModel: ObservableObject {
         update { try await $0.setHibernateDelay(minutes: minutes) }
     }
 
-    private func update(_ body: @escaping (DaemonClient) async throws -> DaemonStatus) {
+    func update(_ body: @escaping (DaemonClient) async throws -> DaemonStatus) {
         Task {
             do {
                 status = try await body(client)
@@ -162,6 +191,12 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    /// Quiet retry: no error shown, no refresh (called from `refresh`).
+    private func retryRegistration() {
+        guard (try? daemonService.register()) != nil else { return }
+        registrationDenied = false
+    }
+
     /// Unregister then register again. Needed after replacing an ad-hoc signed ClamStop.app:
     /// launchd pins the daemon's code signature at registration and refuses the new binary
     /// (exit reason OS_REASON_CODESIGNING, verified on macOS 27.2).
@@ -198,6 +233,7 @@ final class AppModel: ObservableObject {
                 _ = try? await client.restoreDefaults()
             }
             client.invalidate()
+            setAgentHooks(installed: false)
             try? await daemonService.unregister()
             try? await SMAppService.mainApp.unregister()
             DefaultsKey.all.forEach(UserDefaults.standard.removeObject(forKey:))
@@ -229,16 +265,19 @@ final class AppModel: ObservableObject {
             return String(localized: "Background service not responding")
         case .running:
             guard let status else { return String(localized: "Checking…") }
-            if !status.settings.enabled { return String(localized: "Off: the lid works as usual") }
-            if status.sleepDisabled { return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)") }
-            let minutes = status.settings.hibernateDelayMinutes
-            if minutes < 0 { return String(localized: "On: sleeps when the lid closes") }
-            if minutes == 0 { return String(localized: "On: hibernates when the lid closes") }
-            return String(localized: "On: sleeps when the lid closes, hibernates after \(Self.delayLabel(minutes))")
+            if !status.settings.enabled { return String(localized: "Off: macOS decides when you close the lid") }
+            if status.keepingAwakeForAgents == true {
+                return String(localized: "Lid closed: staying awake while AI agents work")
+            }
+            if status.sleepDisabled && status.sleepDisabledByClamStop != true {
+                return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
+            }
+            return String(localized: "Sleeps when you close the lid")
         }
     }
 
     var statusIsOK: Bool {
-        serviceState == .running && enabled && status?.sleepDisabled == false
+        serviceState == .running && enabled
+            && (status?.sleepDisabled == false || status?.sleepDisabledByClamStop == true)
     }
 }

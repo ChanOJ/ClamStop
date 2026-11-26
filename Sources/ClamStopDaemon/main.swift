@@ -2,7 +2,8 @@
 //
 // Normally started by launchd (registered by the app with SMAppService.daemon).
 // For manual testing, run it as root in a terminal:
-//   sudo ClamStopDaemon --foreground [--delay-seconds N]
+//   sudo ClamStopDaemon --foreground [--delay-seconds N] [--simulate-agent SECONDS]
+// (--simulate-agent: pretend an AI agent works for that long, to test keep-awake without hooks.)
 // Other commands: --restore-defaults (hibernatemode 3, cancel ClamStop wakes), --status.
 
 import Foundation
@@ -13,13 +14,28 @@ final class DaemonService {
     let store: FileStore
     let power = SystemPower()
     let controller: PowerController
+    let agents = AgentMonitor()
     private(set) var settings: ClamStopSettings
+    private(set) var sleepLog: [SleepEvent]
 
     init(store: FileStore, delayOverride: TimeInterval?) {
         self.store = store
         settings = store.loadSettings()
+        sleepLog = store.loadSleepLog()
         controller = PowerController(settings: settings, effects: power, store: store, log: Log.info)
         controller.delayOverride = delayOverride
+        controller.record = { [unowned self] kind, detail in self.record(kind, detail) }
+        agents.onChange = { [unowned self] working in
+            self.controller.agentsChanged(working: working)
+            self.controller.reevaluate(trigger: "agent check")
+        }
+    }
+
+    func record(_ kind: SleepEvent.Kind, _ detail: String?) {
+        let battery = SystemPower.battery()
+        sleepLog = SleepLog.appending(SleepEvent(date: Date(), kind: kind, batteryPercent: battery.percent,
+                                                 onPowerAdapter: battery.onPowerAdapter, detail: detail), to: sleepLog)
+        store.saveSleepLog(sleepLog)
     }
 
     func apply(_ newSettings: ClamStopSettings) {
@@ -27,20 +43,29 @@ final class DaemonService {
         settings = newSettings
         store.saveSettings(newSettings)
         controller.apply(settings: newSettings)
-        Log.info("settings: enabled=\(newSettings.enabled) delay=\(newSettings.hibernateDelayMinutes) min")
+        Log.info("settings: \(String(decoding: (try? JSONEncoder().encode(newSettings)) ?? Data(), as: UTF8.self))")
     }
 
     /// Uninstall: macOS defaults back, then delete the daemon's files.
+
     func restoreDefaults() {
+        agents.reset()
+        controller.agentsChanged(working: false)
         controller.restoreDefaults()
         store.removeAll()
         Log.info("removed \(store.directory.path)")
     }
 
     func status() -> DaemonStatus {
-        DaemonStatus(version: ClamStopVersion.current, settings: settings, phase: controller.state.phase,
-                     pendingWake: controller.state.pendingWake, lidClosed: power.isLidClosed(),
-                     sleepDisabled: power.sleepDisabled, hibernateMode: power.currentHibernateMode())
+        let context = power.powerContext()
+        return DaemonStatus(
+            version: ClamStopVersion.current, settings: settings, phase: controller.state.phase,
+            pendingWake: controller.state.pendingWake, lidClosed: power.isLidClosed(),
+            sleepDisabled: power.sleepDisabled, hibernateMode: power.currentHibernateMode(),
+            sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
+            agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
+            onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
+            lastLidDecision: controller.lastLidDecision)
     }
 }
 
@@ -74,6 +99,7 @@ if arguments.contains("--status") {
 
 Log.info("ClamStopDaemon \(ClamStopVersion.current) starting (pid \(getpid()), foreground=\(foreground))")
 Log.info("settings: enabled=\(service.settings.enabled) delay=\(service.settings.hibernateDelayMinutes) min"
+         + " agents=\(service.controller.settings.keepAwakeForAgents)"
          + (delayOverride.map { ", delay override \(Int($0)) s" } ?? ""))
 if service.power.sleepDisabled {
     Log.error("SleepDisabled is set (pmset disablesleep 1): lid close cannot put the Mac to sleep")
@@ -111,6 +137,17 @@ for sig in [SIGTERM, SIGINT] {
     }
     source.resume()
     signalSources.append(source)
+}
+
+if let seconds = argumentValue("--simulate-agent").flatMap(TimeInterval.init) {
+    // Test aid: a fake agent session, ended after `seconds` (then the grace period applies).
+    let session = "simulated-\(getpid())"
+    service.agents.handle(AgentHookMessage(agent: .claude, event: "UserPromptSubmit", sessionID: session))
+    Log.info("simulated agent working for \(Int(seconds)) s")
+    DispatchQueue.main.asyncAfter(wallDeadline: .now() + seconds) {
+        Log.info("simulated agent: turn ended")
+        service.agents.handle(AgentHookMessage(agent: .claude, event: "Stop", sessionID: session))
+    }
 }
 
 var xpcServer: XPCServer?
