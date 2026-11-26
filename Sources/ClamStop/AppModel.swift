@@ -43,7 +43,15 @@ final class AppModel: ObservableObject {
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
 
+    /// Development aid (`--preview-approval`, with `--snapshot`): show the approval state
+    /// without touching the real registration.
+    static let previewApproval = CommandLine.arguments.contains("--preview-approval")
+
     func start() {
+        if Self.previewApproval {
+            serviceState = .requiresApproval
+            return
+        }
         registerDaemonIfNeeded()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
@@ -52,6 +60,7 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() {
+        guard !Self.previewApproval else { return }
         launchAtLogin = SMAppService.mainApp.status == .enabled
         switch daemonService.status {
         case .notRegistered:

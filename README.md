@@ -65,7 +65,7 @@ background service, which macOS asks you to approve.
 3. Under **Background App Activity** (**Allow in the Background** on older macOS versions),
    turn the **ClamStop** switch on, so that it turns blue, and authenticate as an administrator:
 
-   ![The ClamStop switch to turn on in System Settings](docs/images/allow-background-service.png)
+   ![The ClamStop switch to turn on in System Settings](Resources/Images/allow-background-service.png)
 
 4. macOS may quit ClamStop at that moment: open it again from the Applications folder.
    The status then shows "On" within a few seconds.

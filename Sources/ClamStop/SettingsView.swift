@@ -78,9 +78,18 @@ struct SettingsView: View {
                 }
                 switch model.serviceState {
                 case .requiresApproval:
-                    Text("Allow ClamStop in System Settings > General > Login Items & Extensions.")
+                    Text("Allow ClamStop in System Settings > General > Login Items & Extensions: turn the ClamStop switch on.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Copied into Contents/Resources by scripts/build-app.sh; absent outside the bundle.
+                    if let image = NSImage(named: "allow-background-service") {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .accessibilityLabel("The ClamStop switch to turn on in System Settings")
+                    }
                     Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
                 case .notRegistered:
                     Button("Install Background Service") { model.installService() }
