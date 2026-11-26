@@ -48,20 +48,18 @@ would work technically but would likely be read as working around 2.4.5(v); do n
 Go for a reduced Store edition, **after** the Developer ID release, built from the same repository:
 
 - One codebase, two builds selected by the build script (compile flag such as `-D APPSTORE`):
-  - full edition: Developer ID, root daemon (SMAppService), Pro unlocked by a license key;
+  - full edition: Developer ID, root daemon (SMAppService), Sparkle updates, "Buy me a coffee" link;
   - Store edition: App Sandbox entitlement only, no daemon in the bundle, lid handling and
-    `IOPMSleepSystem` in the app itself, Pro unlocked by an In-App Purchase (StoreKit 2).
-  Behind two small protocols (power backend, Pro unlock), everything else (settings, UI, Pro
-  features) is shared. CI builds both variants so neither breaks unnoticed. Use a separate bundle id
+    `IOPMSleepSystem` in the app itself, no donation link.
+  Behind one small protocol (power backend), everything else (settings, UI, features) is shared. CI builds both variants so neither breaks unnoticed. Use a separate bundle id
   (for example `io.github.chanoj.clamstop.appstore`) so both can be installed and tested side by side.
-- Free in both editions: sleep on lid close (clamshell included), menu bar icon, open at login.
-  The full edition also has hibernation after 1 h or never for free; other delays are Pro.
-- Pro in the Store edition: everything that needs no root (per-power-source settings, schedules and
-  exceptions, sleep log, keep-awake if the agent detection works sandboxed). No hibernation.
-- The Store build must not mention the full edition or any external purchase (guideline 3.1.1).
-  Commission: 15 % with the App Store Small Business Program, 30 % otherwise.
-- Extra work: a Mac App Distribution certificate and provisioning profile, StoreKit 2 for the
-  purchase, and upload with Transporter (Xcode is probably needed for StoreKit testing and upload).
+- Both editions are free, with every feature (decided 2026-11-26; an earlier plan had a Pro tier).
+  The Store edition has what needs no root: no hibernation, no stay-awake on battery with the lid
+  closed, no schedules.
+- The Store build must not mention the full edition, an external purchase or donations
+  (guideline 3.1.1: tips only through In-App Purchase).
+- Extra work: a Mac App Distribution certificate and provisioning profile, and upload with
+  Transporter (Xcode is probably needed for upload).
 
 Its value is discoverability and trust (Store search, no Gatekeeper warning), not features: the
 Developer ID build stays the full product.

@@ -1,6 +1,6 @@
 # ClamStop functional specification
 
-Version 1, 2026-11-26. Built from a survey of about 120 macOS tools that deal with sleep, the lid
+Version 2, 2026-11-26 (everything free, donation links; version 1 had a Pro tier). Built from a survey of about 120 macOS tools that deal with sleep, the lid
 and clamshell mode (GitHub projects, Mac App Store and Setapp apps, command line tools; list in the
 appendix). Goal: one app that replaces all of them for everything that happens when a MacBook lid
 closes, when it sleeps and when it should stay awake, usable by a non-technical person and by a
@@ -18,12 +18,10 @@ developer alike.
    "Save the session to disk after 1 hour so the battery lasts".
 4. **Event-driven, no polling** for the lid and power state (IOKit notifications), so reactions
    are immediate and cost no battery.
-5. **Private.** No account, no analytics. Network use is limited to update checks and license
-   activation, both documented.
-6. **Free core, Pro for the rest.** Free: sleep on lid close, keep working with the lid closed
-   when a screen is plugged in (also on battery), hibernation after 1 h or never, stay awake now
-   (until turned off or for a duration, like KeepingYouAwake), safety guards, basic visibility.
-   Everything else is Pro (license key in the full edition, In-App Purchase in the Store edition).
+5. **Private.** No account, no analytics. Network use is limited to update checks, documented.
+6. **Everything free.** No tiers, no license, no purchase, in both editions. The full edition
+   asks for support with a discreet "Buy me a coffee" link (About window, bottom of the first
+   settings tab, website); the Store edition has no donation link (guideline 3.1.1).
 
 ### Positioning
 
@@ -62,119 +60,119 @@ What sets ClamStop apart:
 
 ## 4. Features
 
-Columns: **Tier** Free or Pro. **Ed.** F = full edition (Developer ID, root helper), S = Store
-edition (sandbox), F+S = both. **Prio** M = first release with Pro, 1 = next releases,
+Columns: **Ed.** F = full edition (Developer ID, root helper), S = Store
+edition (sandbox), F+S = both. **Prio** M = first public release, 1 = next releases,
 L = later or to be validated. **Tech** notes requirements: root (daemon), private API, hardware.
 "Seen in" names tools from the appendix that offer the feature.
 
 ### A. Lid close (core)
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| A1 | Sleep when the lid closes, even with an external display, keyboard and power connected | Free | F+S | M (exists) | IOKit lid notification; `pmset sleepnow` or `IOPMSleepSystem` (verified sandboxed) | noclamshell, Lidsleep (Royal-lobster), Lid-sleep (tyilo), no-clamshell, lidwatch, Clamshell (App Store), Sleep Control Centre |
-| A2 | Choose the lid action: Sleep / Keep working when a screen is plugged in, even on battery / Stay awake / Turn the screens off only / Do what macOS does | Pro (Sleep, screen plugged in and macOS default free) | F (stay awake on battery), S (on power only) | M | Stay awake with lid closed: `pmset disablesleep` (root) or assertions (power + display only) | LidSleepToggle (Sufxx), lidawake (richardlinq), continuity-control, hendrilee/lidsleep, Sleep Control Centre |
-| A3 | Delay before sleeping after the lid closes (30 s to 2 h), to carry the Mac to a meeting or finish a task | Pro | F | 1 | `disablesleep` during the delay | lidsleep (DerekYeh), PeachPocket, Lid Close Sleep Delay (Windows) |
-| A4 | Re-sleep guard: if the Mac wakes while the lid is still closed (Bluetooth, network, glitch), put it back to sleep after a short grace period | Free | F+S | M | Lid state + wake reason | lid-sleep-app (wood-sheep), noclamshell |
-| A5 | "Sleep now" in the menu, which also works while a lid hold is active (Apple menu > Sleep does not) | Free | F+S | M | | double-shot, Sleep Expert, turnintoserver |
-| A6 | Lid sensor fallback: use the hinge angle (or light sensor) when the lid magnet sensor misreports (macOS 27 false-closed bug, broken sensor) | Pro | F | L | Lid angle HID sensor, private APIs | hendrilee/lidsleep, macbook-lid-sleep-fix, macbook-clamshell-fix, lid-sleep-app |
-| A7 | Partly closed lid: dim the built-in screen and keyboard below an angle, restore when reopened | Pro | F | L | Lid angle sensor | lidoff, Dimmer, Latch |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| A1 | Sleep when the lid closes, even with an external display, keyboard and power connected | F+S | M (exists) | IOKit lid notification; `pmset sleepnow` or `IOPMSleepSystem` (verified sandboxed) | noclamshell, Lidsleep (Royal-lobster), Lid-sleep (tyilo), no-clamshell, lidwatch, Clamshell (App Store), Sleep Control Centre |
+| A2 | Choose the lid action: Sleep / Keep working when a screen is plugged in, even on battery / Stay awake / Turn the screens off only / Do what macOS does | F (stay awake on battery), S (on power only) | M | Stay awake with lid closed: `pmset disablesleep` (root) or assertions (power + display only) | LidSleepToggle (Sufxx), lidawake (richardlinq), continuity-control, hendrilee/lidsleep, Sleep Control Centre |
+| A3 | Delay before sleeping after the lid closes (30 s to 2 h), to carry the Mac to a meeting or finish a task | F | 1 | `disablesleep` during the delay | lidsleep (DerekYeh), PeachPocket, Lid Close Sleep Delay (Windows) |
+| A4 | Re-sleep guard: if the Mac wakes while the lid is still closed (Bluetooth, network, glitch), put it back to sleep after a short grace period | F+S | M | Lid state + wake reason | lid-sleep-app (wood-sheep), noclamshell |
+| A5 | "Sleep now" in the menu, which also works while a lid hold is active (Apple menu > Sleep does not) | F+S | M | | double-shot, Sleep Expert, turnintoserver |
+| A6 | Lid sensor fallback: use the hinge angle (or light sensor) when the lid magnet sensor misreports (macOS 27 false-closed bug, broken sensor) | F | L | Lid angle HID sensor, private APIs | hendrilee/lidsleep, macbook-lid-sleep-fix, macbook-clamshell-fix, lid-sleep-app |
+| A7 | Partly closed lid: dim the built-in screen and keyboard below an angle, restore when reopened | F | L | Lid angle sensor | lidoff, Dimmer, Latch |
 
 ### B. Hibernation and battery
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| B1 | Hibernate after a delay while asleep: **free: 1 h or never**; Pro: 5 min to 4 h, custom | Free / Pro | F | M (exists) | Scheduled wake + `hibernatemode 25` (root). Unique on Apple Silicon, where `standbydelay` is ignored | none (Keyboard Maestro macro on MacPowerUsers) |
-| B2 | Hibernate immediately on lid close | Pro | F | M (exists) | `hibernatemode 25` before sleep | HsOjo SleeperX (Hackintosh) |
-| B3 | Hibernate (or sleep) when the battery falls below a level | Pro | F | M | Battery level on wakes | SleeperX, Sleepless, double-shot |
-| B4 | Separate settings on power and on battery (lid action, hibernation delay) | Pro | F+S | M | | MacMiniMode, turnintoserver, Clapet, mac-lid-mode-adjuster |
-| B5 | Morning report: battery used during the night, how long it slept, whether it hibernated | Pro | F+S | 1 | Sleep log (H3) | Latch (lid journal), LidSleepToggle (dashboard), adrafinil |
-| B6 | Low Power Mode during lid-closed sessions, restored after | Pro | F | 1 | `pmset lowpowermode` (root) | Insomnia (krishhgg), Pilot Light, ClamDown |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| B1 | Hibernate after a delay while asleep: never, 5 min to 4 h, custom; default 1 h | F | M (exists) | Scheduled wake + `hibernatemode 25` (root). Unique on Apple Silicon, where `standbydelay` is ignored | none (Keyboard Maestro macro on MacPowerUsers) |
+| B2 | Hibernate immediately on lid close | F | M (exists) | `hibernatemode 25` before sleep | HsOjo SleeperX (Hackintosh) |
+| B3 | Hibernate (or sleep) when the battery falls below a level | F | M | Battery level on wakes | SleeperX, Sleepless, double-shot |
+| B4 | Separate settings on power and on battery (lid action, hibernation delay) | F+S | M | | MacMiniMode, turnintoserver, Clapet, mac-lid-mode-adjuster |
+| B5 | Morning report: battery used during the night, how long it slept, whether it hibernated | F+S | 1 | Sleep log (H3) | Latch (lid journal), LidSleepToggle (dashboard), adrafinil |
+| B6 | Low Power Mode during lid-closed sessions, restored after | F | 1 | `pmset lowpowermode` (root) | Insomnia (krishhgg), Pilot Light, ClamDown |
 
 ### C. Staying awake (sessions)
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| C1 | Stay awake now ("Activate for duration"): until turned off (default), 5, 10, 15, 30 min, 1, 2, 5, 8 h, custom, or until a time; default duration in settings; left-click on the icon toggles it (option), right-click opens the menu. Lid open: idle sleep only; lid closed: see C2 | Free (custom duration and "until a time": Pro) | F+S | M | Power assertions | KeepingYouAwake, Amphetamine, Caffeine, Insomnio, Sleep Expert, InsomniaZ, Tazzina, Awayke |
-| C2 | Keep working with the lid closed during a session (on power; on battery in the full edition) | Free on power, Pro on battery | F (S: power only, to verify) | M | `disablesleep` (root); Lidwork claims a sandboxed method, to verify | Insomnia (krishhgg), Lidless, Sleepless, ClamDown, double-shot, Lidwork, NeverFold, InsomniaZ, MacMiniMode, dozens more |
-| C3 | Screen policy during a session: let screens sleep, keep them on, or switch the built-in screen off when the lid is closed | Pro | F+S | M | Display assertions; brightness 0 | Amphetamine, Capsomnia, MacMiniMode, agent-lid-closed, LidSleepToggle |
-| C4 | Session end: reminder 5 min before, "+30 min" button, optional sleep at the end if the lid is closed | Pro | F+S | 1 | | Insomnio, Insomnia (krishhgg), Capsomnia |
-| C5 | Stay awake while an app or command runs (by name, path or PID; optionally only while it uses the processor), with a ready-made list of known long jobs: HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro, Blender, ffmpeg, Xcode builds, Ollama, LM Studio | Pro | F+S | M | Process list (sandbox: to verify for CLI processes) | Amphetamine, Lchika, Fermata, Insomnio, LidAwake (Vladimir-Podgornyi) |
-| C6 | Stay awake while a download or upload is in progress | Pro | F+S | 1 | Network throughput | Amphetamine, Insomnio, LidAwake (Vladimir-Podgornyi) |
-| C7 | Stay awake while AI coding agents work, then sleep when they all wait or finish: hooks for Claude Code, Codex, Gemini CLI, Cursor, Copilot CLI, OpenCode, Aider; leases that expire if an agent is killed | Pro | F (S: to verify) | M (in progress) | Agent hooks + process activity | clamshut, adrafinil, double-shot, LidSleepToggle, agent-lid-closed, Lidless, Lockpaw, No Sleep for AI, Keep Awake: AI Agents, lidsleep (DerekYeh) |
-| C8 | "Sleep when idle" ending: stay awake while work happens (processor busy, another app holding sleep, input), then sleep | Pro | F+S | 1 | Load, assertions, HID idle | LidAwake (Vladimir-Podgornyi), Sleep Expert (Force Sleep) |
-| C9 | Physical switch: Caps Lock or a hotkey turns a session on and off | Pro | F+S | L | Event tap (Accessibility permission) | Capsomnia, CapsAwake, No Sleep for AI, PeachPocket |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| C1 | Stay awake now ("Activate for duration"): until turned off (default), 5, 10, 15, 30 min, 1, 2, 5, 8 h, custom, or until a time; default duration in settings; left-click on the icon toggles it (option), right-click opens the menu. Lid open: idle sleep only; lid closed: see C2 | F+S | M | Power assertions | KeepingYouAwake, Amphetamine, Caffeine, Insomnio, Sleep Expert, InsomniaZ, Tazzina, Awayke |
+| C2 | Keep working with the lid closed during a session (on power; on battery in the full edition) | F (S: power only, to verify) | M | `disablesleep` (root); Lidwork claims a sandboxed method, to verify | Insomnia (krishhgg), Lidless, Sleepless, ClamDown, double-shot, Lidwork, NeverFold, InsomniaZ, MacMiniMode, dozens more |
+| C3 | Screen policy during a session: let screens sleep, keep them on, or switch the built-in screen off when the lid is closed | F+S | M | Display assertions; brightness 0 | Amphetamine, Capsomnia, MacMiniMode, agent-lid-closed, LidSleepToggle |
+| C4 | Session end: reminder 5 min before, "+30 min" button, optional sleep at the end if the lid is closed | F+S | 1 | | Insomnio, Insomnia (krishhgg), Capsomnia |
+| C5 | Stay awake while an app or command runs (by name, path or PID; optionally only while it uses the processor), with a ready-made list of known long jobs: HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro, Blender, ffmpeg, Xcode builds, Ollama, LM Studio | F+S | M | Process list (sandbox: to verify for CLI processes) | Amphetamine, Lchika, Fermata, Insomnio, LidAwake (Vladimir-Podgornyi) |
+| C6 | Stay awake while a download or upload is in progress | F+S | 1 | Network throughput | Amphetamine, Insomnio, LidAwake (Vladimir-Podgornyi) |
+| C7 | Stay awake while AI coding agents work, then sleep when they all wait or finish: hooks for Claude Code, Codex, Gemini CLI, Cursor, Copilot CLI, OpenCode, Aider; leases that expire if an agent is killed | F (S: to verify) | M (in progress) | Agent hooks + process activity | clamshut, adrafinil, double-shot, LidSleepToggle, agent-lid-closed, Lidless, Lockpaw, No Sleep for AI, Keep Awake: AI Agents, lidsleep (DerekYeh) |
+| C8 | "Sleep when idle" ending: stay awake while work happens (processor busy, another app holding sleep, input), then sleep | F+S | 1 | Load, assertions, HID idle | LidAwake (Vladimir-Podgornyi), Sleep Expert (Force Sleep) |
+| C9 | Physical switch: Caps Lock or a hotkey turns a session on and off | F+S | L | Event tap (Accessibility permission) | Capsomnia, CapsAwake, No Sleep for AI, PeachPocket |
 
 ### D. Rules and schedules
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| D1 | Rules: when conditions are true, apply a lid action, a hibernation delay or a session. Conditions: power adapter, battery level, external display connected or mirrored, Wi-Fi network, IP/VPN/DNS, USB or Bluetooth device, app running or frontmost, audio output in use, day and time | Pro | F+S | 1 (M: power, display, time) | | Amphetamine (triggers), Sleep Control Centre, Tazzina, Insomnio, Latch (conditions), Clapet |
-| D2 | Exceptions to forced sleep: do not sleep on lid close during a call, a presentation, or while a chosen app runs (e.g. DJ or music app) | Pro | F+S | M | Rule with "Do what macOS does" | Fermata, Amphetamine |
-| D3 | Schedules: sleep at a time, wake or turn on at a time (Apple removed this from System Settings) | Pro | F | 1 | `IOPMSchedulePowerEvent` (root) | LidAwake (Vladimir-Podgornyi), goguma, `pmset repeat` |
-| D4 | Wake before scheduled jobs (launchd, cron) and let the Mac sleep after | Pro | F | L | Job discovery | goguma |
-| D5 | Presets that create rules in one click: "Desk with a screen", "Overnight work on power", "AI agents", "Home server" | Pro (desk preset free) | F+S | 1 | | MacMiniMode modes, continuity-control |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| D1 | Rules: when conditions are true, apply a lid action, a hibernation delay or a session. Conditions: power adapter, battery level, external display connected or mirrored, Wi-Fi network, IP/VPN/DNS, USB or Bluetooth device, app running or frontmost, audio output in use, day and time | F+S | 1 (M: power, display, time) | | Amphetamine (triggers), Sleep Control Centre, Tazzina, Insomnio, Latch (conditions), Clapet |
+| D2 | Exceptions to forced sleep: do not sleep on lid close during a call, a presentation, or while a chosen app runs (e.g. DJ or music app) | F+S | M | Rule with "Do what macOS does" | Fermata, Amphetamine |
+| D3 | Schedules: sleep at a time, wake or turn on at a time (Apple removed this from System Settings) | F | 1 | `IOPMSchedulePowerEvent` (root) | LidAwake (Vladimir-Podgornyi), goguma, `pmset repeat` |
+| D4 | Wake before scheduled jobs (launchd, cron) and let the Mac sleep after | F | L | Job discovery | goguma |
+| D5 | Presets that create rules in one click: "Desk with a screen", "Overnight work on power", "AI agents", "Home server" | F+S | 1 | | MacMiniMode modes, continuity-control |
 
-### E. Safety guards (always free, on by default)
+### E. Safety guards (on by default)
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| E1 | Battery floor: end any session and sleep below a level on battery (default 20 %, minimum 5 %) | Free | F+S | M | | nearly all keep-awake tools |
-| E2 | Heat guard: end a lid-closed session when the Mac gets hot (first warm level when the lid is closed) | Free | F+S | M | `ProcessInfo.thermalState` | clamshut, double-shot, ClamDown, Lidless, Lidwork |
-| E3 | Only while charging: end a lid-closed session when the power adapter is disconnected (option, default on) | Free | F+S | M | | MacMiniMode, Lidless, turnintoserver, Insomnio |
-| E4 | Crash recovery: a watchdog in the daemon restores normal sleep within seconds if the app quits, crashes or hangs; the next launch undoes leftovers | Free | F | M | Daemon heartbeat | Lidless, double-shot, Insomnia (krishhgg), ClamshellToggle, StayAwake, PeachPocket, Lidwork |
-| E5 | Maximum session length (option, off by default) | Free | F+S | 1 | | ClamshellToggle |
-| E6 | "Mac in a bag" warning: lid closed, no display, not charging, session on: notification and sleep after a short delay | Free | F+S | 1 | | double-shot |
-| E7 | Restore every system setting the app changed (`hibernatemode`, `disablesleep`, Low Power Mode, scheduled wakes) on quit, uninstall and reboot | Free | F | M (exists) | Persisted state | ClamStop, ClamDown, Insomnia (krishhgg) |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| E1 | Battery floor: end any session and sleep below a level on battery (default 20 %, minimum 5 %) | F+S | M | | nearly all keep-awake tools |
+| E2 | Heat guard: end a lid-closed session when the Mac gets hot (first warm level when the lid is closed) | F+S | M | `ProcessInfo.thermalState` | clamshut, double-shot, ClamDown, Lidless, Lidwork |
+| E3 | Only while charging: end a lid-closed session when the power adapter is disconnected (option, default on) | F+S | M | | MacMiniMode, Lidless, turnintoserver, Insomnio |
+| E4 | Crash recovery: a watchdog in the daemon restores normal sleep within seconds if the app quits, crashes or hangs; the next launch undoes leftovers | F | M | Daemon heartbeat | Lidless, double-shot, Insomnia (krishhgg), ClamshellToggle, StayAwake, PeachPocket, Lidwork |
+| E5 | Maximum session length (option, off by default) | F+S | 1 | | ClamshellToggle |
+| E6 | "Mac in a bag" warning: lid closed, no display, not charging, session on: notification and sleep after a short delay | F+S | 1 | | double-shot |
+| E7 | Restore every system setting the app changed (`hibernatemode`, `disablesleep`, Low Power Mode, scheduled wakes) on quit, uninstall and reboot | F | M (exists) | Persisted state | ClamStop, ClamDown, Insomnia (krishhgg) |
 
 ### F. Actions on lid close, sleep and wake
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| F1 | Pause audio and video while the Mac sleeps, resume on wake | Pro | F+S | M (exists) | MediaRemote (private) | ClamStop, Insomnia (krishhgg, mute), Latch |
-| F2 | Lock the screen when the lid closes during a session | Pro | F+S | 1 | Private lock call, fallback display sleep | ClamshellToggle, ClamDown, SleeperX, mac-autolock, Lockpaw |
-| F3 | Run a Shortcut or a script on lid close, lid open, sleep, wake | Pro | F+S | 1 | Shortcuts; scripts sandbox-limited | sleepwatcher, Latch, clamshell (treydempsey), Fermata |
-| F4 | Disconnect chosen Bluetooth devices on sleep, reconnect on wake | Pro | F | L | | BlueBed |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| F1 | Pause audio and video while the Mac sleeps, resume on wake | F+S | M (exists) | MediaRemote (private) | ClamStop, Insomnia (krishhgg, mute), Latch |
+| F2 | Lock the screen when the lid closes during a session | F+S | 1 | Private lock call, fallback display sleep | ClamshellToggle, ClamDown, SleeperX, mac-autolock, Lockpaw |
+| F3 | Run a Shortcut or a script on lid close, lid open, sleep, wake | F+S | 1 | Shortcuts; scripts sandbox-limited | sleepwatcher, Latch, clamshell (treydempsey), Fermata |
+| F4 | Disconnect chosen Bluetooth devices on sleep, reconnect on wake | F | L | | BlueBed |
 
 ### G. Displays
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| G1 | Turn the built-in screen off while the lid is open and an external display is connected; restore on unplug or quit | Pro | F | L | Private display API | OpenClamshell, clamOpen, ClamshellOpen |
-| G2 | Built-in screen at zero brightness during lid-closed sessions, restored when opened | Pro | F+S | M (with C3) | | agent-lid-closed, MacMiniMode, turnintoserver, Insomnia (krishhgg) |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| G1 | Turn the built-in screen off while the lid is open and an external display is connected; restore on unplug or quit | F | L | Private display API | OpenClamshell, clamOpen, ClamshellOpen |
+| G2 | Built-in screen at zero brightness during lid-closed sessions, restored when opened | F+S | M (with C3) | | agent-lid-closed, MacMiniMode, turnintoserver, Insomnia (krishhgg) |
 
 ### H. Visibility and diagnostics
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| H1 | Menu bar icon with clear states (normal, staying awake, lid hold, paused), optional remaining time; can be hidden | Free (countdown Pro) | F+S | M (exists) | | all |
-| H2 | "What keeps my Mac awake?": apps and processes holding sleep off now, and since when | Pro | F+S | 1 | `IOPMCopyAssertionsByProcess` | Sleep Expert (Sleep Inspector), LidSleepToggle (Awake Radar) |
-| H3 | Sleep journal: lid opened and closed, slept, woke (with reason), hibernated, battery used | Pro | F+S | M | Unified log + own records | Latch, LidSleepToggle, LidAwake (Vladimir-Podgornyi) |
-| H4 | Health check and "Copy diagnostics" for support (service state, settings, recent events) | Free | F+S | 1 | | MacMiniMode |
-| H5 | Notifications: session ended, safety stop and why, background service needs approval | Free (safety), Pro (others) | F+S | M | | double-shot, Insomnio, clamshut |
-| H6 | Phone notifications through ntfy, Pushover or a webhook | Pro | F+S | L | Network | Lockpaw, LidSleepToggle, continuity-control, turnintoserver |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| H1 | Menu bar icon with clear states (normal, staying awake, lid hold, paused), optional remaining time; can be hidden | F+S | M (exists) | | all |
+| H2 | "What keeps my Mac awake?": apps and processes holding sleep off now, and since when | F+S | 1 | `IOPMCopyAssertionsByProcess` | Sleep Expert (Sleep Inspector), LidSleepToggle (Awake Radar) |
+| H3 | Sleep journal: lid opened and closed, slept, woke (with reason), hibernated, battery used | F+S | M | Unified log + own records | Latch, LidSleepToggle, LidAwake (Vladimir-Podgornyi) |
+| H4 | Health check and "Copy diagnostics" for support (service state, settings, recent events) | F+S | 1 | | MacMiniMode |
+| H5 | Notifications: session ended, safety stop and why, background service needs approval | F+S | M | | double-shot, Insomnio, clamshut |
+| H6 | Phone notifications through ntfy, Pushover or a webhook | F+S | L | Network | Lockpaw, LidSleepToggle, continuity-control, turnintoserver |
 
 ### I. Control for advanced users
 
-| ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
-|---|---|---|---|---|---|---|
-| I1 | Global keyboard shortcuts: start or stop a session, sleep now | Pro | F+S | 1 | | Clapet, InsomniaZ, Insomnio, PeachPocket, turnintoserver |
-| I2 | URL scheme: `clamstop://awake?minutes=30`, `clamstop://sleep`, `clamstop://off` | Pro | F+S | 1 | | Tazzina, Lidwork |
-| I3 | Command line: `clamstop status`, `clamstop sleep`, `clamstop awake --for 30m`, `clamstop hook claude` | Pro (status free) | F | 1 | App binary as CLI (exists for hooks) | MacMiniMode, adrafinil, Insomnia (krishhgg) |
-| I4 | Shortcuts actions, Siri, Spotlight, Control Center control | Pro | F+S | 1 | App Intents | Insomnio, Latch, No Sleep for AI, Lockpaw |
-| I5 | One-click installation of agent hooks (Claude Code, Codex...), with a preview of the change | Pro | F | M | | double-shot, agent-lid-closed, No Sleep for AI |
+| ID | Feature | Ed. | Prio | Tech | Seen in |
+|---|---|---|---|---|---|
+| I1 | Global keyboard shortcuts: start or stop a session, sleep now | F+S | 1 | | Clapet, InsomniaZ, Insomnio, PeachPocket, turnintoserver |
+| I2 | URL scheme: `clamstop://awake?minutes=30`, `clamstop://sleep`, `clamstop://off` | F+S | 1 | | Tazzina, Lidwork |
+| I3 | Command line: `clamstop status`, `clamstop sleep`, `clamstop awake --for 30m`, `clamstop hook claude` | F | 1 | App binary as CLI (exists for hooks) | MacMiniMode, adrafinil, Insomnia (krishhgg) |
+| I4 | Shortcuts actions, Siri, Spotlight, Control Center control | F+S | 1 | App Intents | Insomnio, Latch, No Sleep for AI, Lockpaw |
+| I5 | One-click installation of agent hooks (Claude Code, Codex...), with a preview of the change | F | M | | double-shot, agent-lid-closed, No Sleep for AI |
 
 ### J. App basics
 
-| ID | Feature | Tier | Ed. | Prio |
-|---|---|---|---|---|
-| J1 | First-run assistant (section 5) and background service approval with an illustrated step | Free | F+S | M (exists, extend) |
-| J2 | Open at login; reopening the app shows the window when the icon is hidden | Free | F+S | M (exists) |
-| J3 | Menu bar icon styles (laptop, clam; more in Pro) | Free / Pro | F+S | M (exists) |
-| J4 | Languages: English, Simplified Chinese, Japanese, German, French, Spanish | Free | F+S | 1 |
-| J5 | Automatic updates (Sparkle), license activation and deactivation, purchase link | Free | F | M |
-| J6 | In-App Purchase and restore purchases | Free | S | L |
-| J7 | Uninstall from the app: restore all settings, remove the service and preferences | Free | F | M (exists) |
-| J8 | Light and dark mode, VoiceOver labels on every control, full keyboard navigation | Free | F+S | M |
+| ID | Feature | Ed. | Prio |
+|---|---|---|---|
+| J1 | First-run assistant (section 5) and background service approval with an illustrated step | F+S | M (exists, extend) |
+| J2 | Open at login; reopening the app shows the window when the icon is hidden | F+S | M (exists) |
+| J3 | Menu bar icon styles (laptop, clam, more) | F+S | M (exists) |
+| J4 | Languages: English, Simplified Chinese, Japanese, German, French, Spanish | F+S | 1 |
+| J5 | Automatic updates (Sparkle) | F | M |
+| J6 | "Buy me a coffee" link in the About window and at the bottom of the first settings tab; never a pop-up or a reminder | F | M |
+| J7 | Uninstall from the app: restore all settings, remove the service and preferences | F | M (exists) |
+| J8 | Light and dark mode, VoiceOver labels on every control, full keyboard navigation | F+S | M |
 
 ## 5. User experience
 
@@ -185,12 +183,11 @@ screen offers both directions instead of assuming one.
 
 1. "What should happen when you close the lid?" Large choices, each with one line of
    explanation:
-   - *Sleep, even when a screen is plugged in* (recommended, free);
-   - *Keep working when a screen is plugged in, even on battery* (free; macOS alone requires the
+   - *Sleep, even when a screen is plugged in* (recommended);
+   - *Keep working when a screen is plugged in, even on battery* (macOS alone requires the
      power adapter; full edition only, it needs the background service);
-   - *Stay awake while AI agents work, then sleep* (Pro; Claude Code, Codex...).
-   Pro choices carry a "Pro" badge; picking one shows what it unlocks and lets the user unlock it
-   now or continue with *Sleep*. The choice becomes the lid action (A2) or a preset (D5).
+   - *Stay awake while AI agents work, then sleep* (Claude Code, Codex...).
+   The choice becomes the lid action (A2) or a preset (D5).
    One-off needs ("stay awake for 2 hours while this runs") are not asked here: they live in the
    menu bar (C1).
 2. "Allow ClamStop in System Settings": illustration of the switch, button that opens the right
@@ -207,8 +204,8 @@ screen offers both directions instead of assuming one.
 - **Simple settings** (always visible): *When I close the lid* (picker), *Hibernate*
   (picker), *Show in the menu bar*, *Open at login*.
 - **More options** (disclosure, remembered): Sessions, Rules and presets, Safety, Actions,
-  Shortcuts and automation, Journal. Pro controls show a small "Pro" badge and stay readable but
-  disabled; one "Unlock Pro" button, never a pop-up interrupting the user.
+  Shortcuts and automation, Journal. Full edition: a discreet "Buy me a coffee" link at the bottom of
+  the first tab, never a pop-up interrupting the user.
 - Every option has a one-line footnote in plain words and an ⓘ help popover with an example.
 
 ### Menu bar menu
@@ -236,8 +233,9 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
 | Schedules, wake at a time (D3, D4) | yes | no |
 | Low Power Mode, crash watchdog in a daemon (B6, E4) | yes | no (sessions use assertions, released by macOS when the app quits) |
 | CLI, agent hook installer (I3, I5) | yes | no (URL scheme and Shortcuts instead) |
-| Payment | license key | In-App Purchase; no mention of the full edition (guideline 3.1.1) |
-| Link to the website | anywhere | App Store listing (marketing and support URLs) may point to the home page; inside the app only a neutral "Help" link to a help page, never to a download or purchase page, and no text pointing to the full edition |
+| Price | free | free |
+| "Buy me a coffee" link | About window, bottom of the first settings tab, website | none in the app (guideline 3.1.1: tips only through In-App Purchase); no mention of the full edition |
+| Link to the website | anywhere | App Store listing (marketing and support URLs) may point to the home page; inside the app only a neutral "Help" link to a help page, never to a download or donation page, and no text pointing to the full edition |
 
 ## 7. Non-functional requirements
 
@@ -245,7 +243,7 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
   `standbydelay*` restored on uninstall).
 - Reaction to lid close under 1 s; no polling; idle CPU near zero.
 - Every root-level change goes through the daemon, which persists what it changed and restores it.
-- Network: update check (Sparkle, signed appcast) and license activation only; listed in the
+- Network: update check (Sparkle, signed appcast) only; listed in the
   privacy page and the README.
 - Logs in the unified log (subsystem `io.github.chanoj.clamstop`); journal kept locally, 30 days.
 - Tests: pure decision logic (lid action, rules, guards, sessions) in the shared target with fake
