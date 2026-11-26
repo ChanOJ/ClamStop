@@ -73,8 +73,13 @@ on again in the same list.
    defaults delete io.github.chanoj.clamstop
    ```
 
-If the background service was not responding during step 2, also follow steps 2 to 4 of the
-next section.
+If the background service was not responding during step 2, run this before step 3. It sets the
+default hibernation mode again, cancels the wakes scheduled by ClamStop and deletes the files of
+the service (the command also helps whenever the sleep settings look wrong):
+
+```bash
+sudo /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon --restore-defaults
+```
 
 ### If the app was deleted first
 
