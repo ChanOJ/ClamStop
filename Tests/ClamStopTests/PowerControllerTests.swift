@@ -25,6 +25,11 @@ final class FakeEffects: PowerEffects {
         return true
     }
     func run(at date: Date, _ block: @escaping () -> Void) { timers.append((date, block)) }
+    var context = PowerContext()
+    var sleepDisabled = false
+    func powerContext() -> PowerContext { context }
+    func isSleepDisabled() -> Bool { sleepDisabled }
+    func setSleepDisabled(_ disabled: Bool) -> Bool { sleepDisabled = disabled; return true }
 
     func advance(_ seconds: TimeInterval) {
         clock = clock.addingTimeInterval(seconds)
@@ -379,7 +384,9 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
     @Test func defaults() {
         let s = ClamStopSettings()
         #expect(s.enabled)
-        #expect(s.hibernateDelayMinutes == 10)
+        #expect(s.hibernateDelayMinutes == 60)
+        #expect(s.keepAwakeForAgents)
+        #expect(!s.separateBatterySettings)
     }
 
     @Test func statusRoundTrip() {

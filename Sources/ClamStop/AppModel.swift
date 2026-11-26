@@ -38,24 +38,38 @@ final class AppModel: ObservableObject {
     @Published var confirmUninstall = false
     @Published var showLidHelp = false
     @Published var showAudioHelp = false
+    // Pro (see AppModel+Pro.swift)
+    @Published var settingsTab: SettingsTab = CommandLine.arguments.contains("--preview-pro") ? .pro : .general
+    @Published var showAgentHelp = false
+    @Published var showSleepLog = false
+    @Published var agentHookStates: [AgentKind: AgentHookSettings.State] = [:]
+    @Published var sleepLog: [SleepEvent] = []
 
     /// Hibernation delays offered in the settings (minutes, 0 = immediately, last = never).
-    static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
+    static let allDelayChoices = [0, 5, 10, 15, 30, 60, 120, 240, ClamStopSettings.never]
+    /// The free edition offers "after 1 h" and "never" (Pro: every delay).
+    static var delayChoices: [Int] {
+        Entitlement.isUnlocked(.hibernationDelays) ? allDelayChoices : ClamStopSettings.freeDelayChoices
+    }
 
-    private let client = DaemonClient()
+    let client = DaemonClient()
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
-    var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
+    var delayMinutes: Int { status?.settings.effective().hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
 
     /// Development aid (`--preview-approval`, with `--snapshot`): show the approval state
     /// without touching the real registration.
     static let previewApproval = CommandLine.arguments.contains("--preview-approval")
 
     func start() {
+        if Self.previewPro {
+            startProPreview()
+            return
+        }
         if Self.previewApproval {
             serviceState = .requiresApproval
             return
@@ -66,6 +80,7 @@ final class AppModel: ObservableObject {
         } else {
             registerDaemonIfNeeded()
         }
+        updateOutdatedAgentHooks()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
@@ -73,7 +88,8 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() {
-        guard !Self.previewApproval else { return }
+        guard !Self.previewApproval, !Self.previewPro else { return }
+        refreshAgentHooks()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         switch daemonService.status {
         case .notRegistered:
@@ -102,6 +118,12 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Previews only (`--preview-pro`): show this status as if the service answered.
+    func setPreviewStatus(_ status: DaemonStatus) {
+        self.status = status
+        serviceState = .running
+    }
+
     // MARK: Daemon settings
 
     func setEnabled(_ enabled: Bool) {
@@ -112,7 +134,7 @@ final class AppModel: ObservableObject {
         update { try await $0.setHibernateDelay(minutes: minutes) }
     }
 
-    private func update(_ body: @escaping (DaemonClient) async throws -> DaemonStatus) {
+    func update(_ body: @escaping (DaemonClient) async throws -> DaemonStatus) {
         Task {
             do {
                 status = try await body(client)
@@ -198,6 +220,7 @@ final class AppModel: ObservableObject {
                 _ = try? await client.restoreDefaults()
             }
             client.invalidate()
+            setAgentHooks(installed: false)
             try? await daemonService.unregister()
             try? await SMAppService.mainApp.unregister()
             DefaultsKey.all.forEach(UserDefaults.standard.removeObject(forKey:))
@@ -230,8 +253,13 @@ final class AppModel: ObservableObject {
         case .running:
             guard let status else { return String(localized: "Checking…") }
             if !status.settings.enabled { return String(localized: "Off: the lid works as usual") }
-            if status.sleepDisabled { return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)") }
-            let minutes = status.settings.hibernateDelayMinutes
+            if status.keepingAwakeForAgents == true {
+                return String(localized: "Lid closed: staying awake while AI agents work")
+            }
+            if status.sleepDisabled && status.sleepDisabledByClamStop != true {
+                return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
+            }
+            let minutes = delayMinutes
             if minutes < 0 { return String(localized: "On: sleeps when the lid closes") }
             if minutes == 0 { return String(localized: "On: hibernates when the lid closes") }
             return String(localized: "On: sleeps when the lid closes, hibernates after \(Self.delayLabel(minutes))")
@@ -239,6 +267,7 @@ final class AppModel: ObservableObject {
     }
 
     var statusIsOK: Bool {
-        serviceState == .running && enabled && status?.sleepDisabled == false
+        serviceState == .running && enabled
+            && (status?.sleepDisabled == false || status?.sleepDisabledByClamStop == true)
     }
 }

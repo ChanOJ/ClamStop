@@ -51,7 +51,9 @@ paragraphs of `README.md` carry the same text: change both together.
 
 ## Defaults to restore on uninstall
 
-`hibernatemode 3`, cancel any wake the daemon scheduled. Do not write `standbydelay*` (no effect
+`hibernatemode 3`, cancel any wake the daemon scheduled, `disablesleep 0` only if ClamStop set it
+(`PersistedState.sleepDisabledByClamStop`), and remove the agent hooks from
+`~/.claude/settings.json` and `~/.codex/hooks.json` (done by the app). Do not write `standbydelay*` (no effect
 on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelaylow 10800`.
 
 ## Distribution
@@ -83,10 +85,34 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   still work (IOKit registry reads), to verify.
 - `AudioPauser` uses the private MediaRemote framework (`dlopen`): App Review rejects private API.
 - Uninstall flow (restore power settings through the daemon) and the approval UI disappear.
+- Agent keep-awake needs `disablesleep` (root) to hold a display-less lid close, and its hook
+  talks to the root daemon: in a Store build it could only work with an external display
+  (sleep assertions) and would need another hook-to-app channel.
 - Ready: no network, `PrivacyInfo.xcprivacy` (UserDefaults CA92.1), `SMAppService.mainApp`
   login item, template menu bar icon, settings window. Sparkle must stay out of that edition.
 
-## Later
+## Pro features (2026-11-26)
 
-Ideas from `IshaanChamoli/clamshut` (MIT, credit its copyright notice if code is reused; do not
-reuse its logo, Apache 2.0 Noto Emoji): keep-awake while AI agents (Claude Code, Codex) run.
+- Free: sleep on lid close, hibernation after 1 h or never. Pro (`ProFeature` in
+  `Sources/ClamStopShared/ProFeature.swift`): agent keep-awake, other delays, per power source,
+  low battery hibernation, time range and display exceptions, sleep log. Every check goes through
+  `Entitlement.isUnlocked` (licensing replaces its body); the daemon decides on
+  `ClamStopSettings.effective()` only, through the pure `SleepPolicy.decide`.
+- Settings window: tabs (`SettingsRootView`), General = `SettingsView`, Pro = `ProSettingsView`.
+  Preview with `--preview-pro` (+ `--snapshot`, `--show-help agent|history`).
+- Agent keep-awake, adapted from `IshaanChamoli/clamshut` (MIT, notice in
+  `THIRD_PARTY_NOTICES.md`, copied into the app; never reuse its Noto Emoji logo): the app writes
+  a hook (`ClamStop.app/Contents/MacOS/ClamStop --agent-hook claude|codex`, entry point
+  `Sources/ClamStop/Main.swift`) into the agents' settings; the hook sends the event to the
+  daemon over XPC (same binary, so it passes the cdhash requirement). `AgentTracker` keeps one
+  lease per session; while a lease exists the daemon probes every 15 s (libproc: process alive,
+  process tree CPU; transcript dates) and holds `pmset -a disablesleep 1`, which must be set
+  before the lid closes (a Mac without display sleeps at once otherwise).
+  `ClamStopDaemon --foreground --simulate-agent SECONDS` tests it without hooks.
+- Hook stdout is added to Claude's context on UserPromptSubmit: the hook prints nothing and
+  always exits 0. Process anchor: the nearest ancestor named `claude`/`codex`, never the outermost
+  (the Claude desktop app, "Claude", hosts Code sessions and is always busy).
+- External displays from IOKit: `IOMobileFramebufferShim` > `DisplayAttributes` >
+  `ProductAttributes` > `ProductName` (Apple Silicon; "DELL S2719DM" here, same name as in
+  System Settings). Wi-Fi exception dropped: the SSID is `<redacted>` without Location Services
+  permission (checked on macOS 27.2 with `ipconfig getsummary en0`), not worth asking for it.

@@ -9,6 +9,12 @@ import Foundation
     func setHibernateDelay(minutes: Int, reply: @escaping (Data) -> Void)
     /// For uninstall: `hibernatemode 3`, cancel every wake the daemon scheduled.
     func restoreDefaults(reply: @escaping (Data) -> Void)
+    /// Replace every setting at once: JSON-encoded `ClamStopSettings`.
+    func setSettings(_ settings: Data, reply: @escaping (Data) -> Void)
+    /// From `ClamStop --agent-hook`: JSON-encoded `AgentHookMessage`. Replies with the status.
+    func agentEvent(_ message: Data, reply: @escaping (Data) -> Void)
+    /// JSON-encoded `[SleepEvent]` (empty `Data` on error).
+    func getSleepLog(reply: @escaping (Data) -> Void)
 }
 
 public extension NSXPCInterface {

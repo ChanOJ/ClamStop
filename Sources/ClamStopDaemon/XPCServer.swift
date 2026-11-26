@@ -58,6 +58,33 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
         }
     }
 
+    func setSettings(_ data: Data, reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            if let settings = try? JSONDecoder().decode(ClamStopSettings.self, from: data) {
+                self.service.apply(settings)
+            } else {
+                Log.error("setSettings: cannot decode \(data.count) bytes")
+            }
+            reply(self.service.status().encoded())
+        }
+    }
+
+    func agentEvent(_ data: Data, reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            if let message = try? JSONDecoder().decode(AgentHookMessage.self, from: data) {
+                self.service.agents.handle(message)
+            }
+            reply(Data())
+        }
+    }
+
+    func getSleepLog(reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            let encoder = JSONEncoder()
+            reply((try? encoder.encode(self.service.sleepLog)) ?? Data())
+        }
+    }
+
     func restoreDefaults(reply: @escaping (Data) -> Void) {
         DispatchQueue.main.async {
             self.service.restoreDefaults()

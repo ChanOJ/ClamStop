@@ -10,6 +10,7 @@ final class FileStore: StateStore {
     private var removed = false
     private var stateURL: URL { directory.appendingPathComponent("state.json") }
     private var settingsURL: URL { directory.appendingPathComponent("settings.json") }
+    private var sleepLogURL: URL { directory.appendingPathComponent("sleep-log.json") }
 
     init(directory: URL = FileStore.defaultDirectory) {
         self.directory = directory
@@ -31,6 +32,14 @@ final class FileStore: StateStore {
 
     func saveSettings(_ settings: ClamStopSettings) {
         write(settings, to: settingsURL)
+    }
+
+    func loadSleepLog() -> [SleepEvent] {
+        read([SleepEvent].self, from: sleepLogURL) ?? []
+    }
+
+    func saveSleepLog(_ events: [SleepEvent]) {
+        write(events, to: sleepLogURL)
     }
 
     /// Uninstall: forget everything.

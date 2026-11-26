@@ -16,6 +16,46 @@ stops drawing power, which spares the battery. Waking up then takes a few second
 
 Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
+## Pro features
+
+Sleep on lid close, with hibernation after 1 hour or never, is free. ClamStop Pro adds, in the
+**Pro** tab of the settings:
+
+- **Stay awake while AI agents work.** Close the lid while Claude Code or Codex is working: the
+  Mac stays awake until the task ends, then sleeps and hibernates as usual. See
+  [AI agents](#ai-agents).
+- **Other hibernation delays**: immediately, or after 5 minutes to 4 hours.
+- **Separate settings on battery**: sleep or not, and a different hibernation delay, on battery
+  and on power adapter.
+- **Low battery**: hibernate at once when the lid closes below a battery level.
+- **Exceptions**: do not force sleep during set hours (for example 9:00 to 18:00 on weekdays,
+  on power adapter), or while a given external display is connected. During an exception,
+  closing the lid does what macOS does on its own.
+- **Sleep history**: when the Mac slept, for how long, whether it hibernated and how much battery
+  it used.
+
+### AI agents
+
+When the switch is turned on, ClamStop adds a hook to the agents' settings
+(`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
+app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
+is written next to it (`.clamstop-backup`). Turning the switch off, or uninstalling ClamStop,
+removes the hook.
+
+The agent runs the hook when a task starts and ends; the hook passes the event to ClamStop's
+background service. While a task runs, the service sets `pmset disablesleep 1`, the only setting
+that also stops the lid-close sleep of a Mac without external display, and sets it back to `0` as
+soon as no task runs. To avoid keeping the Mac awake for nothing, the service also checks, every
+15 seconds and only while a task runs, that the agent process still exists and is still busy
+(its transcript is written, or it or its child processes use the CPU, for example during a long
+build). A task counts as finished 90 seconds after the agent's turn ends, or after 30 minutes
+without any sign of work.
+
+For safety, the Mac sleeps anyway after the chosen time limit (8 hours by default), on battery
+below 20 %, or under heavy thermal pressure.
+
+Codex support follows the hook format Codex documents; it has not been tested with Codex yet.
+
 ## Install
 
 1. Download `ClamStop-<version>.dmg` from the
@@ -114,20 +154,30 @@ sudo /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon --restore-defaults
    sudo pmset -a hibernatemode 3
    ```
 
-3. Delete the files of the background service:
+3. If AI agents were kept awake, make sure sleep is not left disabled: if `pmset -g` lists
+   `SleepDisabled 1`, run:
+
+   ```bash
+   sudo pmset -a disablesleep 0
+   ```
+
+   Then remove the ClamStop entries (commands containing `ClamStop` and `--agent-hook`) from the
+   `hooks` of `~/.claude/settings.json` and `~/.codex/hooks.json`.
+
+4. Delete the files of the background service:
 
    ```bash
    sudo rm -rf "/Library/Application Support/ClamStop"
    ```
 
-4. Check that no wake scheduled by ClamStop remains in the list (a leftover one only wakes the
+5. Check that no wake scheduled by ClamStop remains in the list (a leftover one only wakes the
    Mac once):
 
    ```bash
    pmset -g sched
    ```
 
-5. If ClamStop is still listed in **Login Items & Extensions**, turn it off there.
+6. If ClamStop is still listed in **Login Items & Extensions**, turn it off there.
 
 ## Build from source
 
@@ -174,3 +224,7 @@ Once the Apple credentials are configured, the same workflow signs and notarizes
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+The AI agent keep-awake feature adapts ideas and rules from
+[clamshut](https://github.com/IshaanChamoli/clamshut) by Ishaan Chamoli (MIT): see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

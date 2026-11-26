@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 import ClamStopShared
 
-@main
+/// Started by `Main` (not `@main`, so that `--agent-hook` runs without any UI).
 struct ClamStopApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = AppModel()
     private let audioPauser = AudioPauser()
     private var settingsWindow: NSWindow?
-    private var hostingController: NSHostingController<SettingsView>?
+    private var hostingController: NSHostingController<SettingsRootView>?
     private var modelObserver: AnyCancellable?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return args[i + 1]
     }
 
-    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help [audio]]` renders the visible windows to
+    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help [audio|agent|history]]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         guard let path = Self.argument(after: "--snapshot") else { return }
@@ -94,9 +94,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let url = URL(fileURLWithPath: path)
         showSettings()
         if args.contains("--show-help") {
-            let audio = args.contains("audio")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                if audio { self.model.showAudioHelp = true } else { self.model.showLidHelp = true }
+                if args.contains("audio") {
+                    self.model.showAudioHelp = true
+                } else if args.contains("agent") {
+                    self.model.showAgentHelp = true
+                } else if args.contains("history") {
+                    self.model.showSleepLog = true
+                } else {
+                    self.model.showLidHelp = true
+                }
             }
         }
         // Each visible window (settings, popover) to file.png, file.1.png, …
@@ -125,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showSettings() {
         if settingsWindow == nil {
-            let controller = NSHostingController(rootView: SettingsView(model: model))
+            let controller = NSHostingController(rootView: SettingsRootView(model: model))
             // No constraint-driven window sizing: with a grouped Form it can loop forever
             // ("update constraints" exception, seen on first launch). Size the window by hand.
             controller.sizingOptions = []

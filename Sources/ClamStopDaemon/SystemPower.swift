@@ -1,6 +1,7 @@
 import Foundation
 import IOKit
 import IOKit.pwr_mgt
+import IOKit.ps
 import ClamStopShared
 
 // IOKit message macros are not imported into Swift; values from IOMessage.h / IOPM.h.
@@ -110,6 +111,66 @@ final class SystemPower: PowerEffects {
     func run(at date: Date, _ block: @escaping () -> Void) {
         let seconds = max(0, date.timeIntervalSinceNow)
         DispatchQueue.main.asyncAfter(wallDeadline: .now() + seconds, execute: block)
+    }
+
+    func powerContext() -> PowerContext {
+        let battery = Self.battery()
+        let thermal = ProcessInfo.processInfo.thermalState
+        return PowerContext(onPowerAdapter: battery.onPowerAdapter, batteryPercent: battery.percent,
+                            connectedDisplays: Self.externalDisplayNames(),
+                            thermalPressure: thermal == .serious || thermal == .critical)
+    }
+
+    func isSleepDisabled() -> Bool { sleepDisabled }
+
+    @discardableResult
+    func setSleepDisabled(_ disabled: Bool) -> Bool {
+        let (status, output) = Self.pmset(["-a", "disablesleep", disabled ? "1" : "0"])
+        for _ in 0..<5 {
+            if status == 0, sleepDisabled == disabled { return true }
+            usleep(200_000)
+        }
+        Log.error("pmset -a disablesleep \(disabled ? 1 : 0): exit=\(status) \(output)")
+        return false
+    }
+
+    /// Power source and battery level (IOKit power sources; works as root, no polling).
+    static func battery() -> (onPowerAdapter: Bool, percent: Int?) {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return (true, nil) }
+        let source = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String?
+        let onAdapter = source != kIOPMBatteryPowerKey
+        guard let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else {
+            return (onAdapter, nil)
+        }
+        for ps in list {
+            guard let desc = IOPSGetPowerSourceDescription(info, ps)?.takeUnretainedValue() as? [String: Any],
+                  desc[kIOPSTypeKey] as? String == kIOPSInternalBatteryType,
+                  let current = desc[kIOPSCurrentCapacityKey] as? Int,
+                  let max = desc[kIOPSMaxCapacityKey] as? Int, max > 0 else { continue }
+            return (onAdapter, current * 100 / max)
+        }
+        return (onAdapter, nil)
+    }
+
+    /// Names of the connected external displays, from the display controllers' EDID product
+    /// names (Apple Silicon: `IOMobileFramebufferShim` > DisplayAttributes > ProductAttributes).
+    /// The built-in display has no product name there. Verified on macOS 27.2 ("DELL S2719DM").
+    static func externalDisplayNames() -> [String] {
+        var iterator: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOMobileFramebufferShim"),
+                                           &iterator) == kIOReturnSuccess else { return [] }
+        defer { IOObjectRelease(iterator) }
+        var names: [String] = []
+        while case let service = IOIteratorNext(iterator), service != 0 {
+            defer { IOObjectRelease(service) }
+            guard let attributes = IORegistryEntryCreateCFProperty(service, "DisplayAttributes" as CFString,
+                                                                   kCFAllocatorDefault, 0)?
+                    .takeRetainedValue() as? [String: Any],
+                  let product = attributes["ProductAttributes"] as? [String: Any],
+                  let name = product["ProductName"] as? String, !name.isEmpty else { continue }
+            names.append(name)
+        }
+        return names.sorted()
     }
 
     // MARK: Helpers
