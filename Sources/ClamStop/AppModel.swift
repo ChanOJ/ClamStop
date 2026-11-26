@@ -57,6 +57,7 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
+    private var lastRegistrationRetry = Date.distantPast
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -91,6 +92,12 @@ final class AppModel: ObservableObject {
         guard !Self.previewApproval, !Self.previewSettings else { return }
         refreshAgentHooks()
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        // Turned on in System Settings while the app kept running (macOS does not always quit
+        // it): nothing registers the daemon again, so retry while waiting (seen 2026-11-26).
+        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 10 {
+            lastRegistrationRetry = Date()
+            retryRegistration()
+        }
         switch daemonService.status {
         case .notRegistered:
             serviceState = registrationDenied ? .requiresApproval : .notRegistered
@@ -182,6 +189,12 @@ final class AppModel: ObservableObject {
             }
         }
         refresh()
+    }
+
+    /// Quiet retry: no error shown, no refresh (called from `refresh`).
+    private func retryRegistration() {
+        guard (try? daemonService.register()) != nil else { return }
+        registrationDenied = false
     }
 
     /// Unregister then register again. Needed after replacing an ad-hoc signed ClamStop.app:
