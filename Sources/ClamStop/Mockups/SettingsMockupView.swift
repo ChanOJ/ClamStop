@@ -23,6 +23,7 @@ struct SettingsMockupView: View {
                 case .actions: actionsSection
                 case .automation: automationSection
                 case .journal: journalSection
+                case .about: Section { AboutView(model: model) }
                 }
             }
             .formStyle(.grouped)

@@ -70,6 +70,14 @@ final class DaemonClient {
         try await call { $0.hibernateNow(reply: $1) }
     }
 
+    func startSession(seconds: Double) async throws -> DaemonStatus {
+        try await call { $0.startSession(seconds: seconds, reply: $1) }
+    }
+
+    func stopSession() async throws -> DaemonStatus {
+        try await call { $0.stopSession(reply: $1) }
+    }
+
     func sleepLog() async throws -> [SleepEvent] {
         try await withCheckedThrowingContinuation { continuation in
             let once = Once()

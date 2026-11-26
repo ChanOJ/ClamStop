@@ -23,6 +23,8 @@ public protocol PowerEffects: AnyObject {
     /// `pmset -a disablesleep 0|1`: the only switch that also stops the lid-close (clamshell)
     /// sleep of a Mac without external display.
     @discardableResult func setSleepDisabled(_ disabled: Bool) -> Bool
+    /// Hold or release a "prevent idle sleep" power assertion (lid open, during a session).
+    func setIdleSleepPrevented(_ prevented: Bool)
 }
 
 public protocol StateStore: AnyObject {
@@ -63,6 +65,10 @@ public final class PowerController {
     /// The lid is closed and the Mac stays awake for agents.
     public private(set) var keepingAwakeForAgents = false
     public private(set) var lastLidDecision: String?
+    /// "Stay awake" session from the menu (spec C1, C2), nil when none runs.
+    public private(set) var session: StayAwakeSession?
+    /// How often a session checks the battery floor while the lid is open.
+    public static let sessionCheckInterval: TimeInterval = 60
 
     private let effects: PowerEffects
     private let store: StateStore
@@ -82,6 +88,7 @@ public final class PowerController {
     private var keepAwakeGeneration = 0
     /// Staying awake for agents ended early (time limit, heat, battery): no more until the lid opens.
     private var keepAwakeReleased = false
+    private var sessionGeneration = 0
 
     public init(settings: ClamStopSettings, effects: PowerEffects, store: StateStore,
                 log: @escaping (String) -> Void = { _ in }) {
@@ -101,7 +108,8 @@ public final class PowerController {
     /// What to do with the lid closed, now.
     public func decide(agentsWorking working: Bool? = nil) -> LidDecision {
         SleepPolicy.decide(settings: settings, context: effects.powerContext(),
-                           agentsWorking: working ?? agentsWorking, agentTimeUp: agentTimeUp)
+                           agentsWorking: working ?? agentsWorking, sessionActive: session != nil,
+                           agentTimeUp: agentTimeUp)
     }
 
     // MARK: Lifecycle
@@ -116,6 +124,7 @@ public final class PowerController {
         effects.cancelAllOwnWakes()
         restoreHibernateMode()
         releaseSleepPrevention()
+        effects.setIdleSleepPrevented(false)
         update(phase: .idle, pendingWake: nil)
     }
 
@@ -125,6 +134,7 @@ public final class PowerController {
         effects.cancelAllOwnWakes()
         restoreHibernateMode()
         stopKeepingAwake()
+        endSession(reason: "daemon stopping")
         releaseSleepPrevention()
         update(phase: .idle, pendingWake: nil)
     }
@@ -138,6 +148,7 @@ public final class PowerController {
         }
         state.savedHibernateMode = nil
         stopKeepingAwake()
+        endSession(reason: "defaults restored")
         releaseSleepPrevention()
         update(phase: .idle, pendingWake: nil)
         log("defaults restored: hibernatemode \(HibernateMode.default), wakes cancelled")
@@ -197,6 +208,13 @@ public final class PowerController {
     /// Check the decision again: agents, battery, heat or settings changed, or the time limit
     /// passed. Called on agent events and on each agent probe tick.
     public func reevaluate(trigger: String) {
+        // Battery floor (spec E1): ends a session even with the lid open.
+        if session != nil, !effects.isLidClosed() {
+            let context = effects.powerContext()
+            if !context.onPowerAdapter, let percent = context.batteryPercent, percent < settings.batteryFloorPercent {
+                endSession(reason: "battery below \(settings.batteryFloorPercent) %")
+            }
+        }
         updateSleepPrevention()
         guard keepingAwakeForAgents else { return }
         guard effects.isLidClosed() else {
@@ -204,10 +222,11 @@ public final class PowerController {
             return
         }
         let decision = decide()
-        guard decision != .keepAwakeForAgents else { return }
+        guard decision != .keepAwake else { return }
         lastLidDecision = decision.summary
         log("\(trigger), lid closed: \(decision.summary)")
         if case .sleep = decision, agentsWorking { keepAwakeReleased = true }
+        if case .sleep(_, let reason) = decision { endSession(reason: reason) }
         stopKeepingAwake()
         record(.agentsDone, trigger)
         act(on: decision)
@@ -217,6 +236,7 @@ public final class PowerController {
     /// would block the Apple menu's Sleep). With the lid closed, hibernation follows as usual.
     public func sleepNow() {
         log("sleep now requested")
+        endSession(reason: "sleep now")
         if keepingAwakeForAgents {
             keepAwakeReleased = true
             stopKeepingAwake()
@@ -228,6 +248,7 @@ public final class PowerController {
     /// "Hibernate Now" from the menu (full edition): save memory to disk and power off now.
     public func hibernateNow() {
         log("hibernate now requested")
+        endSession(reason: "hibernate now")
         if keepingAwakeForAgents {
             keepAwakeReleased = true
             stopKeepingAwake()
@@ -242,7 +263,7 @@ public final class PowerController {
         case .leaveAlone:
             plannedDelay = nil
             updateSleepPrevention()
-        case .keepAwakeForAgents:
+        case .keepAwake:
             startKeepingAwake()
         case .sleep(let after, _):
             // The override (tests) never delays an immediate hibernation.
@@ -285,8 +306,10 @@ public final class PowerController {
     /// them: it must already be set when the lid closes, or a Mac without external display
     /// sleeps at once (clamshell sleep happens before ClamStop hears about the lid).
     private func updateSleepPrevention() {
-        let want = agentsWorking && state.phase == .idle && decide(agentsWorking: true) == .keepAwakeForAgents
+        let wanted = agentsWorking || session != nil
+        let want = wanted && state.phase == .idle && decide(agentsWorking: agentsWorking) == .keepAwake
         if want { preventSleep() } else { releaseSleepPrevention() }
+        effects.setIdleSleepPrevented(session != nil)
     }
 
     private func preventSleep() {
@@ -301,7 +324,7 @@ public final class PowerController {
         }
         state.sleepDisabledByClamStop = true
         store.save(state)
-        log("disablesleep 1 (agents working)")
+        log("disablesleep 1 (\(session != nil ? "stay awake session" : "agents working"))")
     }
 
     private func releaseSleepPrevention() {
@@ -321,6 +344,7 @@ public final class PowerController {
         record(.sleep, nil)
         let planned = plannedDelay
         plannedDelay = nil
+        endSession(reason: "Mac going to sleep")
         if keepingAwakeForAgents {
             log("will sleep while keeping awake for agents")
             stopKeepingAwake()
@@ -415,6 +439,54 @@ public final class PowerController {
         guard effects.isLidClosed() else { return }
         log("deadline reached (\(trigger)) in a dark wake with the lid closed: hibernating")
         hibernate()
+    }
+
+    // MARK: Stay awake sessions (spec C1, C2)
+
+    /// Start (or replace) a session: the Mac does not idle-sleep, and closing the lid keeps it
+    /// awake within the safety guards. `until` nil = until turned off. Any sleep ends it.
+    public func startSession(until: Date?) {
+        sessionGeneration += 1
+        session = StayAwakeSession(started: effects.now(), until: until)
+        log("stay awake session started, " + (until.map { "until \($0)" } ?? "until turned off"))
+        let generation = sessionGeneration
+        if let until {
+            effects.run(at: until) { [weak self] in
+                guard let self, self.sessionGeneration == generation else { return }
+                self.endSession(reason: "time is up")
+                self.reevaluate(trigger: "session ended")
+            }
+        }
+        scheduleSessionCheck(generation: generation)
+        // Awake with the lid closed (external display and keyboard): hold it from now on.
+        if effects.isLidClosed(), !keepingAwakeForAgents, decide() == .keepAwake {
+            keepAwakeReleased = false
+            startKeepingAwake()
+        }
+        reevaluate(trigger: "session started")
+    }
+
+    /// "Turn Off" from the menu.
+    public func stopSession() {
+        guard session != nil else { return }
+        endSession(reason: "turned off")
+        reevaluate(trigger: "session turned off")
+    }
+
+    private func scheduleSessionCheck(generation: Int) {
+        effects.run(at: effects.now().addingTimeInterval(Self.sessionCheckInterval)) { [weak self] in
+            guard let self, self.sessionGeneration == generation, self.session != nil else { return }
+            self.reevaluate(trigger: "session check")
+            self.scheduleSessionCheck(generation: generation)
+        }
+    }
+
+    private func endSession(reason: String) {
+        guard session != nil else { return }
+        session = nil
+        sessionGeneration += 1
+        log("stay awake session ended: \(reason)")
+        effects.setIdleSleepPrevented(false)
     }
 
     // MARK: Internals

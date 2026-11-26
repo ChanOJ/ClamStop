@@ -141,9 +141,9 @@ struct WelcomeView: View {
     }
 }
 
-/// About window (spec J6, mockup `AboutView`). Full edition: website, source code and a
+/// About tab of the settings window (spec J6, mockup `AboutView`). Full edition: website, source code and a
 /// discreet "Buy me a coffee" link; Store edition: only a neutral Help link.
-struct AboutWindowView: View {
+struct AboutTab: View {
     private var version: String {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? ClamStopVersion.current
@@ -188,7 +188,8 @@ struct AboutWindowView: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 6)
         }
+        .frame(width: 360)
         .padding(28)
-        .frame(width: 340)
+        .frame(maxWidth: .infinity)
     }
 }

@@ -122,6 +122,27 @@ final class SystemPower: PowerEffects {
 
     func isSleepDisabled() -> Bool { sleepDisabled }
 
+    private var idleAssertion: IOPMAssertionID?
+
+    func setIdleSleepPrevented(_ prevented: Bool) {
+        if prevented, idleAssertion == nil {
+            var id = IOPMAssertionID(0)
+            let result = IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleSystemSleep as CFString,
+                                                     IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                     "ClamStop: Stay awake session" as CFString, &id)
+            if result == kIOReturnSuccess {
+                idleAssertion = id
+                Log.info("idle sleep assertion created")
+            } else {
+                Log.error("cannot create the idle sleep assertion: \(result)")
+            }
+        } else if !prevented, let id = idleAssertion {
+            IOPMAssertionRelease(id)
+            idleAssertion = nil
+            Log.info("idle sleep assertion released")
+        }
+    }
+
     @discardableResult
     func setSleepDisabled(_ disabled: Bool) -> Bool {
         let (status, output) = Self.pmset(["-a", "disablesleep", disabled ? "1" : "0"])

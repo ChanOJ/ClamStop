@@ -281,3 +281,42 @@ struct SleepHistoryView: View {
         return formatter.string(from: end.timeIntervalSince(session.start)) ?? "–"
     }
 }
+
+/// "Stay Awake > Until…" (spec C1): stay awake until a time of day.
+struct SessionUntilView: View {
+    @ObservedObject var model: AppModel
+    let close: () -> Void
+
+    /// The chosen time today, or tomorrow when it has already passed.
+    private var endDate: Date {
+        let calendar = Calendar.current
+        let parts = calendar.dateComponents([.hour, .minute], from: model.sessionUntil)
+        let now = Date()
+        let today = calendar.date(bySettingHour: parts.hour ?? 0, minute: parts.minute ?? 0, second: 0, of: now) ?? now
+        return today > now ? today : calendar.date(byAdding: .day, value: 1, to: today) ?? today
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Keep your Mac awake until:")
+            DatePicker("Time", selection: $model.sessionUntil, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.stepperField)
+                .labelsHidden()
+            Text(Calendar.current.isDateInToday(endDate) ? "Today" : "Tomorrow")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { close() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Stay Awake") {
+                    model.startSession(until: endDate)
+                    close()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 300)
+    }
+}
