@@ -132,8 +132,6 @@ struct SettingsMockupView: View {
             }
             ToggleRow(title: "Different settings on battery",
                       note: "Choose another lid action and hibernation delay when unplugged.", isOn: $model.options.separateOnBattery)
-            ToggleRow(title: "Do not force sleep during calls and presentations",
-                      note: "Lets macOS decide while a call, a presentation or a chosen app runs.", isOn: $model.options.noSleepDuringCalls)
             OptionRow(title: "Rules",
                       note: "When conditions are true (power, screen, Wi-Fi, app, time), use other settings.") {
                 Button("Add Rule…") {}

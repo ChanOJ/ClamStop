@@ -62,7 +62,7 @@ private struct LidChoiceStep: View {
                     symbol: "sparkles",
                     title: "Stay awake while AI agents work, then sleep",
                     detail: "For Claude Code, Codex and other coding agents: your Mac keeps working even with the lid closed and sleeps when they are done.",
-                    warning: "Your Mac can get hot with the lid closed, especially in a bag. Leave it in the open while agents work; ClamStop puts it to sleep if it gets too hot.",
+                    warning: "With the lid closed, your Mac can get hot, especially in a bag. Keep it out in the open while agents work. If it gets too hot, ClamStop puts it to sleep.",
                     isSelected: model.firstRunLidChoice == .agents
                 ) { model.firstRunLidChoice = .agents }
             }

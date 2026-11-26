@@ -148,7 +148,6 @@ struct MockOptions {
     var agentsAwake = true
     var whileAppsRun = true
     var separateOnBattery = false
-    var noSleepDuringCalls = true
     var batteryFloor = 20
     var heatGuard = true
     var onlyWhileCharging = true
