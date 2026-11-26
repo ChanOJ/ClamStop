@@ -165,14 +165,24 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 
 ## 5. User experience
 
-### First run (3 screens, under a minute)
+### First run (under a minute: 3 screens in the full edition, 1 in the Store edition)
 
-1. "ClamStop puts your Mac to sleep when you close it, even when a screen is plugged in."
-   Button: *Continue*.
+Most tools on the market solve the opposite need (stay awake with the lid closed), so the first
+screen offers both directions instead of assuming one.
+
+1. "What should happen when you close the lid?" Large choices, each with one line of
+   explanation:
+   - *Sleep, even when a screen is plugged in* (recommended, free);
+   - *Stay awake while plugged in* (for downloads, a home server, a screen used as a desktop);
+   - *Stay awake while AI agents work, then sleep* (Claude Code, Codex...).
+   Pro choices carry a "Pro" badge; picking one shows what it unlocks and lets the user unlock it
+   now or continue with *Sleep*. The choice becomes the lid action (A2) or a preset (D5).
 2. "Allow ClamStop in System Settings": illustration of the switch, button that opens the right
-   pane, automatic detection when it is done (full edition only).
+   pane, automatic detection when it is done. **Full edition only** (the Store edition has no
+   background service).
 3. "When the Mac has been asleep for a while, should it save everything to disk to keep the
-   battery full?" Choices: *After 1 hour (recommended)*, *Never*. Done.
+   battery full?" Choices: *After 1 hour (recommended)*, *Never*. **Full edition only**
+   (hibernation needs the background service). Done.
 
 ### Main window
 
