@@ -92,7 +92,7 @@ struct SettingsMockupView: View {
                 .fixedSize()
             }
             ToggleRow(title: "Click the icon to stay awake",
-                      note: "Click starts or stops staying awake; Control-click opens the menu.",
+                      note: "A click starts or stops staying awake; Control-click or right-click opens the menu.",
                       isOn: $model.options.clickToToggle)
             if full {
                 ToggleRow(title: "Stay awake with the lid closed on battery too",
@@ -111,12 +111,10 @@ struct SettingsMockupView: View {
                       note: "With a button to add 30 minutes.", isOn: $model.options.endReminder)
             ToggleRow(title: "Stay awake while AI agents work",
                       note: "Claude Code, Codex and others. Your Mac sleeps when they are all done.", isOn: $model.options.agentsAwake)
-            OptionRow(title: "Stay awake while these apps are open",
-                      note: "For example HandBrake, Final Cut Pro, Blender, Xcode or Ollama.") {
+            OptionRow(title: "Stay awake while these apps work",
+                      note: "For example HandBrake, Final Cut Pro, Blender or Ollama. While one of them is busy, your Mac stays awake, even with the lid closed.") {
                 Button("Choose Apps…") {}
             }
-            ToggleRow(title: "Only while they are busy",
-                      note: "Your Mac sleeps once the app stops using the processor, even if it stays open.", isOn: $model.options.busyOnly)
         }
     }
 
@@ -265,16 +263,16 @@ struct SettingsMockupView: View {
 
     /// Discreet "Buy me a coffee" link (full edition only, spec J6). Never a pop-up or a reminder.
     private var donationLink: some View {
-        Group {
-            HStack(spacing: 6) {
-                Spacer()
-                Text("ClamStop is free.")
-                    .foregroundStyle(.secondary)
-                Link("Buy me a coffee", destination: Links.donation)
-                Spacer()
-            }
-            .font(.footnote)
+        VStack(spacing: 4) {
+            Text("ClamStop is free. A coffee helps pay for the developer account and the time spent designing and building it.")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Link("Buy me a coffee", destination: Links.donation)
         }
+        .font(.footnote)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
     }
 }
 

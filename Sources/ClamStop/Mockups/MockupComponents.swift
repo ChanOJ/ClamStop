@@ -26,6 +26,8 @@ struct ChoiceCard: View {
     let detail: LocalizedStringKey
     var recommended = false
     var info: LocalizedStringKey?
+    /// Shown once selected, for a choice with a real risk (orange, with a warning sign).
+    var warning: LocalizedStringKey?
     let isSelected: Bool
     let action: () -> Void
 
@@ -56,6 +58,17 @@ struct ChoiceCard: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .font(.callout)
+                        .padding(.top, 2)
+                    }
+                    if isSelected, let warning {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .accessibilityLabel("Warning")
+                            Text(warning)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.orange)
                         .padding(.top, 2)
                     }
                 }

@@ -38,12 +38,16 @@ enum MockupRenderer {
         let menu: (MockupModel) -> AnyView = { AnyView(MenuMockupView(model: $0)) }
         return [
             Screen(id: "first-run-1", title: "First run 1: what happens when the lid closes",
-                   note: "The Store edition has no battery choice and no step counter (single screen).",
+                   note: "The Store edition has no step counter (single screen); its second choice needs power.",
                    windowTitle: "Welcome to ClamStop", configure: { _ in }, view: firstRun),
             Screen(id: "first-run-1-battery", title: "First run 1: battery choice picked",
                    note: "The consequence is said next to the risky choice.",
                    windowTitle: "Welcome to ClamStop", editions: [.full],
                    configure: { $0.firstRunLidChoice = .keepWorking }, view: firstRun),
+            Screen(id: "first-run-1-agents", title: "First run 1: AI agents choice picked",
+                   note: "A warning about heat, next to the risky choice.",
+                   windowTitle: "Welcome to ClamStop",
+                   configure: { $0.firstRunLidChoice = .agents }, view: firstRun),
             Screen(id: "first-run-2-waiting", title: "First run 2: allow the background service (waiting)",
                    note: "Full edition only. Detected automatically when the switch is turned on.",
                    windowTitle: "Welcome to ClamStop", editions: [.full],

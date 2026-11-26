@@ -17,7 +17,7 @@ struct AboutView: View {
                 .font(.title.bold())
             Text("Version \("1.0 (42)")")
                 .foregroundStyle(.secondary)
-            Text("Puts your MacBook to sleep when you close the lid, even with a screen plugged in.")
+            Text("Puts your MacBook to sleep when you close the lid, even with a screen plugged in, or keeps it awake when you choose.")
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 4)
@@ -31,12 +31,15 @@ struct AboutView: View {
             }
             .padding(.top, 4)
             if model.edition == .full {
-                HStack(spacing: 4) {
-                    Text("Free and open source.")
+                VStack(spacing: 4) {
+                    Text("ClamStop is free and open source. A coffee helps pay for the developer account and the time spent designing and building it.")
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                     Link("Buy me a coffee", destination: Links.donation)
                 }
                 .font(.footnote)
+                .padding(.top, 4)
             }
             Text(verbatim: "© 2026 ChanOJ · MIT License")
                 .font(.footnote)

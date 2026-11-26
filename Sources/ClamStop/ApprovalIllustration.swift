@@ -23,8 +23,9 @@ struct ApprovalIllustration: View {
                 }
                 Spacer(minLength: 16)
                 SwitchDrawing()
-                    .padding(4)
-                    .overlay(Capsule().stroke(Color.orange, lineWidth: 2.5))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .overlay(Ellipse().stroke(Color.orange, lineWidth: 2.5))
             }
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.5)))

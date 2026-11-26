@@ -38,23 +38,31 @@ private struct LidChoiceStep: View {
                 ChoiceCard(
                     symbol: "moon.zzz",
                     title: "Sleep, even when a screen is plugged in",
-                    detail: "Like a MacBook with nothing connected: close the lid and it sleeps. Best for most people.",
-                    recommended: true,
+                    detail: "Like a MacBook with nothing connected: close the lid and it sleeps.",
                     isSelected: model.firstRunLidChoice == .sleep
                 ) { model.firstRunLidChoice = .sleep }
                 if model.edition == .full {
                     ChoiceCard(
                         symbol: "display",
-                        title: "Keep working when a screen is plugged in",
-                        detail: "Use your Mac lid closed with an external screen, even on battery. On its own, macOS needs the power adapter for this.",
+                        title: "Stay awake with the lid closed when a screen is plugged in",
+                        detail: "Use your Mac on an external screen with the lid closed, even on battery. On its own, macOS needs the power adapter for this.",
                         info: "On battery, your Mac uses its battery while the lid is closed. Without a screen, it sleeps as usual.",
+                        isSelected: model.firstRunLidChoice == .keepWorking
+                    ) { model.firstRunLidChoice = .keepWorking }
+                } else {
+                    // Store edition: no sandboxed way to stay awake on battery (spec section 6).
+                    ChoiceCard(
+                        symbol: "display",
+                        title: "Stay awake with the lid closed when a screen and power are plugged in",
+                        detail: "Use your Mac on an external screen with the lid closed while it charges. Otherwise, it sleeps.",
                         isSelected: model.firstRunLidChoice == .keepWorking
                     ) { model.firstRunLidChoice = .keepWorking }
                 }
                 ChoiceCard(
                     symbol: "sparkles",
                     title: "Stay awake while AI agents work, then sleep",
-                    detail: "For Claude Code, Codex and other coding agents: your Mac keeps working with the lid closed and sleeps when they are done.",
+                    detail: "For Claude Code, Codex and other coding agents: your Mac keeps working even with the lid closed and sleeps when they are done.",
+                    warning: "Your Mac can get hot with the lid closed, especially in a bag. Leave it in the open while agents work; ClamStop puts it to sleep if it gets too hot.",
                     isSelected: model.firstRunLidChoice == .agents
                 ) { model.firstRunLidChoice = .agents }
             }

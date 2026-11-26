@@ -31,8 +31,8 @@ enum LidAction: String, CaseIterable, Identifiable {
         case .sleep: String(localized: "Sleep, even with a screen plugged in")
         case .keepWorkingWithScreen:
             edition == .full
-                ? String(localized: "Keep working when a screen is plugged in")
-                : String(localized: "Keep working with a screen and power plugged in")
+                ? String(localized: "Stay awake when a screen is plugged in")
+                : String(localized: "Stay awake when a screen and power are plugged in")
         case .stayAwake: String(localized: "Stay awake")
         case .stayAwakeThenSleep: String(localized: "Stay awake, then sleep after a delay")
         case .screensOff: String(localized: "Turn the screens off only")
@@ -158,7 +158,6 @@ struct MockOptions {
     var lowPowerMode = false
     var keepJournal = true
     var morningReport = false
-    var busyOnly = false
 }
 
 @MainActor
