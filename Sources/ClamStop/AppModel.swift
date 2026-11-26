@@ -21,6 +21,10 @@ enum DefaultsKey {
     static let showMenuBarIcon = "showMenuBarIcon"
     static let hasLaunchedBefore = "hasLaunchedBefore"
     static let pauseAudio = "pauseAudioWhileAsleep"
+    static let menuBarIconStyle = "menuBarIconStyle"
+
+    /// Every key, removed on uninstall.
+    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle]
 }
 
 @MainActor
@@ -196,9 +200,7 @@ final class AppModel: ObservableObject {
             client.invalidate()
             try? await daemonService.unregister()
             try? await SMAppService.mainApp.unregister()
-            UserDefaults.standard.removeObject(forKey: DefaultsKey.hasLaunchedBefore)
-            UserDefaults.standard.removeObject(forKey: DefaultsKey.showMenuBarIcon)
-            UserDefaults.standard.removeObject(forKey: DefaultsKey.pauseAudio)
+            DefaultsKey.all.forEach(UserDefaults.standard.removeObject(forKey:))
             NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
             NSApp.terminate(nil)
         }

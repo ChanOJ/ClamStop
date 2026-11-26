@@ -65,7 +65,11 @@ background service, which macOS asks you to approve.
 3. Under **Background App Activity** (**Allow in the Background** on older macOS versions),
    turn the **ClamStop** switch on, so that it turns blue, and authenticate as an administrator:
 
-   ![The ClamStop switch to turn on in System Settings](Resources/Images/allow-background-service.png)
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="docs/images/allow-background-service-dark.png">
+     <img src="docs/images/allow-background-service-light.png" width="444"
+          alt="The ClamStop switch to turn on in System Settings">
+   </picture>
 
 4. macOS may quit ClamStop at that moment: open it again from the Applications folder.
    The status then shows "On" within a few seconds.
@@ -159,8 +163,7 @@ scripts/test.sh
 ```
 
 The version comes from the latest `v*` tag; set `VERSION=1.2.3` to choose another one. The app
-icon is a placeholder, drawn by `swift scripts/make-icon.swift`; replace
-`Resources/AppIcon.icns` to change it.
+icon is drawn by `swift scripts/make-icon.swift`, which writes `Resources/AppIcon.icns`.
 
 ## Releases
 
