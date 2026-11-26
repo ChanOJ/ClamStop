@@ -116,8 +116,39 @@ background service, which macOS asks you to approve.
 4. macOS may quit ClamStop at that moment: open it again from the Applications folder.
    The status then shows "On" within a few seconds.
 
-After updating an unsigned build, if the service stays "not responding", turn ClamStop off and
-on again in the same list.
+### Updating an unsigned build
+
+At registration, macOS records the exact code signature of the background service. Every
+unsigned (ad-hoc) build has a different one, so after replacing ClamStop.app macOS refuses to
+start the new service, and turning the switch off and on again does not help. Register the
+service again instead:
+
+1. Quit ClamStop (menu bar icon > **Quit ClamStop**) and quit System Settings.
+2. Replace `/Applications/ClamStop.app` with the new version.
+3. Open ClamStop and register the service again: in **General**, click **Reinstall Background
+   Service**, or start it from Terminal with:
+
+   ```bash
+   open /Applications/ClamStop.app --args --reinstall-service
+   ```
+
+   The old registration is removed and the ClamStop switch in System Settings is now off.
+4. Open **System Settings > General > Login Items & Extensions** and turn the **ClamStop** switch
+   on **once**. Do not turn it off and on again: that brings the old registration back.
+   If the switch already looks on, System Settings shows an old state: quit it and open it again.
+5. If ClamStop does not quit and still shows "Waiting for approval" after 15 seconds, quit it and
+   open it again.
+6. **General** shows "Background service running".
+
+To check the service from Terminal (`state = running`; `last exit code = 78: EX_CONFIG` means
+macOS refused the new build, start again at step 1):
+
+```bash
+launchctl print system/io.github.chanoj.clamstop.daemon | grep -E "state|last exit"
+```
+
+Builds signed with a Developer ID (releases once the project has an Apple Developer account)
+keep the same signature from one version to the next and do not need any of this.
 
 ## Uninstall
 
