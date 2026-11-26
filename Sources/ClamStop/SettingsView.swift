@@ -85,7 +85,10 @@ struct SettingsView: View {
                 case .notRegistered:
                     Button("Install Background Service") { model.installService() }
                 case .notResponding:
-                    Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                    HStack {
+                        Button("Reinstall Background Service") { model.reinstallService() }
+                        Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                    }
                 default:
                     EmptyView()
                 }

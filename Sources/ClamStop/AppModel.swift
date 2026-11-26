@@ -135,6 +135,16 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    /// Unregister then register again. Needed after replacing an ad-hoc signed ClamStop.app:
+    /// launchd pins the daemon's code signature at registration and refuses the new binary
+    /// (exit reason OS_REASON_CODESIGNING, verified on macOS 27.2).
+    func reinstallService() {
+        Task {
+            try? await daemonService.unregister()
+            installService()
+        }
+    }
+
     func openLoginItemsSettings() {
         SMAppService.openSystemSettingsLoginItems()
     }
