@@ -1,6 +1,10 @@
 import CoreAudio
 import Foundation
 import IOKit
+import os
+import ClamStopShared
+
+private let logger = Logger(subsystem: ClamStopID.appBundleID, category: "audio")
 
 /// Pauses playback when the lid closes and resumes it when the lid opens again, so the
 /// short wake that precedes hibernation does not play a fraction of a second of audio.
@@ -51,13 +55,23 @@ final class AudioPauser {
         defer { lastLidClosed = closed }
         guard closed != lastLidClosed else { return }  // repeated messages during wakes
         if closed {
-            guard shouldPause(), Self.outputRunning(), let send = Self.sendCommand else { return }
+            guard shouldPause() else { return }
+            guard Self.outputRunning() else {
+                logger.notice("lid closed: no audio playing")
+                return
+            }
+            guard let send = Self.sendCommand else {
+                logger.error("lid closed: MediaRemote unavailable, audio not paused")
+                return
+            }
             pausedByUs = send(Self.commandPause, nil)
+            logger.notice("lid closed: pause sent (\(self.pausedByUs, privacy: .public))")
         } else if pausedByUs {
             pausedByUs = false
             // The lid-open message arrives early in the wake; give audio devices a moment.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                _ = Self.sendCommand?(Self.commandPlay, nil)
+                let sent = Self.sendCommand?(Self.commandPlay, nil) ?? false
+                logger.notice("lid opened: play sent (\(sent, privacy: .public))")
             }
         }
     }

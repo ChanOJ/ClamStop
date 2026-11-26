@@ -90,14 +90,21 @@ final class SystemPower: PowerEffects {
 
     @discardableResult
     func setHibernateMode(_ mode: Int) -> Bool {
-        let (status, output) = Self.pmset(["-a", "hibernatemode", String(mode)])
-        let ok = status == 0 && currentHibernateMode() == mode
-        if ok {
-            Log.info("hibernatemode set to \(mode)")
-        } else {
-            Log.error("pmset -a hibernatemode \(mode) failed: exit=\(status) \(output)")
+        // Seen on 2026-11-26 during a scheduled wake: pmset exited 0 but `pmset -g` still showed
+        // the old value right after. Re-read for a moment, then set again once.
+        for attempt in 1...2 {
+            let (status, output) = Self.pmset(["-a", "hibernatemode", String(mode)])
+            for _ in 0..<5 {
+                if status == 0, currentHibernateMode() == mode {
+                    Log.info("hibernatemode set to \(mode)" + (attempt > 1 ? " (second attempt)" : ""))
+                    return true
+                }
+                usleep(200_000)
+            }
+            Log.error("pmset -a hibernatemode \(mode) not applied (attempt \(attempt)): exit=\(status) "
+                      + "read back \(currentHibernateMode().map(String.init) ?? "nil") \(output)")
         }
-        return ok
+        return false
     }
 
     func run(at date: Date, _ block: @escaping () -> Void) {
