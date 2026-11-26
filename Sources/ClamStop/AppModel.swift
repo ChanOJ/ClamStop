@@ -56,7 +56,12 @@ final class AppModel: ObservableObject {
             serviceState = .requiresApproval
             return
         }
-        registerDaemonIfNeeded()
+        if CommandLine.arguments.contains("--reinstall-service") {
+            // Development aid after replacing an ad-hoc signed build: fresh registration.
+            reinstallService()
+        } else {
+            registerDaemonIfNeeded()
+        }
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }

@@ -110,7 +110,14 @@ struct SettingsView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .accessibilityLabel("The ClamStop switch to turn on in System Settings")
                     }
-                    Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                    HStack {
+                        Button("Open Login Items Settings…") { model.openLoginItemsSettings() }
+                        Button("Reinstall Background Service") { model.reinstallService() }
+                    }
+                    Text("Already turned on? After an update, use Reinstall Background Service, then turn ClamStop on again if asked.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 case .notRegistered:
                     Button("Install Background Service") { model.installService() }
                 case .notResponding:
