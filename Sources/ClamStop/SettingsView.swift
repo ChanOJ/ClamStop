@@ -202,6 +202,8 @@ struct GeneralTab: View {
                 }
             }
 
+            UpdatesSettingsView(updater: .shared)
+
             ServiceSection(model: model)
         }
     }
@@ -363,6 +365,7 @@ struct MenuContent: View {
         Button { openAbout() } label: { Label("About ClamStop", systemImage: "info.circle") }
         Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
+        CheckForUpdatesMenuItem(updater: .shared)
         Button { NSApp.terminate(nil) } label: { Label("Quit ClamStop", systemImage: "door.left.hand.open") }
             .keyboardShortcut("q")
     }

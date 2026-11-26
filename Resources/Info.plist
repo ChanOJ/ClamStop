@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Template: scripts/build-app.sh sets CFBundleShortVersionString, CFBundleVersion and
-  CFBundleLocalizations. Identifiers must match Sources/ClamStopShared/Identifiers.swift.
+  CFBundleLocalizations, and SUPublicEDKey from Resources/sparkle-public-ed-key.txt.
+  Identifiers must match Sources/ClamStopShared/Identifiers.swift.
 -->
 <plist version="1.0">
 <dict>
@@ -40,5 +41,7 @@
 	<string>Copyright © 2026 ChanOJ. MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/ChanOJ/ClamStop/releases/latest/download/appcast.xml</string>
 </dict>
 </plist>

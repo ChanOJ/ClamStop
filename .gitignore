@@ -12,6 +12,7 @@
 *.mobileprovision
 id_rsa*
 id_ed25519*
+*private-key*
 
 # Build output
 .build/

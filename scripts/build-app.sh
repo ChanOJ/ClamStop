@@ -6,6 +6,9 @@
 #   VERSION        marketing version, e.g. 1.2.3 or 1.2.3-rc.1 (default: latest v* tag, else 0.0.0)
 #   BUILD_NUMBER   CFBundleVersion (default: number of commits)
 #   SIGN_IDENTITY  "Developer ID Application" certificate name or SHA-1 (default: ad-hoc)
+#   SPARKLE_FEED_URL        appcast URL (default: the one in Resources/Info.plist)
+#   SPARKLE_PUBLIC_ED_KEY   EdDSA public key for updates (default: Resources/sparkle-public-ed-key.txt;
+#                           without a key the app builds with updates turned off)
 
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
@@ -33,7 +36,7 @@ APP="$DIST/$APP_NAME.app"
 CONTENTS="$APP/Contents"
 log "Assembling $APP"
 rm -rf "$APP"
-mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$CONTENTS/Library/LaunchDaemons"
+mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$CONTENTS/Library/LaunchDaemons" "$CONTENTS/Frameworks"
 
 SDK_VERSION=$(xcrun --sdk macosx --show-sdk-version)
 for name in "$APP_NAME" "$DAEMON_NAME"; do
@@ -50,6 +53,11 @@ for name in "$APP_NAME" "$DAEMON_NAME"; do
         chmod 755 "$binary"
     fi
 done
+
+# Sparkle (updates): the framework with its helpers (Autoupdate, Updater.app, XPC services).
+# SwiftPM links it as @rpath/Sparkle.framework but only adds @loader_path: add Frameworks/.
+ditto "$BIN/Sparkle.framework" "$CONTENTS/Frameworks/Sparkle.framework"
+install_name_tool -add_rpath @executable_path/../Frameworks "$CONTENTS/MacOS/$APP_NAME"
 
 cp "$ROOT/Resources/Info.plist" "$CONTENTS/Info.plist"
 cp "$ROOT/Resources/$DAEMON_PLIST" "$CONTENTS/Library/LaunchDaemons/$DAEMON_PLIST"
@@ -75,6 +83,18 @@ plist="$CONTENTS/Info.plist"
 # CFBundleShortVersionString only accepts numbers: drop any pre-release suffix.
 plutil -replace CFBundleShortVersionString -string "${VERSION%%-*}" "$plist"
 plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$plist"
+# Optional override (local update tests).
+set_string() { plutil -replace "$1" -string "$2" "$plist"; }
+[ -z "${SPARKLE_FEED_URL:-}" ] || set_string SUFeedURL "$SPARKLE_FEED_URL"
+key_file="$ROOT/Resources/sparkle-public-ed-key.txt"
+if [ -z "${SPARKLE_PUBLIC_ED_KEY:-}" ] && [ -f "$key_file" ]; then
+    SPARKLE_PUBLIC_ED_KEY=$(tr -d '[:space:]' <"$key_file")
+fi
+if [ -n "${SPARKLE_PUBLIC_ED_KEY:-}" ]; then
+    set_string SUPublicEDKey "$SPARKLE_PUBLIC_ED_KEY"
+else
+    log "No Sparkle public key (Resources/sparkle-public-ed-key.txt): updates turned off"
+fi
 # Without this list, macOS keeps the resource bundles in the development language.
 languages=$(find "$CONTENTS/Resources" -type d -name '*.lproj' ! -name 'Base.lproj' \
     -exec basename {} .lproj \; | sort -u)
@@ -93,7 +113,14 @@ else
     log "Signing ad-hoc (SIGN_IDENTITY not set)"
     options=()
 fi
-# Inside out: the daemon first, then the bundle (which signs the app executable).
+# Inside out: Sparkle's helpers, then the framework, the daemon, and the bundle last (which
+# signs the app executable). Order and options from Sparkle's "Sandboxing and code signing" docs.
+sparkle="$CONTENTS/Frameworks/Sparkle.framework/Versions/B"
+sign "$sparkle/XPCServices/Installer.xpc" ${options[@]+"${options[@]}"}
+sign "$sparkle/XPCServices/Downloader.xpc" --preserve-metadata=entitlements ${options[@]+"${options[@]}"}
+sign "$sparkle/Autoupdate" ${options[@]+"${options[@]}"}
+sign "$sparkle/Updater.app" ${options[@]+"${options[@]}"}
+sign "$CONTENTS/Frameworks/Sparkle.framework" ${options[@]+"${options[@]}"}
 sign "$CONTENTS/MacOS/$DAEMON_NAME" --identifier "$DAEMON_ID" ${options[@]+"${options[@]}"}
 sign "$APP" --identifier "$APP_ID" ${options[@]+"${options[@]}"}
 
