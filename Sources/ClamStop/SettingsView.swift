@@ -27,6 +27,8 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .disabled(model.serviceState != .running)
 
@@ -42,6 +44,8 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
 
@@ -51,6 +55,8 @@ struct SettingsView: View {
                         .foregroundStyle(model.statusIsOK ? .green : .orange)
                     Text(model.statusLine)
                         .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 switch model.serviceState {
                 case .requiresApproval:

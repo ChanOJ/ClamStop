@@ -34,6 +34,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if firstLaunch || (iconHidden && !launchedAsLoginItem(notification)) {
             showSettings()
         }
+        snapshotIfRequested()
+    }
+
+    /// Development aid: `ClamStop --snapshot /path/to/file.png` renders the settings window to a
+    /// PNG (no Screen Recording permission needed), for docs and reviews.
+    private func snapshotIfRequested() {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
+        let url = URL(fileURLWithPath: args[i + 1])
+        showSettings()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let view = self?.settingsWindow?.contentView?.superview,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: url)
+        }
     }
 
     /// Opening the app again (Finder, Spotlight, Launchpad) while it runs: show the settings.
