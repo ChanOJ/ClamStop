@@ -20,9 +20,22 @@ developer alike.
    are immediate and cost no battery.
 5. **Private.** No account, no analytics. Network use is limited to update checks and license
    activation, both documented.
-6. **Free core, Pro for the rest.** Free: sleep on lid close, hibernation after 1 h or never,
-   safety guards, basic visibility. Everything else is Pro (license key in the full edition, In-App
-   Purchase in the Store edition).
+6. **Free core, Pro for the rest.** Free: sleep on lid close, keep working with the lid closed
+   when a screen is plugged in (also on battery), hibernation after 1 h or never, stay awake now
+   (until turned off or for a duration, like KeepingYouAwake), safety guards, basic visibility.
+   Everything else is Pro (license key in the full edition, In-App Purchase in the Store edition).
+
+### Positioning
+
+What sets ClamStop apart:
+
+1. **One app instead of many.** It replaces the tools that manage what the lid does (sleep despite
+   a screen, stay awake on battery) and the tools that block sleep by hand (KeepingYouAwake,
+   Amphetamine, Caffeine) or while something runs: AI coding agents, video encoding and exports
+   (HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, ffmpeg), renders, builds, downloads.
+2. **Simple, yet complete.** A first-time user answers one question and is done; every case found
+   in other tools is still reachable through sessions and rules, without a separate setting for
+   each.
 
 ## 2. Personas
 
@@ -59,7 +72,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
 |---|---|---|---|---|---|---|
 | A1 | Sleep when the lid closes, even with an external display, keyboard and power connected | Free | F+S | M (exists) | IOKit lid notification; `pmset sleepnow` or `IOPMSleepSystem` (verified sandboxed) | noclamshell, Lidsleep (Royal-lobster), Lid-sleep (tyilo), no-clamshell, lidwatch, Clamshell (App Store), Sleep Control Centre |
-| A2 | Choose the lid action: Sleep / Stay awake / Turn the screens off only / Do what macOS does | Pro (Sleep and macOS default free) | F (stay awake on battery), S (on power only) | M | Stay awake with lid closed: `pmset disablesleep` (root) or assertions (power + display only) | LidSleepToggle (Sufxx), lidawake (richardlinq), continuity-control, hendrilee/lidsleep, Sleep Control Centre |
+| A2 | Choose the lid action: Sleep / Keep working when a screen is plugged in, even on battery / Stay awake / Turn the screens off only / Do what macOS does | Pro (Sleep, screen plugged in and macOS default free) | F (stay awake on battery), S (on power only) | M | Stay awake with lid closed: `pmset disablesleep` (root) or assertions (power + display only) | LidSleepToggle (Sufxx), lidawake (richardlinq), continuity-control, hendrilee/lidsleep, Sleep Control Centre |
 | A3 | Delay before sleeping after the lid closes (30 s to 2 h), to carry the Mac to a meeting or finish a task | Pro | F | 1 | `disablesleep` during the delay | lidsleep (DerekYeh), PeachPocket, Lid Close Sleep Delay (Windows) |
 | A4 | Re-sleep guard: if the Mac wakes while the lid is still closed (Bluetooth, network, glitch), put it back to sleep after a short grace period | Free | F+S | M | Lid state + wake reason | lid-sleep-app (wood-sheep), noclamshell |
 | A5 | "Sleep now" in the menu, which also works while a lid hold is active (Apple menu > Sleep does not) | Free | F+S | M | | double-shot, Sleep Expert, turnintoserver |
@@ -81,11 +94,11 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 
 | ID | Feature | Tier | Ed. | Prio | Tech | Seen in |
 |---|---|---|---|---|---|---|
-| C1 | Stay awake now: until turned off, for 15 min to 12 h, or until a time | Pro | F+S | M | Power assertions | Amphetamine, Caffeine, KeepingYouAwake, Insomnio, Sleep Expert, InsomniaZ, Tazzina, Awayke |
-| C2 | Keep working with the lid closed during a session (on power; on battery in the full edition) | Pro | F (S: power only, to verify) | M | `disablesleep` (root); Lidwork claims a sandboxed method, to verify | Insomnia (krishhgg), Lidless, Sleepless, ClamDown, double-shot, Lidwork, NeverFold, InsomniaZ, MacMiniMode, dozens more |
+| C1 | Stay awake now ("Activate for duration"): until turned off (default), 5, 10, 15, 30 min, 1, 2, 5, 8 h, custom, or until a time; default duration in settings; left-click on the icon toggles it (option), right-click opens the menu. Lid open: idle sleep only; lid closed: see C2 | Free (custom duration and "until a time": Pro) | F+S | M | Power assertions | KeepingYouAwake, Amphetamine, Caffeine, Insomnio, Sleep Expert, InsomniaZ, Tazzina, Awayke |
+| C2 | Keep working with the lid closed during a session (on power; on battery in the full edition) | Free on power, Pro on battery | F (S: power only, to verify) | M | `disablesleep` (root); Lidwork claims a sandboxed method, to verify | Insomnia (krishhgg), Lidless, Sleepless, ClamDown, double-shot, Lidwork, NeverFold, InsomniaZ, MacMiniMode, dozens more |
 | C3 | Screen policy during a session: let screens sleep, keep them on, or switch the built-in screen off when the lid is closed | Pro | F+S | M | Display assertions; brightness 0 | Amphetamine, Capsomnia, MacMiniMode, agent-lid-closed, LidSleepToggle |
 | C4 | Session end: reminder 5 min before, "+30 min" button, optional sleep at the end if the lid is closed | Pro | F+S | 1 | | Insomnio, Insomnia (krishhgg), Capsomnia |
-| C5 | Stay awake while an app or command runs (by name, path or PID; optionally only while it uses the processor) | Pro | F+S | 1 | Process list (sandbox: to verify for CLI processes) | Amphetamine, Lchika, Fermata, Insomnio, LidAwake (Vladimir-Podgornyi) |
+| C5 | Stay awake while an app or command runs (by name, path or PID; optionally only while it uses the processor), with a ready-made list of known long jobs: HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro, Blender, ffmpeg, Xcode builds, Ollama, LM Studio | Pro | F+S | M | Process list (sandbox: to verify for CLI processes) | Amphetamine, Lchika, Fermata, Insomnio, LidAwake (Vladimir-Podgornyi) |
 | C6 | Stay awake while a download or upload is in progress | Pro | F+S | 1 | Network throughput | Amphetamine, Insomnio, LidAwake (Vladimir-Podgornyi) |
 | C7 | Stay awake while AI coding agents work, then sleep when they all wait or finish: hooks for Claude Code, Codex, Gemini CLI, Cursor, Copilot CLI, OpenCode, Aider; leases that expire if an agent is killed | Pro | F (S: to verify) | M (in progress) | Agent hooks + process activity | clamshut, adrafinil, double-shot, LidSleepToggle, agent-lid-closed, Lidless, Lockpaw, No Sleep for AI, Keep Awake: AI Agents, lidsleep (DerekYeh) |
 | C8 | "Sleep when idle" ending: stay awake while work happens (processor busy, another app holding sleep, input), then sleep | Pro | F+S | 1 | Load, assertions, HID idle | LidAwake (Vladimir-Podgornyi), Sleep Expert (Force Sleep) |
@@ -173,10 +186,13 @@ screen offers both directions instead of assuming one.
 1. "What should happen when you close the lid?" Large choices, each with one line of
    explanation:
    - *Sleep, even when a screen is plugged in* (recommended, free);
-   - *Stay awake while plugged in* (for downloads, a home server, a screen used as a desktop);
-   - *Stay awake while AI agents work, then sleep* (Claude Code, Codex...).
+   - *Keep working when a screen is plugged in, even on battery* (free; macOS alone requires the
+     power adapter; full edition only, it needs the background service);
+   - *Stay awake while AI agents work, then sleep* (Pro; Claude Code, Codex...).
    Pro choices carry a "Pro" badge; picking one shows what it unlocks and lets the user unlock it
    now or continue with *Sleep*. The choice becomes the lid action (A2) or a preset (D5).
+   One-off needs ("stay awake for 2 hours while this runs") are not asked here: they live in the
+   menu bar (C1).
 2. "Allow ClamStop in System Settings": illustration of the switch, button that opens the right
    pane, automatic detection when it is done. **Full edition only** (the Store edition has no
    background service).
@@ -197,8 +213,9 @@ screen offers both directions instead of assuming one.
 
 ### Menu bar menu
 
-Status line, *Stay awake* submenu (Until I turn it off, 30 min, 1 h, 2 h, Until..., While an
-app runs...), *Sleep now*, *Settings...*, *Quit ClamStop*. Remaining time shown when a session
+Status line, *Stay awake* submenu (Until I turn it off, 5, 10, 15, 30 min, 1, 2, 5, 8 h,
+Until..., While an app runs...), *Sleep now*, *Settings...*, *Quit ClamStop*. Optional: left-click
+on the icon starts or stops a session with the default duration, as in KeepingYouAwake. Remaining time shown when a session
 runs. Quitting while a session or lid hold is active asks once and restores normal sleep.
 
 ### Wording and accessibility
@@ -215,7 +232,7 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
 |---|---|---|
 | Sleep on lid close | yes | yes |
 | Hibernation (B1, B2, B3) | yes | no (needs root) |
-| Lid-closed sessions on battery, delay after close (A3, C2) | yes | power only, if feasible sandboxed (to verify) |
+| Keep working with a screen on battery, lid-closed sessions on battery, delay after close (A2, A3, C2) | yes | power only, if feasible sandboxed (to verify) |
 | Schedules, wake at a time (D3, D4) | yes | no |
 | Low Power Mode, crash watchdog in a daemon (B6, E4) | yes | no (sessions use assertions, released by macOS when the app quits) |
 | CLI, agent hook installer (I3, I5) | yes | no (URL scheme and Shortcuts instead) |
