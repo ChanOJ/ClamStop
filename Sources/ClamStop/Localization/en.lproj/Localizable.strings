@@ -1,0 +1,3 @@
+/* English is the development language: the keys in the source code are the English strings.
+   The UI ships in English only for now; other languages can be added later as <lang>.lproj
+   folders next to this one (scripts/build-app.sh copies every .lproj into the app). */

@@ -3,6 +3,9 @@
 Open source (MIT) macOS menu bar app: on lid close, force sleep even in clamshell mode, then
 hibernate after a configurable delay. GitHub: `ChanOJ/ClamStop` (public). Minimum macOS 14 Sonoma.
 Public text (README, code comments, UI strings) uses neutral, inclusive wording.
+UI is English only for now (other languages later, as `.lproj` folders).
+The ⓘ help popover (`LidHelpView` in `Sources/ClamStop/SettingsView.swift`) and the opening
+paragraphs of `README.md` carry the same text: change both together.
 
 ## Layout and identifiers (shared contract, do not rename without updating every user)
 
