@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import ClamStopShared
 
@@ -20,6 +21,8 @@ struct ClamStopApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = AppModel()
     private var settingsWindow: NSWindow?
+    private var hostingController: NSHostingController<SettingsView>?
+    private var modelObserver: AnyCancellable?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
@@ -79,18 +82,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func showSettings() {
         if settingsWindow == nil {
             let controller = NSHostingController(rootView: SettingsView(model: model))
-            controller.sizingOptions = [.preferredContentSize]
+            // No constraint-driven window sizing: with a grouped Form it can loop forever
+            // ("update constraints" exception, seen on first launch). Size the window by hand.
+            controller.sizingOptions = []
+            hostingController = controller
             let window = NSWindow(contentViewController: controller)
             window.title = String(localized: "ClamStop Settings")
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             window.delegate = self
-            window.center()
             settingsWindow = window
+            fitSettingsWindow()
+            window.center()
+            modelObserver = model.objectWillChange
+                .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+                .sink { [weak self] _ in self?.fitSettingsWindow() }
         }
         model.refresh()
         NSApp.activate()
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Resize the window to the SwiftUI content's ideal height, keeping its top edge in place.
+    private func fitSettingsWindow() {
+        guard let window = settingsWindow, let view = hostingController?.view else { return }
+        let size = view.fittingSize
+        guard size.width > 0, size.height > 0,
+              abs(window.contentLayoutRect.height - size.height) > 0.5 else { return }
+        let top = window.frame.maxY
+        window.setContentSize(size)
+        window.setFrameTopLeftPoint(NSPoint(x: window.frame.minX, y: top))
     }
 
     private func launchedAsLoginItem(_ notification: Notification) -> Bool {
