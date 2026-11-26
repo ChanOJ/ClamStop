@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon registered by the app with SMAppService.daemon(plistName:). Copied to
+  ClamStop.app/Contents/Library/LaunchDaemons/. The daemon runs permanently (RunAtLoad,
+  KeepAlive) so it can follow sleep and wake events.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>io.github.chanoj.clamstop.daemon</string>
+	<key>BundleProgram</key>
+	<string>Contents/MacOS/ClamStopDaemon</string>
+	<key>MachServices</key>
+	<dict>
+		<key>io.github.chanoj.clamstop.daemon.xpc</key>
+		<true/>
+	</dict>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>io.github.chanoj.clamstop</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+</dict>
+</plist>

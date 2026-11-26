@@ -1,0 +1,84 @@
+name: Release
+
+# Pushing a tag such as v1.2.3 publishes a GitHub Release. The build is signed and notarized
+# when the secrets described in docs/signing.md exist, ad-hoc signed otherwise.
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: macos-26
+    timeout-minutes: 90
+    permissions:
+      contents: write # create the GitHub Release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the commit count gives the build number
+          persist-credentials: false
+
+      - name: Version from the tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: swift test
+
+      - name: Import the signing certificate
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: scripts/import-certificate.sh
+
+      - name: Assemble and sign the app
+        run: scripts/build-app.sh
+
+      - name: Check the bundle
+        run: scripts/verify-app.sh
+
+      - name: Notarize the app
+        env:
+          NOTARY_API_KEY_P8_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: scripts/notarize.sh dist/ClamStop.app
+
+      - name: Create the DMG
+        run: scripts/make-dmg.sh
+
+      - name: Notarize the DMG
+        env:
+          NOTARY_API_KEY_P8_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: scripts/notarize.sh "dist/ClamStop-$VERSION.dmg"
+
+      - name: Gatekeeper assessment (notarized builds)
+        run: |
+          if xcrun stapler validate "dist/ClamStop-$VERSION.dmg"; then
+            spctl --assess --type execute --verbose=2 dist/ClamStop.app
+            spctl --assess --type open --context context:primary-signature --verbose=2 \
+              "dist/ClamStop-$VERSION.dmg"
+          else
+            echo "::warning::This release is not notarized (see docs/signing.md)."
+          fi
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: scripts/publish-release.sh
+
+      - name: Delete the signing keychain
+        if: always()
+        run: |
+          if [ -n "${SIGN_KEYCHAIN:-}" ] && [ -f "$SIGN_KEYCHAIN" ]; then
+            security delete-keychain "$SIGN_KEYCHAIN"
+          fi
