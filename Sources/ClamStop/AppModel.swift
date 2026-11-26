@@ -61,7 +61,8 @@ final class AppModel: ObservableObject {
             serviceState = .requiresApproval
             status = nil
         case .notFound:
-            serviceState = .notFound
+            // Also what macOS reports for a daemon that was never registered (verified on 27.2).
+            serviceState = Self.daemonPlistInBundle ? .notRegistered : .notFound
             status = nil
         case .enabled:
             Task {
@@ -104,8 +105,22 @@ final class AppModel: ObservableObject {
     // MARK: Registration
 
     private func registerDaemonIfNeeded() {
-        guard daemonService.status == .notRegistered else { return }
-        installService()
+        switch daemonService.status {
+        case .notRegistered:
+            installService()
+        case .notFound where Self.daemonPlistInBundle:
+            installService()
+        default:
+            break
+        }
+    }
+
+    /// The LaunchDaemon plist ships inside the app bundle (false when run outside ClamStop.app).
+    static var daemonPlistInBundle: Bool {
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Library/LaunchDaemons")
+            .appendingPathComponent(ClamStopID.daemonPlistName)
+        return FileManager.default.fileExists(atPath: url.path)
     }
 
     func installService() {
