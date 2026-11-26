@@ -30,7 +30,7 @@ jobs:
         run: swift build
 
       - name: Test
-        run: swift test
+        run: scripts/test.sh
 
       - name: Assemble the app (ad-hoc signature)
         run: scripts/build-app.sh

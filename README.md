@@ -152,10 +152,10 @@ Package it into a DMG in `dist/`:
 scripts/make-dmg.sh
 ```
 
-Run the tests:
+Run the tests (also works with only the Command Line Tools installed):
 
 ```bash
-swift test
+scripts/test.sh
 ```
 
 The version comes from the latest `v*` tag; set `VERSION=1.2.3` to choose another one. The app
