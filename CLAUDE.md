@@ -21,8 +21,10 @@ paragraphs of `README.md` carry the same text: change both together.
   (`BundleProgram` = `Contents/MacOS/ClamStopDaemon`, `MachServices` = the XPC name),
   `Contents/Info.plist` with `LSUIElement` = true, `LSMinimumSystemVersion` = 14.0.
   Templates live in `Resources/`.
-- Local machine has only the Command Line Tools: `swift build` works, `swift test` does not
-  (XCTest and Swift Testing macros missing). Tests run in CI (GitHub macOS runner, Xcode).
+- Local machine has only the Command Line Tools: run the tests with `scripts/test.sh`, not plain
+  `swift test` (SwiftPM does not pass the Swift Testing macro plugin path with the CLT; the
+  script adds it). Tests also run in CI (GitHub macOS runner, Xcode). The SwiftUI `@State`
+  macro is unavailable with the CLT: keep view state in `AppModel`.
 
 ## Verified on MacBook Pro M5 Pro, macOS 27.2.1 (2026-11-26, `spike/probe.swift`)
 
