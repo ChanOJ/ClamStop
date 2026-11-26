@@ -63,17 +63,18 @@ on again in the same list.
 1. Open the ClamStop settings (menu bar icon > **Settings…**, or open the app again from the
    Applications folder).
 2. Click **Uninstall ClamStop…**, then **Uninstall**. ClamStop restores the default sleep
-   settings, removes its background service and login item, then quits.
+   settings, deletes the files of its background service, removes that service and the login
+   item, then quits.
 3. Move ClamStop from the Applications folder to the Trash.
-4. Optional: delete the settings that remain.
-
-   ```bash
-   sudo rm -rf "/Library/Application Support/ClamStop"
-   ```
+4. Optional: delete the app preferences that remain. An error saying the domain does not exist
+   means there is nothing left.
 
    ```bash
    defaults delete io.github.chanoj.clamstop
    ```
+
+If the background service was not responding during step 2, also follow steps 2 to 4 of the
+next section.
 
 ### If the app was deleted first
 
@@ -89,14 +90,20 @@ on again in the same list.
    sudo pmset -a hibernatemode 3
    ```
 
-3. Check that no wake scheduled by ClamStop remains in the list (a leftover one only wakes the
+3. Delete the files of the background service:
+
+   ```bash
+   sudo rm -rf "/Library/Application Support/ClamStop"
+   ```
+
+4. Check that no wake scheduled by ClamStop remains in the list (a leftover one only wakes the
    Mac once):
 
    ```bash
    pmset -g sched
    ```
 
-4. If ClamStop is still listed in **Login Items & Extensions**, turn it off there.
+5. If ClamStop is still listed in **Login Items & Extensions**, turn it off there.
 
 ## Build from source
 
@@ -125,7 +132,7 @@ Package it into a DMG in `dist/`:
 scripts/make-dmg.sh
 ```
 
-Run the tests (needs Xcode: the Command Line Tools alone lack the testing libraries):
+Run the tests:
 
 ```bash
 swift test
