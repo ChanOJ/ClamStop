@@ -149,7 +149,10 @@ final class PowerEventMonitor {
         let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
         defer { IOObjectRelease(root) }
         let kr = IOServiceAddInterestNotification(lidPort, root, kIOGeneralInterest, { context, _, message, argument in
-            guard message == kMsgClamshellStateChange, let context else { return }
+            guard message == kMsgClamshellStateChange, let context else {
+                Log.info("rootDomain message \(String(format: "0x%08x", message))")  // diagnostics
+                return
+            }
             let monitor = Unmanaged<PowerEventMonitor>.fromOpaque(context).takeUnretainedValue()
             monitor.onLidChange(UInt(bitPattern: argument) & kClamshellStateBit != 0)
         }, context, &lidNotifier)

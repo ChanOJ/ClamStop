@@ -27,6 +27,11 @@ public protocol StateStore: AnyObject {
 /// on sleep with the lid closed, schedule a wake after the delay; on that wake with the lid still
 /// closed, set `hibernatemode 25` and sleep again; on any user wake, restore `hibernatemode` and
 /// cancel the pending wake. Not thread-safe: call everything from one serial queue.
+///
+/// Verified on Apple Silicon (2026-11-26): the scheduled wake is a *dark* wake (display off) and
+/// dark wakes send no sleep/wake notification to `IORegisterForSystemPower` clients. So the
+/// deadline is also checked by a wall-clock timer and on the clamshell messages that dark wakes
+/// emit (`deadlineCheck`), and `awake` only tracks full (user) wakes.
 public final class PowerController {
     /// A wake this close to the scheduled date counts as the scheduled one (wakes can be coalesced).
     public static let wakeTolerance: TimeInterval = 60
@@ -36,6 +41,9 @@ public final class PowerController {
     public static let missedDeadlineGrace: TimeInterval = 120
     /// Pause between a wake and the re-sleep into hibernation, to let the wake settle.
     public static let resleepDelay: TimeInterval = 1
+    /// A full-wake notification this soon after starting hibernation is the same wake, not a
+    /// wake from hibernation (the deadline timer can fire before the notification arrives).
+    public static let sameWakeWindow: TimeInterval = 30
 
     public private(set) var settings: ClamStopSettings
     public private(set) var state: PersistedState
@@ -46,7 +54,9 @@ public final class PowerController {
     private let store: StateStore
     private let log: (String) -> Void
     private var lastLidClosed = false
+    /// Fully awake (user wake). Dark wakes leave it false.
     private var awake = true
+    private var hibernationStartedAt: Date?
     /// Incremented on each sleep; lets timers know whether a sleep happened since they were armed.
     private var sleepGeneration = 0
 
@@ -111,6 +121,11 @@ public final class PowerController {
 
     public func lidChanged(closed: Bool) {
         defer { lastLidClosed = closed }
+        if closed && lastLidClosed {
+            // Repeated "closed" messages come with dark wakes, including the scheduled one.
+            deadlineCheck(trigger: "lid message")
+            return
+        }
         if !closed {
             // Lid opened while awake (after an early lid-closed wake): the user is here.
             if lastLidClosed, awake, state.phase == .awaitingHibernation {
@@ -161,6 +176,10 @@ public final class PowerController {
         case .idle:
             restoreHibernateMode()  // safety net, normally a no-op
         case .hibernating:
+            if let started = hibernationStartedAt, effects.now().timeIntervalSince(started) < Self.sameWakeWindow {
+                log("full wake notification for the scheduled wake: hibernation already requested")
+                return
+            }
             log("woke from hibernation (lid closed: \(lidClosed)): restoring hibernatemode")
             restoreHibernateMode()
             update(phase: .idle, pendingWake: nil)
@@ -187,6 +206,17 @@ public final class PowerController {
         }
     }
 
+    /// Hibernate if the deadline has passed while the Mac is in a dark wake with the lid closed.
+    /// Called by the deadline timer and on clamshell messages; full wakes go through `systemDidWake`.
+    public func deadlineCheck(trigger: String) {
+        guard state.phase == .awaitingHibernation, let wake = state.pendingWake else { return }
+        guard !awake else { return }  // fully awake: the user is here, systemDidWake decides
+        guard effects.now() >= wake.addingTimeInterval(-Self.wakeTolerance) else { return }
+        guard effects.isLidClosed() else { return }
+        log("deadline reached (\(trigger)) in a dark wake with the lid closed")
+        hibernate()
+    }
+
     // MARK: Internals
 
     private func schedule() {
@@ -196,6 +226,7 @@ public final class PowerController {
         if effects.scheduleWake(at: date) {
             log("will sleep: hibernation wake scheduled at \(date)")
             update(phase: .awaitingHibernation, pendingWake: date)
+            effects.run(at: date) { [weak self] in self?.deadlineCheck(trigger: "timer") }
         } else {
             log("will sleep: could not schedule the hibernation wake")
             update(phase: .idle, pendingWake: nil)
@@ -208,6 +239,7 @@ public final class PowerController {
         if state.savedHibernateMode == nil {
             state.savedHibernateMode = effects.currentHibernateMode() ?? HibernateMode.default
         }
+        hibernationStartedAt = effects.now()
         update(phase: .hibernating, pendingWake: nil)  // persist before changing the system
         guard effects.setHibernateMode(HibernateMode.hibernate) else {
             log("could not set hibernatemode \(HibernateMode.hibernate); sleeping normally")

@@ -83,7 +83,7 @@ service.controller.start()
 
 let monitor = PowerEventMonitor()
 monitor.onLidChange = { closed in
-    Log.info("lid \(closed ? "closed" : "open")")
+    Log.info("lid \(closed ? "closed" : "open") (\(service.power.wakeDescription))")
     service.controller.lidChanged(closed: closed)
 }
 monitor.onWillSleep = {

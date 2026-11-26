@@ -126,6 +126,7 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
         c.systemWillSleep()  // into hibernation: no new wake
         #expect(e.scheduled.isEmpty)
 
+        e.advance(300)
         e.lidClosed = false
         c.lidChanged(closed: false)
         c.systemDidWake()  // wake from hibernation
@@ -212,6 +213,7 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
         c.systemDidWake()
         #expect(e.hibernateMode == 25)
         c.systemWillSleep()
+        e.advance(300)
         c.systemDidWake()
         #expect(e.hibernateMode == 0)
     }
@@ -219,12 +221,49 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
     @Test func failingToSetModeFallsBackToNormalSleep() {
         let (c, e, _) = makeController(delayMinutes: 10)
         closeLidAndSleep(c, e)
-        e.advance(600)
         e.setModeFails = true
+        e.advance(600)
         c.systemDidWake()
         #expect(e.hibernateMode == 3)
         #expect(e.sleepRequests == 2)
         #expect(c.state.phase == .idle)
+    }
+
+    @Test func darkScheduledWakeHibernatesFromTimer() {
+        // Apple Silicon: the scheduled wake is dark, with no wake notification at all.
+        let (c, e, _) = makeController(delayMinutes: 10)
+        closeLidAndSleep(c, e)
+        e.advance(600)
+        #expect(c.state.phase == .hibernating)
+        #expect(e.hibernateMode == 25)
+        #expect(e.sleepRequests == 2)
+        e.advance(600)  // user wakes it from hibernation much later
+        e.lidClosed = false
+        c.systemDidWake()
+        #expect(e.hibernateMode == 3)
+        #expect(c.state == PersistedState())
+    }
+
+    @Test func lidMessageInDarkWakeAfterDeadlineHibernates() {
+        let (c, e, _) = makeController(delayMinutes: 10)
+        closeLidAndSleep(c, e)
+        e.timers.removeAll()  // the timer did not fire (yet)
+        e.advance(300)
+        c.lidChanged(closed: true)  // dark wake before the deadline
+        #expect(c.state.phase == .awaitingHibernation)
+        e.advance(300)
+        c.lidChanged(closed: true)
+        #expect(c.state.phase == .hibernating)
+    }
+
+    @Test func deadlineTimerIgnoredWhenFullyAwake() {
+        let (c, e, _) = makeController(delayMinutes: 10)
+        closeLidAndSleep(c, e)
+        e.advance(100)
+        c.systemDidWake()  // keyboard wake, lid closed, user works
+        e.advance(500)
+        #expect(c.state.phase == .awaitingHibernation)
+        #expect(e.hibernateMode == 3)
     }
 
     @Test func delayOverrideInSeconds() {
