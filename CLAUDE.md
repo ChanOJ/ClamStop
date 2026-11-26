@@ -56,6 +56,16 @@ paragraphs of `README.md` carry the same text: change both together.
 `~/.claude/settings.json` and `~/.codex/hooks.json` (done by the app). Do not write `standbydelay*` (no effect
 on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelaylow 10800`.
 
+## Installing a new build on this Mac (ad-hoc signed)
+
+Follow README "Updating an unsigned build" (verified 2026-11-26): quit the app, `ditto
+dist/ClamStop.app /Applications/ClamStop.app`, `open /Applications/ClamStop.app --args
+--reinstall-service`, then the user turns the switch on once (never off and on: it restores the
+pinned registration, `last exit code = 78: EX_CONFIG`). Check with `launchctl print
+system/io.github.chanoj.clamstop.daemon`. Do not run `sfltool dumpbtm`: every call pops up an
+administrator prompt. Every reinstall needs the user's approval again, so batch fixes before
+installing.
+
 ## Distribution
 
 Apple Developer Program: the user will enroll later. Until then CI builds unsigned (ad-hoc)
