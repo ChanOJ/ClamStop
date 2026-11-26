@@ -1,18 +1,5 @@
 import SwiftUI
 
-/// Small "Pro" tag next to a locked feature. Text, not color alone; VoiceOver reads "Pro feature".
-struct ProBadge: View {
-    var body: some View {
-        Text("Pro")
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(Color.accentColor.opacity(0.18)))
-            .accessibilityLabel("Pro feature")
-    }
-}
-
 /// Small gray tag such as "Recommended".
 struct TagBadge: View {
     let text: LocalizedStringKey
@@ -34,15 +21,10 @@ struct TagBadge: View {
 /// Large selectable choice of the first-run screens: icon, title, one line of explanation,
 /// optional badge and an information line shown once selected. Selection is shown by a check mark and a border, not color alone.
 struct ChoiceCard: View {
-    enum Badge {
-        case recommended
-        case pro
-    }
-
     let symbol: String
     let title: LocalizedStringKey
     let detail: LocalizedStringKey
-    var badge: Badge?
+    var recommended = false
     var info: LocalizedStringKey?
     let isSelected: Bool
     let action: () -> Void
@@ -59,11 +41,7 @@ struct ChoiceCard: View {
                     HStack(spacing: 6) {
                         Text(title)
                             .font(.headline)
-                        switch badge {
-                        case .recommended: TagBadge("Recommended")
-                        case .pro: ProBadge()
-                        case nil: EmptyView()
-                        }
+                        if recommended { TagBadge("Recommended") }
                     }
                     Text(detail)
                         .foregroundStyle(.secondary)
@@ -101,22 +79,16 @@ struct ChoiceCard: View {
     }
 }
 
-/// A settings row: title (with an optional Pro badge) and a one-line note on the left, the
-/// control on the right. Locked Pro controls stay readable but disabled.
+/// A settings row: title and a one-line note on the left, the control on the right.
 struct OptionRow<Control: View>: View {
     let title: LocalizedStringKey
     var note: LocalizedStringKey?
-    var pro = false
-    var locked = false
     @ViewBuilder let control: () -> Control
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(title)
-                    if pro { ProBadge() }
-                }
+                Text(title)
                 if let note {
                     Text(note)
                         .font(.footnote)
@@ -127,7 +99,6 @@ struct OptionRow<Control: View>: View {
             .accessibilityElement(children: .combine)
             Spacer(minLength: 8)
             control()
-                .disabled(locked)
         }
     }
 }
@@ -136,14 +107,11 @@ struct OptionRow<Control: View>: View {
 struct ToggleRow: View {
     let title: LocalizedStringKey
     var note: LocalizedStringKey?
-    var pro = false
-    var locked = false
     @Binding var isOn: Bool
 
     var body: some View {
-        OptionRow(title: title, note: note, pro: pro, locked: locked) {
-            // A locked Pro switch shows off: the feature is not active without Pro.
-            Toggle(title, isOn: locked ? .constant(false) : $isOn)
+        OptionRow(title: title, note: note) {
+            Toggle(title, isOn: $isOn)
                 .labelsHidden()
                 .toggleStyle(.switch)
         }

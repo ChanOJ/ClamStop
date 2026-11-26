@@ -38,7 +38,7 @@ struct MenuMockupView: View {
             HStack(spacing: 4) {
                 Image(nsImage: ClamGlyph.image)
                     .renderingMode(.template)
-                if model.menuState == .session && model.isPro {
+                if model.menuState == .session {
                     Text(verbatim: "1h42")
                         .font(.system(size: 12, weight: .medium).monospacedDigit())
                 }
@@ -68,17 +68,16 @@ struct MenuMockupView: View {
                 MenuSeparator()
                 MenuItem(title: "Stay Awake", icon: .symbol("cup.and.saucer"), hasSubmenu: true, highlighted: true)
             case .session:
-                // Free: the lid-closed part of a session needs power (spec C2).
+                // Store edition: the lid-closed part of a session needs power (spec C2).
                 MenuStatus(title: "Staying awake: 1 h 42 min left",
-                           detail: model.isPro ? "Even if you close the lid" : "Even if you close the lid, while charging")
+                           detail: model.edition.hasBackgroundService ? "Even if you close the lid" : "Even if you close the lid, while charging")
                 MenuSeparator()
                 MenuItem(title: "Stop Staying Awake", icon: .symbol("cup.and.saucer.fill"))
                 MenuItem(title: "Stay Awake", icon: .symbol("cup.and.saucer"), hasSubmenu: true)
             }
             MenuItem(title: "Sleep Now", icon: .symbol("moon"))
             if model.edition.hasBackgroundService {
-                MenuItem(title: "Hibernate Now", icon: .symbol("snowflake"),
-                         pro: !model.isPro, disabled: !model.isPro)
+                MenuItem(title: "Hibernate Now", icon: .symbol("snowflake"))
             }
             MenuSeparator()
             MenuItem(title: "Settings…", icon: .symbol("gearshape"), shortcut: "⌘,")
@@ -87,8 +86,7 @@ struct MenuMockupView: View {
     }
 
     private var stayAwakeSubmenu: some View {
-        let locked = !model.isPro
-        return MenuPanel(width: 230) {
+        MenuPanel(width: 230) {
             MenuItem(title: "Until I Turn It Off")
             MenuSeparator()
             MenuItem(title: "5 Minutes")
@@ -100,8 +98,8 @@ struct MenuMockupView: View {
             MenuItem(title: "5 Hours")
             MenuItem(title: "8 Hours")
             MenuSeparator()
-            MenuItem(title: "Until…", pro: locked, disabled: locked)
-            MenuItem(title: "While an App Runs…", pro: locked, disabled: locked)
+            MenuItem(title: "Until…")
+            MenuItem(title: "While an App Runs…")
         }
     }
 }
@@ -175,14 +173,12 @@ private struct MenuItem: View {
     var shortcut: String?
     var hasSubmenu = false
     var highlighted = false
-    var pro = false
     var disabled = false
 
     var body: some View {
         HStack(spacing: 6) {
             if let icon { MenuIcon(icon: icon) }
             Text(title)
-            if pro { ProBadge() }
             Spacer(minLength: 16)
             if let shortcut {
                 Text(verbatim: shortcut)

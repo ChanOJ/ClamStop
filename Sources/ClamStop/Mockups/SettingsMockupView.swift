@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Settings window of the spec (section 5 "Main window"): a live sentence, the simple settings,
-/// then "More options" with Pro badges on locked controls and one "Unlock Pro" button.
+/// then the other options in tabs. Full edition: a discreet donation link at the bottom of General.
 struct SettingsMockupView: View {
     @ObservedObject var model: MockupModel
 
@@ -16,7 +16,6 @@ struct SettingsMockupView: View {
                 case .general:
                     summarySection
                     simpleSettings
-                    proSection
                     if full { serviceSection }
                 case .sessions: sessionsSection
                 case .rules: rulesSection
@@ -24,9 +23,6 @@ struct SettingsMockupView: View {
                 case .actions: actionsSection
                 case .automation: automationSection
                 case .journal: journalSection
-                }
-                if model.settingsTab != .general && model.settingsTab != .safety && !model.isPro {
-                    unlockFooter
                 }
             }
             .formStyle(.grouped)
@@ -58,7 +54,7 @@ struct SettingsMockupView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Picker("When I close the lid", selection: $model.lidAction) {
                     ForEach(LidAction.allCases) { action in
-                        Text(pickerTitle(action.title(edition: model.edition), pro: action.isPro))
+                        Text(action.title(edition: model.edition))
                             .tag(action)
                     }
                 }
@@ -68,7 +64,7 @@ struct SettingsMockupView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Picker("Hibernate", selection: $model.hibernateDelay) {
                         ForEach(HibernateDelay.allCases) { delay in
-                            Text(pickerTitle(delay.title, pro: delay.isPro)).tag(delay)
+                            Text(delay.title).tag(delay)
                         }
                     }
                     Footnote("After this time asleep, your Mac saves its memory to disk and stops using the battery completely (hibernation).")
@@ -82,41 +78,6 @@ struct SettingsMockupView: View {
     }
 
     // MARK: Other tabs
-
-    private var proSection: some View {
-        Section {
-            if model.isPro {
-                Label("ClamStop Pro is unlocked. Thank you for supporting ClamStop!", systemImage: "checkmark.seal.fill")
-                if full {
-                    Button("Manage License…") {}
-                }
-            } else {
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text("ClamStop Pro")
-                                .font(.headline)
-                            ProBadge()
-                        }
-                        Text("Unlock every option marked Pro. Sleep on lid close and the safety options stay free.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 8)
-                    Button("Unlock Pro…") {}
-                        .keyboardShortcut(.defaultAction)
-                }
-                HStack(spacing: 16) {
-                    Link("See all Pro features", destination: model.edition.proFeaturesURL)
-                    Button {} label: {
-                        full ? Text("Enter License Key…") : Text("Restore Purchase")
-                    }
-                    .buttonStyle(.link)
-                }
-            }
-        }
-    }
 
     private var sessionsSection: some View {
         Section {
@@ -135,12 +96,10 @@ struct SettingsMockupView: View {
                       isOn: $model.options.clickToToggle)
             if full {
                 ToggleRow(title: "Stay awake with the lid closed on battery too",
-                          note: "Without this, closing the lid on battery puts your Mac to sleep, even while you stay awake.",
-                          pro: true, locked: model.locked(true), isOn: $model.options.sessionsOnBattery)
+                          note: "Without this, closing the lid on battery puts your Mac to sleep, even while you stay awake.", isOn: $model.options.sessionsOnBattery)
             }
             OptionRow(title: "Screens while staying awake",
-                      note: "With the lid closed, the built-in screen always turns off.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "With the lid closed, the built-in screen always turns off.") {
                 Picker("Screens while staying awake", selection: $model.options.screenPolicy) {
                     Text("Let them sleep").tag(0)
                     Text("Keep them on").tag(1)
@@ -149,49 +108,41 @@ struct SettingsMockupView: View {
                 .fixedSize()
             }
             ToggleRow(title: "Remind me 5 minutes before the end",
-                      note: "With a button to add 30 minutes.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.endReminder)
+                      note: "With a button to add 30 minutes.", isOn: $model.options.endReminder)
             ToggleRow(title: "Stay awake while AI agents work",
-                      note: "Claude Code, Codex and others. Your Mac sleeps when they are all done.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.agentsAwake)
+                      note: "Claude Code, Codex and others. Your Mac sleeps when they are all done.", isOn: $model.options.agentsAwake)
             OptionRow(title: "Stay awake while these apps are open",
-                      note: "For example HandBrake, Final Cut Pro, Blender, Xcode or Ollama.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "For example HandBrake, Final Cut Pro, Blender, Xcode or Ollama.") {
                 Button("Choose Apps…") {}
             }
             ToggleRow(title: "Only while they are busy",
-                      note: "Your Mac sleeps once the app stops using the processor, even if it stays open.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.busyOnly)
+                      note: "Your Mac sleeps once the app stops using the processor, even if it stays open.", isOn: $model.options.busyOnly)
         }
     }
 
     private var rulesSection: some View {
         Section {
             OptionRow(title: "Presets",
-                      note: "Ready-made rules in one click. Desk with a screen is free.") {
+                      note: "Ready-made rules in one click.") {
                 Menu("Add Preset") {
                     Button("Desk with a screen") {}
-                    Button("Overnight work on power (Pro)") {}
-                    Button("AI agents (Pro)") {}
-                    Button("Home server (Pro)") {}
+                    Button("Overnight work on power") {}
+                    Button("AI agents") {}
+                    Button("Home server") {}
                 }
                 .fixedSize()
             }
             ToggleRow(title: "Different settings on battery",
-                      note: "Choose another lid action and hibernation delay when unplugged.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.separateOnBattery)
+                      note: "Choose another lid action and hibernation delay when unplugged.", isOn: $model.options.separateOnBattery)
             ToggleRow(title: "Do not force sleep during calls and presentations",
-                      note: "Lets macOS decide while a call, a presentation or a chosen app runs.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.noSleepDuringCalls)
+                      note: "Lets macOS decide while a call, a presentation or a chosen app runs.", isOn: $model.options.noSleepDuringCalls)
             OptionRow(title: "Rules",
-                      note: "When conditions are true (power, screen, Wi-Fi, app, time), use other settings.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "When conditions are true (power, screen, Wi-Fi, app, time), use other settings.") {
                 Button("Add Rule…") {}
             }
             if full {
                 OptionRow(title: "Schedule",
-                          note: "Sleep or wake your Mac at set times.",
-                          pro: true, locked: model.locked(true)) {
+                          note: "Sleep or wake your Mac at set times.") {
                     Button("Edit Schedule…") {}
                 }
             }
@@ -232,20 +183,16 @@ struct SettingsMockupView: View {
     private var actionsSection: some View {
         Section {
             ToggleRow(title: "Lock the screen when the lid closes",
-                      note: "While staying awake with the lid closed.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.lockOnClose)
+                      note: "While staying awake with the lid closed.", isOn: $model.options.lockOnClose)
             OptionRow(title: "Run a shortcut",
-                      note: "When the lid opens or closes, or when the Mac sleeps or wakes.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "When the lid opens or closes, or when the Mac sleeps or wakes.") {
                 Button("Choose…") {}
             }
             if full {
                 ToggleRow(title: "Hibernate when the battery is low",
-                          note: "Below 10 %, your Mac stops using the battery completely while asleep.",
-                          pro: true, locked: model.locked(true), isOn: $model.options.hibernateOnLowBattery)
+                          note: "Below 10 %, your Mac stops using the battery completely while asleep.", isOn: $model.options.hibernateOnLowBattery)
                 ToggleRow(title: "Use Low Power Mode with the lid closed",
-                          note: "While staying awake; restored when you open the lid.",
-                          pro: true, locked: model.locked(true), isOn: $model.options.lowPowerMode)
+                          note: "While staying awake; restored when you open the lid.", isOn: $model.options.lowPowerMode)
             }
         }
     }
@@ -253,28 +200,23 @@ struct SettingsMockupView: View {
     private var automationSection: some View {
         Section {
             OptionRow(title: "Keyboard shortcut to stay awake",
-                      note: "Starts or stops staying awake from any app.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "Starts or stops staying awake from any app.") {
                 Button("Record Shortcut") {}
             }
-            OptionRow(title: "Keyboard shortcut to sleep now",
-                      pro: true, locked: model.locked(true)) {
+            OptionRow(title: "Keyboard shortcut to sleep now") {
                 Button("Record Shortcut") {}
             }
             OptionRow(title: "Shortcuts app and Siri",
-                      note: "Actions to stay awake, stop and sleep now.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "Actions to stay awake, stop and sleep now.") {
                 Button("Open Shortcuts") {}
             }
             if full {
                 OptionRow(title: "AI agent hooks",
-                          note: "Adds ClamStop to Claude Code, Codex and others. You see the change first.",
-                          pro: true, locked: model.locked(true)) {
+                          note: "Adds ClamStop to Claude Code, Codex and others. You see the change first.") {
                     Button("Install Hooks…") {}
                 }
                 OptionRow(title: "Command line",
-                          note: "The clamstop command for Terminal and scripts.",
-                          pro: true, locked: model.locked(true)) {
+                          note: "The clamstop command for Terminal and scripts.") {
                     Button("Install…") {}
                 }
             }
@@ -284,22 +226,18 @@ struct SettingsMockupView: View {
     private var journalSection: some View {
         Section {
             ToggleRow(title: "Keep a sleep journal",
-                      note: "When the lid closed, when your Mac slept, woke and hibernated. Kept for 30 days, on this Mac only.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.keepJournal)
+                      note: "When the lid closed, when your Mac slept, woke and hibernated. Kept for 30 days, on this Mac only.", isOn: $model.options.keepJournal)
             OptionRow(title: "Journal file",
-                      note: "~/Library/Logs/ClamStop/Journal.csv",
-                      pro: true, locked: model.locked(true)) {
+                      note: "~/Library/Logs/ClamStop/Journal.csv") {
                 HStack {
                     Button("Open") {}
                     Button("Change…") {}
                 }
             }
             ToggleRow(title: "Morning report",
-                      note: "Battery used overnight and how long your Mac slept.",
-                      pro: true, locked: model.locked(true), isOn: $model.options.morningReport)
+                      note: "Battery used overnight and how long your Mac slept.", isOn: $model.options.morningReport)
             OptionRow(title: "What keeps my Mac awake?",
-                      note: "Apps that prevent sleep right now.",
-                      pro: true, locked: model.locked(true)) {
+                      note: "Apps that prevent sleep right now.") {
                 Button("Show…") {}
             }
             OptionRow(title: "Diagnostics",
@@ -320,25 +258,23 @@ struct SettingsMockupView: View {
                 Spacer()
                 Button("Uninstall ClamStop…", role: .destructive) {}
             }
+        } footer: {
+            donationLink
         }
     }
 
-    /// At the bottom of tabs with locked options; the same single action as on General.
-    private var unlockFooter: some View {
-        Section {
-            HStack {
-                Text("Options marked Pro need ClamStop Pro.")
-                    .foregroundStyle(.secondary)
+    /// Discreet "Buy me a coffee" link (full edition only, spec J6). Never a pop-up or a reminder.
+    private var donationLink: some View {
+        Group {
+            HStack(spacing: 6) {
                 Spacer()
-                Button("Unlock Pro…") {}
+                Text("ClamStop is free.")
+                    .foregroundStyle(.secondary)
+                Link("Buy me a coffee", destination: Links.donation)
+                Spacer()
             }
+            .font(.footnote)
         }
-    }
-
-    // MARK: Helpers
-
-    private func pickerTitle(_ title: String, pro: Bool) -> String {
-        model.locked(pro) ? String(localized: "\(title) (Pro)") : title
     }
 }
 

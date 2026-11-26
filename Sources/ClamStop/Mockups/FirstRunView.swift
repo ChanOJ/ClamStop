@@ -26,8 +26,6 @@ struct FirstRunView: View {
 private struct LidChoiceStep: View {
     @ObservedObject var model: MockupModel
 
-    private var proPicked: Bool { model.firstRunLidChoice == .agents && !model.isPro }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
@@ -41,7 +39,7 @@ private struct LidChoiceStep: View {
                     symbol: "moon.zzz",
                     title: "Sleep, even when a screen is plugged in",
                     detail: "Like a MacBook with nothing connected: close the lid and it sleeps. Best for most people.",
-                    badge: .recommended,
+                    recommended: true,
                     isSelected: model.firstRunLidChoice == .sleep
                 ) { model.firstRunLidChoice = .sleep }
                 if model.edition == .full {
@@ -57,56 +55,17 @@ private struct LidChoiceStep: View {
                     symbol: "sparkles",
                     title: "Stay awake while AI agents work, then sleep",
                     detail: "For Claude Code, Codex and other coding agents: your Mac keeps working with the lid closed and sleeps when they are done.",
-                    badge: model.isPro ? nil : .pro,
                     isSelected: model.firstRunLidChoice == .agents
                 ) { model.firstRunLidChoice = .agents }
             }
-            if proPicked {
-                UnlockProPanel(edition: model.edition)
-            }
             HStack {
                 Spacer()
-                if proPicked {
-                    Button("Continue with Sleep") { model.firstRunLidChoice = .sleep }
-                        .keyboardShortcut(.defaultAction)
-                } else {
-                    Button {} label: {
-                        model.firstRunStepCount > 1 ? Text("Continue") : Text("Done")
-                    }
-                    .keyboardShortcut(.defaultAction)
+                Button {} label: {
+                    model.firstRunStepCount > 1 ? Text("Continue") : Text("Done")
                 }
+                .keyboardShortcut(.defaultAction)
             }
         }
-    }
-}
-
-/// What a Pro choice unlocks, with one "Unlock Pro" button (never a pop-up).
-private struct UnlockProPanel: View {
-    let edition: Edition
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("This choice is part of ClamStop Pro")
-                    .font(.headline)
-                ProBadge()
-            }
-            Text("Pro also keeps your Mac awake while chosen apps run, adds rules, a sleep journal, keyboard shortcuts and more. Sleep on lid close stays free.")
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Link("See all Pro features", destination: edition.proFeaturesURL)
-            HStack {
-                Button("Unlock Pro…") {}
-                if edition == .full {
-                    Button("Enter License Key…") {}
-                } else {
-                    Button("Restore Purchase") {}
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.accentColor.opacity(0.08)))
     }
 }
 
@@ -156,7 +115,7 @@ private struct ApprovalStep: View {
     }
 }
 
-/// Screen 3 (full edition): hibernation, free choices only.
+/// Screen 3 (full edition): hibernation, the two common choices.
 private struct HibernationStep: View {
     @ObservedObject var model: MockupModel
 
@@ -175,7 +134,7 @@ private struct HibernationStep: View {
                     symbol: "battery.100",
                     title: "After 1 hour",
                     detail: "Quick wake-ups during the day, a full battery the next morning.",
-                    badge: .recommended,
+                    recommended: true,
                     isSelected: model.hibernateDelay == .oneHour
                 ) { model.hibernateDelay = .oneHour }
                 ChoiceCard(
@@ -185,9 +144,7 @@ private struct HibernationStep: View {
                     isSelected: model.hibernateDelay == .never
                 ) { model.hibernateDelay = .never }
             }
-            (model.isPro
-                 ? Text("You can choose another delay in Settings, from immediately to 4 hours.")
-                 : Text("Other delays, from immediately to 4 hours, come with ClamStop Pro."))
+            Text("You can choose another delay in Settings, from immediately to 4 hours.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             HStack {

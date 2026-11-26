@@ -14,7 +14,6 @@ enum MockupRenderer {
         /// Window title; nil = no window frame (the menu drawing).
         let windowTitle: String?
         var editions: [Edition] = Edition.allCases
-        var tiers: [Bool] = [false, true]
         let configure: (MockupModel) -> Void
         let view: (MockupModel) -> AnyView
     }
@@ -22,7 +21,6 @@ enum MockupRenderer {
     struct Rendered {
         let screen: Screen
         let edition: Edition
-        let isPro: Bool
         let file: String
         let size: NSSize
         /// Unique sequential number shown on the contact sheet, for quick references.
@@ -44,40 +42,40 @@ enum MockupRenderer {
                    windowTitle: "Welcome to ClamStop", configure: { _ in }, view: firstRun),
             Screen(id: "first-run-1-battery", title: "First run 1: battery choice picked",
                    note: "The consequence is said next to the risky choice.",
-                   windowTitle: "Welcome to ClamStop", editions: [.full], tiers: [false],
+                   windowTitle: "Welcome to ClamStop", editions: [.full],
                    configure: { $0.firstRunLidChoice = .keepWorking }, view: firstRun),
-            Screen(id: "first-run-1-pro", title: "First run 1: Pro choice picked without Pro",
-                   note: "Shows what Pro unlocks; one Unlock Pro button, or continue with Sleep.",
-                   windowTitle: "Welcome to ClamStop", tiers: [false],
-                   configure: { $0.firstRunLidChoice = .agents }, view: firstRun),
             Screen(id: "first-run-2-waiting", title: "First run 2: allow the background service (waiting)",
                    note: "Full edition only. Detected automatically when the switch is turned on.",
-                   windowTitle: "Welcome to ClamStop", editions: [.full], tiers: [false],
+                   windowTitle: "Welcome to ClamStop", editions: [.full],
                    configure: { $0.firstRunStep = 2 }, view: firstRun),
             Screen(id: "first-run-2-done", title: "First run 2: allowed",
                    note: "Full edition only.",
-                   windowTitle: "Welcome to ClamStop", editions: [.full], tiers: [false],
+                   windowTitle: "Welcome to ClamStop", editions: [.full],
                    configure: { $0.firstRunStep = 2; $0.serviceApproved = true }, view: firstRun),
             Screen(id: "first-run-3", title: "First run 3: hibernation",
-                   note: "Full edition only. Free choices only; the footnote differs with Pro.",
+                   note: "Full edition only. Every delay is available in Settings; the default stays 1 hour.",
                    windowTitle: "Welcome to ClamStop", editions: [.full],
                    configure: { $0.firstRunStep = 3 }, view: firstRun),
             Screen(id: "menu", title: "Menu bar menu, Stay Awake submenu open",
-                   note: "Drawn in SwiftUI: a real NSMenu cannot be rendered to an image. Until… and While an App Runs… are Pro.",
+                   note: "Drawn in SwiftUI: a real NSMenu cannot be rendered to an image. Hibernate Now is full edition only.",
                    windowTitle: nil, configure: { _ in }, view: menu),
             Screen(id: "menu-session", title: "Menu bar menu while staying awake",
-                   note: "With Pro, the remaining time also shows next to the icon.",
-                   windowTitle: nil, editions: [.full],
+                   note: "The remaining time also shows next to the icon. Store edition: the lid-closed part needs power.",
+                   windowTitle: nil,
                    configure: { $0.menuState = .session }, view: menu),
             Screen(id: "settings-general", title: "Settings: General tab",
-                   note: "The Store edition has no Hibernate picker and no background service.",
+                   note: "The Store edition has no Hibernate picker, no background service and no donation link.",
                    windowTitle: "ClamStop Settings", configure: { _ in }, view: settings),
         ] + SettingsTab.allCases.dropFirst().map { tab in
             Screen(id: "settings-\(tab.rawValue)", title: "Settings: \(tabNames[tab] ?? tab.rawValue) tab",
-                   note: tab == .safety ? "Free, on by default." : "Pro controls carry a badge and stay readable but disabled; one Unlock Pro button.",
-                   windowTitle: "ClamStop Settings", tiers: tab == .safety ? [false] : [false, true],
+                   note: tab == .safety ? "On by default." : "Some options exist only in the full edition (background service).",
+                   windowTitle: "ClamStop Settings",
                    configure: { $0.settingsTab = tab }, view: settings)
-        }
+        } + [
+            Screen(id: "about", title: "About window",
+                   note: "Full edition: website, source code, Buy me a coffee. Store edition: Help link only (guideline 3.1.1).",
+                   windowTitle: "About ClamStop", configure: { _ in }, view: { AnyView(AboutView(model: $0)) }),
+        ]
     }
 
     static func run(outputDirectory: URL) {
@@ -88,13 +86,11 @@ enum MockupRenderer {
                 var rendered: [Rendered] = []
                 for screen in screens {
                     for edition in screen.editions {
-                        for isPro in screen.tiers {
-                            let file = "\(String(format: "%02d", rendered.count + 1))-\(screen.id)-\(edition.rawValue)-\(isPro ? "pro" : "free").png"
-                            let size = try await render(screen, edition: edition, isPro: isPro,
-                                                        to: outputDirectory.appendingPathComponent(file))
-                            rendered.append(Rendered(screen: screen, edition: edition, isPro: isPro, file: file, size: size,
-                                                     number: rendered.count + 1))
-                        }
+                        let file = "\(String(format: "%02d", rendered.count + 1))-\(screen.id)-\(edition.rawValue).png"
+                        let size = try await render(screen, edition: edition,
+                                                    to: outputDirectory.appendingPathComponent(file))
+                        rendered.append(Rendered(screen: screen, edition: edition, file: file, size: size,
+                                                 number: rendered.count + 1))
                     }
                 }
                 try contactSheet(rendered).write(to: outputDirectory.appendingPathComponent("index.html"),
@@ -108,8 +104,8 @@ enum MockupRenderer {
     }
 
     /// Renders one screen; returns its size in points.
-    private static func render(_ screen: Screen, edition: Edition, isPro: Bool, to url: URL) async throws -> NSSize {
-        let model = MockupModel(edition: edition, isPro: isPro)
+    private static func render(_ screen: Screen, edition: Edition, to url: URL) async throws -> NSSize {
+        let model = MockupModel(edition: edition)
         screen.configure(model)
         let controller = NSHostingController(rootView: screen.view(model))
         controller.sizingOptions = []
@@ -140,7 +136,7 @@ enum MockupRenderer {
         return view.bounds.size
     }
 
-    /// One HTML page with every screen, filterable by edition and tier; refresh it after each run.
+    /// One HTML page with every screen, filterable by edition; refresh it after each run.
     private static func contactSheet(_ items: [Rendered]) -> String {
         func esc(_ s: String) -> String {
             s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
@@ -160,8 +156,6 @@ enum MockupRenderer {
         <div class="bar">
         <label><input type="checkbox" data-f="full" checked> Full edition</label>
         <label><input type="checkbox" data-f="store" checked> Store edition</label>
-        <label><input type="checkbox" data-f="free" checked> Free</label>
-        <label><input type="checkbox" data-f="pro" checked> Pro</label>
         </div>
         """
         var currentID = ""
@@ -172,11 +166,10 @@ enum MockupRenderer {
                 html += "<h2 id=\"\(item.screen.id)\">\(esc(item.screen.title))</h2><p class=\"note\">\(esc(item.screen.note))</p><div class=\"grid\">\n"
             }
             let edition = item.edition == .full ? "Full" : "Store"
-            let tier = item.isPro ? "Pro" : "Free"
             html += """
-            <figure id="\(item.number)" data-edition="\(item.edition.rawValue)" data-tier="\(item.isPro ? "pro" : "free")">\
-            <img src="\(item.file)?t=\(Int(Date().timeIntervalSince1970))" width="\(Int(item.size.width))" alt="\(esc(item.screen.title)), \(edition), \(tier)">\
-            <figcaption><b>#\(item.number)</b>\(edition) edition · \(tier)</figcaption></figure>\n
+            <figure id="\(item.number)" data-edition="\(item.edition.rawValue)">\
+            <img src="\(item.file)?t=\(Int(Date().timeIntervalSince1970))" width="\(Int(item.size.width))" alt="\(esc(item.screen.title)), \(edition)">\
+            <figcaption><b>#\(item.number)</b>\(edition) edition</figcaption></figure>\n
             """
         }
         html += """
@@ -184,7 +177,7 @@ enum MockupRenderer {
         <script>
         const boxes=[...document.querySelectorAll('.bar input')];
         function apply(){const on=Object.fromEntries(boxes.map(b=>[b.dataset.f,b.checked]));
-        document.querySelectorAll('figure').forEach(f=>f.classList.toggle('hidden',!(on[f.dataset.edition]&&on[f.dataset.tier])));}
+        document.querySelectorAll('figure').forEach(f=>f.classList.toggle('hidden',!on[f.dataset.edition]));}
         boxes.forEach(b=>b.addEventListener('change',apply));
         </script></body></html>
         """

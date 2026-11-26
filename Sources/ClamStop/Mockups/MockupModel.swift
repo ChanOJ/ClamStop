@@ -12,14 +12,6 @@ enum Edition: String, CaseIterable {
 
     var hasBackgroundService: Bool { self == .full }
 
-    /// Page listing every Pro feature. The Store edition links to a help page without any
-    /// purchase or download link (App Store guideline 3.1.1, spec section 6). Pages to create.
-    var proFeaturesURL: URL {
-        switch self {
-        case .full: URL(string: "https://chanoj.github.io/ClamStop/pro/")!
-        case .store: URL(string: "https://chanoj.github.io/ClamStop/help/pro-features/")!
-        }
-    }
 }
 
 /// What the lid does (spec A2).
@@ -33,12 +25,6 @@ enum LidAction: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var isPro: Bool {
-        switch self {
-        case .sleep, .keepWorkingWithScreen, .macOSDefault: false
-        case .stayAwake, .stayAwakeThenSleep, .screensOff: true
-        }
-    }
 
     func title(edition: Edition) -> String {
         switch self {
@@ -75,7 +61,7 @@ enum LidAction: String, CaseIterable, Identifiable {
     }
 }
 
-/// Hibernation delay (spec B1): free = 1 hour or never; Pro = everything else.
+/// Hibernation delay (spec B1); default 1 hour.
 enum HibernateDelay: Int, CaseIterable, Identifiable {
     case immediately = 0
     case fiveMinutes = 5
@@ -87,7 +73,6 @@ enum HibernateDelay: Int, CaseIterable, Identifiable {
     case never = -1
 
     var id: Int { rawValue }
-    var isPro: Bool { self != .oneHour && self != .never }
 
     var title: String {
         switch self {
@@ -179,7 +164,6 @@ struct MockOptions {
 @MainActor
 final class MockupModel: ObservableObject {
     @Published var edition: Edition
-    @Published var isPro: Bool
 
     // First run
     @Published var firstRunStep = 1
@@ -197,15 +181,12 @@ final class MockupModel: ObservableObject {
     // Menu
     @Published var menuState = MenuMockState.idle
 
-    init(edition: Edition = .full, isPro: Bool = false) {
+    init(edition: Edition = .full) {
         self.edition = edition
-        self.isPro = isPro
     }
 
     /// Step count of the first run: 3 in the full edition, 1 in the Store edition.
     var firstRunStepCount: Int { edition.hasBackgroundService ? 3 : 1 }
-
-    func locked(_ pro: Bool) -> Bool { pro && !isPro }
 
     /// The live sentence at the top of the settings.
     var summary: String {
