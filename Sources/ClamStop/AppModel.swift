@@ -31,6 +31,7 @@ final class AppModel: ObservableObject {
     // Kept here rather than in a view's @State: with the Command Line Tools alone, the SwiftUI
     // macro plugin behind @State is missing on recent SDKs, and plain `swift build` must work.
     @Published var confirmUninstall = false
+    @Published var showLidHelp = false
 
     /// Hibernation delays offered in the settings (minutes, 0 = never).
     static let delayChoices = [0, 5, 10, 15, 30, 60, 120, 240]

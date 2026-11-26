@@ -8,10 +8,29 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Sleep when the lid closes", isOn: Binding(
-                    get: { model.enabled },
-                    set: { model.setEnabled($0) }
-                ))
+                HStack(spacing: 6) {
+                    Text("Sleep when the lid closes")
+                    Button {
+                        model.showLidHelp.toggle()
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Why ClamStop?")
+                    .accessibilityLabel("Why ClamStop?")
+                    .popover(isPresented: $model.showLidHelp, arrowEdge: .bottom) {
+                        LidHelpView()
+                    }
+                    Spacer()
+                    Toggle("Sleep when the lid closes", isOn: Binding(
+                        get: { model.enabled },
+                        set: { model.setEnabled($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .disabled(model.serviceState != .running)
+                }
                 Picker("Hibernate", selection: Binding(
                     get: { model.delayMinutes },
                     set: { model.setDelay(minutes: $0) }
@@ -21,7 +40,7 @@ struct SettingsView: View {
                             .tag(minutes)
                     }
                 }
-                .disabled(!model.enabled)
+                .disabled(!model.enabled || model.serviceState != .running)
             } footer: {
                 Text("Even with an external display connected, closing the lid puts the Mac to sleep. After the delay, it hibernates: memory is saved to disk and the battery is no longer used.")
                     .font(.footnote)
@@ -30,7 +49,6 @@ struct SettingsView: View {
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .disabled(model.serviceState != .running)
 
             Section {
                 Toggle("Show icon in the menu bar", isOn: $showMenuBarIcon)
@@ -107,6 +125,22 @@ struct SettingsView: View {
             choices.sort()
         }
         return choices
+    }
+}
+
+/// Help popover next to "Sleep when the lid closes".
+struct LidHelpView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Why ClamStop?")
+                .font(.headline)
+            Text("When a MacBook is connected to an external display, macOS keeps it awake after the lid closes (clamshell mode), and System Settings has no option to change that.")
+            Text("With ClamStop, closing the lid always puts the Mac to sleep, as it does when nothing is connected. Open the lid or press a key to wake it.")
+            Text("After the chosen delay, the Mac hibernates: the content of its memory is saved to disk and it stops drawing power, which spares the battery. Waking up then takes a few seconds longer.")
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: 320, alignment: .leading)
+        .padding(16)
     }
 }
 

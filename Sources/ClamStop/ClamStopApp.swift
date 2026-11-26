@@ -37,18 +37,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         snapshotIfRequested()
     }
 
-    /// Development aid: `ClamStop --snapshot /path/to/file.png` renders the settings window to a
-    /// PNG (no Screen Recording permission needed), for docs and reviews.
+    /// Development aid: `ClamStop --snapshot /path/to/file.png [--show-help]` renders the visible windows to
+    /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         let args = CommandLine.arguments
         guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
         let url = URL(fileURLWithPath: args[i + 1])
         showSettings()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let view = self?.settingsWindow?.contentView?.superview,
-                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
-            view.cacheDisplay(in: view.bounds, to: rep)
-            try? rep.representation(using: .png, properties: [:])?.write(to: url)
+        if args.contains("--show-help") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.model.showLidHelp = true }
+        }
+        // Each visible window (settings, popover) to file.png, file.1.png, …
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            let windows = NSApp.windows.filter { $0.isVisible && $0.contentView != nil && $0.frame.width > 50 }
+            for (index, window) in windows.enumerated() {
+                guard let view = window.contentView?.superview,
+                      let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+                view.cacheDisplay(in: view.bounds, to: rep)
+                let target = index == 0 ? url : url.deletingPathExtension()
+                    .appendingPathExtension("\(index)").appendingPathExtension("png")
+                try? rep.representation(using: .png, properties: [:])?.write(to: target)
+            }
         }
     }
 
