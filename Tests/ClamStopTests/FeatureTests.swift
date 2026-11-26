@@ -382,9 +382,17 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         let t = AgentTracker()
         t.handle(message("UserPromptSubmit"), now: t0)
         t.handle(message("Stop"), now: t0 + 10)
-        // Same second as Stop: not newer than the end of the turn.
-        t.tick(now: t0 + 101) { _ in AgentProbe(alive: true, newestActivity: t0 + 10) }
+        // Written just after the Stop hook (seen with Claude Code): not new work.
+        t.tick(now: t0 + 101) { _ in AgentProbe(alive: true, newestActivity: t0 + 10.004) }
         #expect(!t.isWorking)
+    }
+
+    @Test func transcriptWrittenWellAfterTheTurnCounts() {
+        let t = AgentTracker()
+        t.handle(message("UserPromptSubmit"), now: t0)
+        t.handle(message("Stop"), now: t0 + 10)
+        t.tick(now: t0 + 40) { _ in AgentProbe(alive: true, newestActivity: t0 + 30) }
+        #expect(t.sessions.first?.finishing == false)
     }
 
     @Test func backgroundWorkReactivatesAfterTheTurn() {

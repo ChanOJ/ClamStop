@@ -119,6 +119,9 @@ public final class AgentTracker {
     /// CPU used by the agent's process tree between two ticks that counts as work. An idle
     /// Claude Code process uses about 0.05 s per 15 s (measured 2026-11-26).
     public static let busyCPUSeconds: Double = 0.5
+    /// In grace, transcript writes this soon after the turn ended do not count: Claude Code
+    /// still appends its last lines a few milliseconds after the Stop hook (seen 2026-11-26).
+    public static let graceWriteMargin: TimeInterval = 10
     /// Seconds between probes while at least one lease exists.
     public static let tickInterval: TimeInterval = 15
 
@@ -206,11 +209,10 @@ public final class AgentTracker {
             // In grace, only activity newer than the end of the turn counts: the agent writes
             // its transcript when the turn ends.
             let floor = next.state == .grace
-                ? (next.graceStarted ?? now)
+                ? (next.graceStarted ?? now).addingTimeInterval(Self.graceWriteMargin)
                 : now.addingTimeInterval(-Self.transcriptFreshness)
-            let busy = next.subagents > 0
-                || (p.newestActivity.map { $0 > floor } ?? false)
-                || cpuDelta > Self.busyCPUSeconds
+            let wrote = p.newestActivity.map { $0 > floor } ?? false
+            let busy = next.subagents > 0 || wrote || cpuDelta > Self.busyCPUSeconds
 
             switch next.state {
             case .active:
@@ -224,6 +226,9 @@ public final class AgentTracker {
             case .grace:
                 if busy {
                     // Background work outlived the turn (a build, tests).
+                    let reason = next.subagents > 0 ? "subagents" : wrote ? "transcript written"
+                        : String(format: "CPU %.1f s in %.0f s", cpuDelta, Self.tickInterval)
+                    log("agent \(lease.agent.rawValue) session \(lease.sessionID): still working (\(reason))")
                     next.state = .active
                     next.graceStarted = nil
                     next.lastActivity = now
