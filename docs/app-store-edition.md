@@ -23,6 +23,7 @@ LaunchDaemon (SMAppService) therefore cannot ship in a Store build.
 | **Force sleep in clamshell mode with `IOPMSleepSystem`** | **Works** | Lid test with external display + AC + keyboard: "Software Sleep" in `pmset -g log` within 5 s, despite sleep assertions held by other apps (Claude, coreaudiod). |
 | Force sleep by spawning `/usr/bin/pmset sleepnow` | Works | The child inherits the sandbox; same result. Not needed since the IOKit call works. |
 | Sleep assertions (`IOPMAssertionCreateWithName`, for a keep-awake feature) | Works | |
+| Stay awake with the lid closed on battery with an external display (`kPMSetClamshellSleepState` = 1 on `RootDomainUserClient`, public selector 12 in `IOPMLibDefs.h`) | **Fails** | The call returns success sandboxed (and unsandboxed as a normal user), but the lid test on battery with an HDMI display still ended in "Clamshell Sleep" (2026-11-26, `StoreSpike --awake clamshell`). Power assertions are ignored on lid close on battery. The known working method, `pmset disablesleep 1`, needs root. |
 | Scheduled wake (`IOPMSchedulePowerEvent`) | **Fails** | `kIOReturnNotPrivileged` (0xe00002c1). Same result unsandboxed: it needs root, not just outside the sandbox. |
 | Change `hibernatemode` (`pmset -a hibernatemode`) | **Fails** | "must be run as root". |
 

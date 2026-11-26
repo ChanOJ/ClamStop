@@ -9,6 +9,10 @@
 import Foundation
 import IOKit
 import IOKit.pwr_mgt
+import IOKit.ps
+
+var signalSources: [DispatchSourceSignal] = []
+var heartbeat: DispatchSourceTimer?
 
 let args = CommandLine.arguments
 let logURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("spike.log")
@@ -147,5 +151,69 @@ if let i = args.firstIndex(of: "--lid"), i + 1 < args.count {
     dispatchMain()
 }
 
-print("usage: StoreSpike --probe | --lid iokit | --lid pmset")
+// MARK: - Stay awake with the lid closed (no root)
+//   --awake assertions   hold PreventSystemSleep + PreventUserIdleSystemSleep assertions
+//   --awake clamshell    RootDomainUserClient kPMSetClamshellSleepState (12) = 1, reset to 0 on exit
+//   --clamshell-reset    set kPMSetClamshellSleepState back to 0 and exit
+
+let kPMSetClamshellSleepState: UInt32 = 12
+
+func setClamshellSleepDisabled(_ disabled: Bool) -> kern_return_t {
+    let fb = IOPMFindPowerManagement(kIOMainPortDefault)
+    guard fb != 0 else { return KERN_FAILURE }
+    defer { IOServiceClose(fb) }
+    var input: UInt64 = disabled ? 1 : 0
+    return IOConnectCallScalarMethod(fb, kPMSetClamshellSleepState, &input, 1, nil, nil)
+}
+
+func powerSource() -> String {
+    guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+          let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() else { return "?" }
+    return type as String
+}
+
+if args.contains("--clamshell-reset") {
+    log("kPMSetClamshellSleepState(0): \(kr(setClamshellSleepDisabled(false)))")
+    exit(0)
+}
+
+if args.contains("--clamshell-probe") {
+    log("kPMSetClamshellSleepState(1): \(kr(setClamshellSleepDisabled(true)))")
+    log("kPMSetClamshellSleepState(0): \(kr(setClamshellSleepDisabled(false)))")
+    exit(0)
+}
+
+if let i = args.firstIndex(of: "--awake"), i + 1 < args.count {
+    let method = args[i + 1]
+    var ids: [IOPMAssertionID] = []
+    if method == "assertions" {
+        for type in ["PreventSystemSleep", kIOPMAssertionTypePreventUserIdleSystemSleep] {
+            var id: IOPMAssertionID = 0
+            let r = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                "StoreSpike lid-closed test" as CFString, &id)
+            log("assertion \(type): \(kr(r))"); ids.append(id)
+        }
+    } else {
+        log("kPMSetClamshellSleepState(1): \(kr(setClamshellSleepDisabled(true)))")
+        for sig in [SIGINT, SIGTERM, SIGHUP] {
+            signal(sig, SIG_IGN)
+            let src = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+            src.setEventHandler {
+                log("signal \(sig): kPMSetClamshellSleepState(0): \(kr(setClamshellSleepDisabled(false)))")
+                exit(0)
+            }
+            src.resume(); signalSources.append(src)
+        }
+    }
+    registerNotifications(onClose: {})
+    // Heartbeat: proves the Mac stayed awake (a gap means it slept).
+    let timer = DispatchSource.makeTimerSource(queue: .main)
+    timer.schedule(deadline: .now(), repeating: 15)
+    timer.setEventHandler { log("heartbeat power=\(powerSource()) closed=\(String(describing: clamshellClosed()))") }
+    timer.resume(); heartbeat = timer
+    log("holding (\(method)); Ctrl-C to stop")
+    dispatchMain()
+}
+
+print("usage: StoreSpike --probe | --lid iokit|pmset | --awake assertions|clamshell | --clamshell-probe | --clamshell-reset")
 exit(2)
