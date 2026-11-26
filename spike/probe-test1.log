@@ -1,0 +1,30 @@
+2026-11-26T09:15:39.550Z start: closed=false forceSleep=true uid=501
+2026-11-26T09:15:39.551Z assertions: ["pid 69004 NoIdleSleepAssertion \"audio-playing\"", "pid 20701 PreventUserIdleSystemSleep \"Address Book Source Sync\"", "pid 21030 PreventUserIdleSystemSleep \"caffeinate command-line tool\"", "pid 555 PreventUserIdleSystemSleep \"Powerd - Prevent sleep while display is on\"", "pid 748 PreventUserIdleSystemSleep \"com.apple.audio.10AC6641-0000-0000-041C-0103803C2278.context.preventuseridlesleep\"", "pid 20460 NoIdleSleepAssertion \"Electron\"", "pid 68933 PreventUserIdleSystemSleep \"Handoff\""]
+2026-11-26T09:15:39.551Z IOServiceAddInterestNotification kr=0
+2026-11-26T09:16:41.169Z clamshell msg: closed=true causesSleep=false registry=Optional(true)
+2026-11-26T09:16:41.172Z transition open -> closed; assertions: ["pid 69004 NoIdleSleepAssertion \"audio-playing\"", "pid 20701 PreventUserIdleSystemSleep \"Address Book Source Sync\"", "pid 21030 PreventUserIdleSystemSleep \"caffeinate command-line tool\"", "pid 555 PreventUserIdleSystemSleep \"Powerd - Prevent sleep while display is on\"", "pid 748 PreventUserIdleSystemSleep \"com.apple.audio.10AC6641-0000-0000-041C-0103803C2278.context.preventuseridlesleep\"", "pid 20460 NoIdleSleepAssertion \"Electron\""]
+Sleeping now...
+2026-11-26T09:16:41.180Z pmset sleepnow exit=0
+2026-11-26T09:16:41.181Z power: will sleep
+2026-11-26T09:18:04.837Z clamshell msg: closed=false causesSleep=false registry=Optional(false)
+2026-11-26T09:18:04.838Z clamshell msg: closed=false causesSleep=false registry=Optional(false)
+2026-11-26T09:18:04.838Z power: will power on
+2026-11-26T09:18:06.192Z power: has powered on, closed=Optional(false)
+2026-11-26T09:19:36.413Z clamshell msg: closed=true causesSleep=false registry=Optional(true)
+2026-11-26T09:19:36.417Z transition open -> closed; assertions: ["pid 69004 NoIdleSleepAssertion \"audio-playing\"", "pid 21030 PreventUserIdleSystemSleep \"caffeinate command-line tool\"", "pid 20701 PreventUserIdleSystemSleep \"Address Book Source Sync\"", "pid 555 PreventUserIdleSystemSleep \"Powerd - Prevent sleep while display is on\"", "pid 748 PreventUserIdleSystemSleep \"com.apple.audio.10AC6641-0000-0000-041C-0103803C2278.context.preventuseridlesleep\"", "pid 20460 NoIdleSleepAssertion \"Electron\""]
+Sleeping now...
+2026-11-26T09:19:36.423Z pmset sleepnow exit=0
+2026-11-26T09:19:36.424Z power: will sleep
+2026-11-26T09:29:05.999Z clamshell msg: closed=false causesSleep=false registry=Optional(false)
+2026-11-26T09:29:06.000Z clamshell msg: closed=false causesSleep=false registry=Optional(false)
+2026-11-26T09:29:06.002Z power: will power on
+2026-11-26T09:29:07.357Z power: has powered on, closed=Optional(false)
+2026-11-26T09:30:15.762Z clamshell msg: closed=true causesSleep=false registry=Optional(true)
+2026-11-26T09:30:15.765Z transition open -> closed; assertions: ["pid 734 PreventUserIdleSystemSleep \"Backup Job\"", "pid 69004 NoIdleSleepAssertion \"audio-playing\"", "pid 21030 PreventUserIdleSystemSleep \"caffeinate command-line tool\"", "pid 555 PreventUserIdleSystemSleep \"Powerd - Prevent sleep while display is on\"", "pid 748 PreventUserIdleSystemSleep \"com.apple.audio.10AC6641-0000-0000-041C-0103803C2278.context.preventuseridlesleep\"", "pid 20701 PreventUserIdleSystemSleep \"Address Book Source Sync\"", "pid 20460 NoIdleSleepAssertion \"Electron\"", "pid 17940 PreventUserIdleSystemSleep \"Mutexed Backup Block\""]
+Sleeping now...
+2026-11-26T09:30:15.770Z pmset sleepnow exit=0
+2026-11-26T09:30:15.771Z power: will sleep
+2026-11-26T09:31:53.430Z clamshell msg: closed=false causesSleep=false registry=Optional(false)
+2026-11-26T09:31:53.452Z power: will power on
+2026-11-26T09:31:53.455Z power: has powered on, closed=Optional(false)
+2026-11-26T09:32:13.434Z clamshell msg: closed=false causesSleep=true registry=Optional(false)
