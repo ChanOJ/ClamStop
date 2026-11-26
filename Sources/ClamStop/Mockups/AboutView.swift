@@ -32,7 +32,7 @@ struct AboutView: View {
             .padding(.top, 4)
             if model.edition == .full {
                 VStack(spacing: 4) {
-                    Text("ClamStop is free and open source. A coffee helps pay for the developer account and the time spent designing and building it.")
+                    Text("ClamStop is free and open source. You can help pay for the developer account, and the time spent building it.")
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)

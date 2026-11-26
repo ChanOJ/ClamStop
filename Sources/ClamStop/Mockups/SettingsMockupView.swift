@@ -262,7 +262,7 @@ struct SettingsMockupView: View {
     /// Discreet "Buy me a coffee" link (full edition only, spec J6). Never a pop-up or a reminder.
     private var donationLink: some View {
         VStack(spacing: 4) {
-            Text("ClamStop is free. A coffee helps pay for the developer account and the time spent designing and building it.")
+            Text("ClamStop is free. You can help pay for the developer account, and the time spent building it.")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)

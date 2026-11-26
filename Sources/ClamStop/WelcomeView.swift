@@ -175,7 +175,7 @@ struct AboutWindowView: View {
             }
             .padding(.top, 4)
             if Edition.current == .full {
-                DonationLink(text: "ClamStop is free and open source. A coffee helps pay for the developer account and the time spent designing and building it.")
+                DonationLink(text: "ClamStop is free and open source. You can help pay for the developer account, and the time spent building it.")
                     .padding(.top, 4)
                 Text("AI agent support is based on ideas from clamshut by Ishaan Chamoli (MIT license).")
                     .font(.footnote)

@@ -248,7 +248,7 @@ private struct ServiceSection: View {
             }
         } footer: {
             if Edition.current == .full {
-                DonationLink(text: "ClamStop is free. A coffee helps pay for the developer account and the time spent designing and building it.")
+                DonationLink(text: "ClamStop is free. You can help pay for the developer account, and the time spent building it.")
                     .padding(.top, 4)
             }
         }
@@ -362,9 +362,9 @@ struct MenuContent: View {
                 .disabled(!model.serviceRunning)
         }
         Divider()
-        Button { openAbout() } label: { Label("About ClamStop", systemImage: "info.circle") }
         Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
+        Button { openAbout() } label: { Label("About ClamStop", systemImage: "info.circle") }
         CheckForUpdatesMenuItem(updater: .shared)
         Button { NSApp.terminate(nil) } label: { Label("Quit ClamStop", systemImage: "door.left.hand.open") }
             .keyboardShortcut("q")
