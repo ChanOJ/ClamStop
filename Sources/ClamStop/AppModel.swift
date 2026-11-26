@@ -39,6 +39,8 @@ final class AppModel: ObservableObject {
     private let client = DaemonClient()
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
+    /// register() was refused because the item is turned off in System Settings.
+    private var registrationDenied = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -64,14 +66,14 @@ final class AppModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         switch daemonService.status {
         case .notRegistered:
-            serviceState = .notRegistered
+            serviceState = registrationDenied ? .requiresApproval : .notRegistered
             status = nil
         case .requiresApproval:
             serviceState = .requiresApproval
             status = nil
         case .notFound:
             // Also what macOS reports for a daemon that was never registered (verified on 27.2).
-            serviceState = Self.daemonPlistInBundle ? .notRegistered : .notFound
+            serviceState = Self.daemonPlistInBundle ? (registrationDenied ? .requiresApproval : .notRegistered) : .notFound
             status = nil
         case .enabled:
             Task {
@@ -135,6 +137,11 @@ final class AppModel: ObservableObject {
     func installService() {
         do {
             try daemonService.register()
+            registrationDenied = false
+        } catch let error as NSError where error.code == Int(EPERM) || error.code == kSMErrorLaunchDeniedByUser {
+            // Verified on macOS 27.2: after a reinstall the item stays turned off in System
+            // Settings and register() fails with EPERM until it is turned on again.
+            registrationDenied = true
         } catch {
             // requiresApproval is reported as an error on first registration; the status tells the rest.
             if daemonService.status != .requiresApproval {
