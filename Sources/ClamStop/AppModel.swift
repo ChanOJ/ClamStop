@@ -105,7 +105,10 @@ final class AppModel: ObservableObject {
         case .enabled:
             Task {
                 do {
-                    let status = try await client.status()
+                    var status = try await client.status()
+                    if status.proUnlocked != nil, status.proUnlocked != Entitlement.isProUnlocked {
+                        status = try await client.setProUnlocked(Entitlement.isProUnlocked)
+                    }
                     self.status = status
                     self.serviceState = .running
                 } catch {

@@ -164,7 +164,7 @@ struct ProSettingsView: View {
                     model.changeSettings { $0.timeRange.endMinutes = m }
                 }
                 Spacer()
-                proToggle("Don’t force sleep during set hours", feature: .schedulesAndExceptions,
+                proToggle("Don’t force sleep during set hours", feature: .schedules,
                           isOn: settings.timeRange.enabled) { on in
                     model.changeSettings { $0.timeRange.enabled = on }
                 }
@@ -185,7 +185,7 @@ struct ProSettingsView: View {
             }
 
             ForEach(displayChoices, id: \.self) { name in
-                proToggle("Don’t force sleep while \(name) is connected", feature: .schedulesAndExceptions,
+                proToggle("Don’t force sleep while \(name) is connected", feature: .schedules,
                           isOn: settings.displayExceptions.contains(name)) { on in
                     model.changeSettings { s in
                         s.displayExceptions.removeAll { $0 == name }
@@ -194,7 +194,7 @@ struct ProSettingsView: View {
                 }
             }
         } header: {
-            SectionHeader("Exceptions", feature: .schedulesAndExceptions)
+            SectionHeader("Exceptions", feature: .schedules)
         } footer: {
             Footnote("During an exception, closing the lid does what macOS does on its own: with an external display, the Mac stays awake.")
         }
@@ -246,7 +246,7 @@ struct ProSettingsView: View {
             }
         ), displayedComponents: .hourAndMinute)
         .labelsHidden()
-        .disabled(!running || !model.isUnlocked(.schedulesAndExceptions))
+        .disabled(!running || !model.isUnlocked(.schedules))
     }
 
     private func delayPickerLabel(_ minutes: Int) -> String {

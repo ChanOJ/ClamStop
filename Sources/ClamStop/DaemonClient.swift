@@ -62,6 +62,10 @@ final class DaemonClient {
         return try await call { $0.setSettings(data, reply: $1) }
     }
 
+    func setProUnlocked(_ unlocked: Bool) async throws -> DaemonStatus {
+        try await call { $0.setProUnlocked(unlocked, reply: $1) }
+    }
+
     func sleepLog() async throws -> [SleepEvent] {
         try await withCheckedThrowingContinuation { continuation in
             let once = Once()

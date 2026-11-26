@@ -34,6 +34,17 @@ final class FileStore: StateStore {
         write(settings, to: settingsURL)
     }
 
+    func loadProUnlocked() -> Bool? {
+        read(ProState.self, from: proURL)?.unlocked
+    }
+
+    func saveProUnlocked(_ unlocked: Bool) {
+        write(ProState(unlocked: unlocked), to: proURL)
+    }
+
+    private struct ProState: Codable { var unlocked: Bool }
+    private var proURL: URL { directory.appendingPathComponent("pro.json") }
+
     func loadSleepLog() -> [SleepEvent] {
         read([SleepEvent].self, from: sleepLogURL) ?? []
     }

@@ -168,7 +168,7 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
         if !isUnlocked(.agentKeepAwake) { s.keepAwakeForAgents = false }
         if !isUnlocked(.powerSourceSettings) { s.separateBatterySettings = false }
         if !isUnlocked(.lowBatteryHibernation) { s.lowBatteryHibernation = false }
-        if !isUnlocked(.schedulesAndExceptions) {
+        if !isUnlocked(.schedules) {
             s.timeRange.enabled = false
             s.displayExceptions = []
         }
@@ -218,6 +218,8 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     // Added with the Pro features; optional so that an older daemon's reply still decodes.
     /// `sleepDisabled` was set by ClamStop itself, to stay awake for agents.
     public var sleepDisabledByClamStop: Bool?
+    /// The daemon's copy of `Entitlement.isProUnlocked` (sent by the app).
+    public var proUnlocked: Bool?
     /// AI agent sessions currently counted as working.
     public var agents: [AgentSessionInfo]?
     /// The lid is closed and the Mac stays awake because agents are working.
@@ -231,7 +233,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
 
     public init(version: String, settings: ClamStopSettings, phase: PowerPhase, pendingWake: Date?,
                 lidClosed: Bool, sleepDisabled: Bool, hibernateMode: Int?,
-                sleepDisabledByClamStop: Bool? = nil, agents: [AgentSessionInfo]? = nil,
+                sleepDisabledByClamStop: Bool? = nil, proUnlocked: Bool? = nil, agents: [AgentSessionInfo]? = nil,
                 keepingAwakeForAgents: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
                 connectedDisplays: [String]? = nil, lastLidDecision: String? = nil) {
         self.version = version
@@ -242,6 +244,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.sleepDisabled = sleepDisabled
         self.hibernateMode = hibernateMode
         self.sleepDisabledByClamStop = sleepDisabledByClamStop
+        self.proUnlocked = proUnlocked
         self.agents = agents
         self.keepingAwakeForAgents = keepingAwakeForAgents
         self.onPowerAdapter = onPowerAdapter

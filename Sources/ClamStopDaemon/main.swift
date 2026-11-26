@@ -22,6 +22,7 @@ final class DaemonService {
         self.store = store
         settings = store.loadSettings()
         sleepLog = store.loadSleepLog()
+        if let unlocked = store.loadProUnlocked() { Entitlement.isProUnlocked = unlocked }
         controller = PowerController(settings: settings, effects: power, store: store, log: Log.info)
         controller.delayOverride = delayOverride
         controller.record = { [unowned self] kind, detail in self.record(kind, detail) }
@@ -47,6 +48,16 @@ final class DaemonService {
     }
 
     /// Uninstall: macOS defaults back, then delete the daemon's files.
+    /// The app sends its license state; kept on disk so that a restart before the app
+    /// connects (boot) keeps the same behavior.
+    func setProUnlocked(_ unlocked: Bool) {
+        guard unlocked != Entitlement.isProUnlocked else { return }
+        Entitlement.isProUnlocked = unlocked
+        store.saveProUnlocked(unlocked)
+        Log.info("Pro \(unlocked ? "unlocked" : "locked")")
+        controller.reevaluate(trigger: "license changed")
+    }
+
     func restoreDefaults() {
         agents.reset()
         controller.agentsChanged(working: false)
@@ -62,6 +73,7 @@ final class DaemonService {
             pendingWake: controller.state.pendingWake, lidClosed: power.isLidClosed(),
             sleepDisabled: power.sleepDisabled, hibernateMode: power.currentHibernateMode(),
             sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
+            proUnlocked: Entitlement.isProUnlocked,
             agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
             connectedDisplays: context.connectedDisplays, lastLidDecision: controller.lastLidDecision)

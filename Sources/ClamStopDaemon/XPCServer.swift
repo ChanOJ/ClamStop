@@ -85,6 +85,13 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
         }
     }
 
+    func setProUnlocked(_ unlocked: Bool, reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            self.service.setProUnlocked(unlocked)
+            reply(self.service.status().encoded())
+        }
+    }
+
     func restoreDefaults(reply: @escaping (Data) -> Void) {
         DispatchQueue.main.async {
             self.service.restoreDefaults()

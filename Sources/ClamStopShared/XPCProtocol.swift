@@ -15,6 +15,8 @@ import Foundation
     func agentEvent(_ message: Data, reply: @escaping (Data) -> Void)
     /// JSON-encoded `[SleepEvent]` (empty `Data` on error).
     func getSleepLog(reply: @escaping (Data) -> Void)
+    /// The app's license state (`Entitlement.isProUnlocked`): the daemon cannot read the keychain.
+    func setProUnlocked(_ unlocked: Bool, reply: @escaping (Data) -> Void)
 }
 
 public extension NSXPCInterface {
