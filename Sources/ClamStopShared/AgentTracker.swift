@@ -97,7 +97,7 @@ public struct AgentProbe: Equatable, Sendable {
     public var alive: Bool?
     /// Newest modification of the transcript or of the subagent transcripts.
     public var newestActivity: Date?
-    /// Total CPU seconds of the agent process and its descendants.
+    /// Total CPU seconds of the agent's descendant processes (not the agent process itself).
     public var cpuSeconds: Double?
 
     public init(alive: Bool? = nil, newestActivity: Date? = nil, cpuSeconds: Double? = nil) {
@@ -116,8 +116,10 @@ public final class AgentTracker {
     public static let idleTimeout: TimeInterval = 30 * 60
     /// A transcript written this recently counts as work.
     public static let transcriptFreshness: TimeInterval = 120
-    /// CPU used by the agent's process tree between two ticks that counts as work. An idle
-    /// Claude Code process uses about 0.05 s per 15 s (measured 2026-11-26).
+    /// CPU used by the agent's child processes (tools, builds, tests) between two ticks that
+    /// counts as work. The agent process itself is left out: an idle Claude Code process used
+    /// 0.05 s per 15 s in one session but 0.5 to 0.7 s in another (measured 2026-11-26 and
+    /// 2026-11-27), which kept the Mac awake after the agent had finished.
     public static let busyCPUSeconds: Double = 0.5
     /// In grace, transcript writes this soon after the turn ended do not count: Claude Code
     /// still appends its last lines a few milliseconds after the Stop hook (seen 2026-11-26).

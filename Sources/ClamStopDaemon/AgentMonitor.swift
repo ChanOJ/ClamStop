@@ -32,7 +32,7 @@ final class AgentMonitor {
             AgentProbe(
                 alive: lease.pid.map { ProcessTable.isAlive(pid: $0, startMicros: lease.pidStartMicros) },
                 newestActivity: lease.transcriptPath.flatMap { ProcessTable.newestActivity(transcript: $0) },
-                cpuSeconds: lease.pid.flatMap { ProcessTable.treeCPUSeconds(root: $0) })
+                cpuSeconds: lease.pid.flatMap { ProcessTable.treeCPUSeconds(root: $0, includeRoot: false) })
         }
         updateTimer()
         onChange(tracker.isWorking)
