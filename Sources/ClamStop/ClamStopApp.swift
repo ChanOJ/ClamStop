@@ -22,9 +22,11 @@ struct ClamStopApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    let badgeAnimator = BadgeAnimator()
     private let audioPauser = AudioPauser()
     private let notifier = Notifier()
     private var notifierObservers: [AnyCancellable] = []
+    private var badgeObserver: AnyCancellable?
     private var settingsWindow: FittedWindow?
     private var welcomeWindow: FittedWindow?
     private var untilWindow: FittedWindow?
@@ -49,6 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         audioPauser.start()
         startNotifications()
+        badgeObserver = model.$status.sink { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let style = MenuBarIconStyle(rawValue: UserDefaults.standard.string(forKey: DefaultsKey.menuBarIconStyle) ?? "") ?? .laptop
+                self.badgeAnimator.update(self.model.iconState, style: style)
+            }
+        }
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)

@@ -1,5 +1,9 @@
 import AppKit
 import SwiftUI
+import os
+import ClamStopShared
+
+private let badgeLogger = Logger(subsystem: ClamStopID.appBundleID, category: "badge")
 
 /// What the menu bar icon shows (spec H1).
 enum MenuBarIconState: Equatable {
@@ -47,13 +51,32 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     }
 
     /// Template image: AppKit tints it for the menu bar (light, dark, tinted or opaque).
-    func image(_ state: MenuBarIconState) -> NSImage {
+    /// `badgeOpacity`: below 1 while `BadgeAnimator` pulses the badge on top of it.
+    @MainActor func image(_ state: MenuBarIconState, badgeOpacity: CGFloat = 1) -> NSImage {
         switch state {
-        case .active: image(active: true)
-        case .inactive: image(active: false)
-        case .awake(let reason): Self.withBadge(reason.badgeSymbol, pointSize: reason.badgePointSize,
-                                                on: image(active: true))
+        case .active: return image(active: true)
+        case .inactive: return image(active: false)
+        case .awake(let reason):
+            let key = "\(rawValue)-\(reason)-\(badgeOpacity)"
+            if let cached = Self.badgeCache[key] { return cached }
+            let image = Self.withBadge(reason.badgeSymbol, pointSize: reason.badgePointSize, opacity: badgeOpacity,
+                                       on: image(active: true))
+            Self.badgeCache[key] = image
+            return image
         }
+    }
+
+    @MainActor private static var badgeCache: [String: NSImage] = [:]
+
+    /// The badge symbol, and where `withBadge` puts it in the icon (non-flipped coordinates).
+    func badgeLayout(_ reason: AwakeReason) -> (symbol: NSImage, iconSize: NSSize, badge: NSRect)? {
+        let config = NSImage.SymbolConfiguration(pointSize: reason.badgePointSize, weight: .semibold)
+        guard let symbol = NSImage(systemSymbolName: reason.badgeSymbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config) else { return nil }
+        let base = image(active: true)
+        let size = NSSize(width: base.size.width + (symbol.size.width * 0.55).rounded(), height: base.size.height)
+        return (symbol, size, NSRect(x: size.width - symbol.size.width, y: 0,
+                                     width: symbol.size.width, height: symbol.size.height))
     }
 
     /// `active` = ClamStop is on and working; otherwise the icon is crossed out.
@@ -72,7 +95,8 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
 
     /// The icon with a small symbol in its lower right corner, with a thin gap around its strokes
     /// so both stay readable at menu bar size.
-    static func withBadge(_ symbol: String, pointSize: CGFloat, on base: NSImage) -> NSImage {
+    static func withBadge(_ symbol: String, pointSize: CGFloat, opacity: CGFloat = 1,
+                          on base: NSImage) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
         guard let cup = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
             .withSymbolConfiguration(config) else { return base }
@@ -86,9 +110,9 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
             for step in 0..<16 {
                 let angle = CGFloat(step) * .pi / 8
                 cup.draw(in: badge.offsetBy(dx: cos(angle) * margin, dy: sin(angle) * margin),
-                         from: .zero, operation: .destinationOut, fraction: 1)
+                         from: .zero, operation: .destinationOut, fraction: opacity)
             }
-            cup.draw(in: badge)
+            cup.draw(in: badge, from: .zero, operation: .sourceOver, fraction: opacity)
             return true
         }
         image.isTemplate = true
@@ -104,7 +128,8 @@ struct MenuBarIcon: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            Image(nsImage: style.image(model.iconState))
+            Image(nsImage: style.image(model.iconState,
+                                       badgeOpacity: BadgeAnimator.enabled ? BadgeAnimator.dimmedOpacity : 1))
             if showTimeLeft, let left = model.sessionTimeLeft {
                 Text(left)
             }
@@ -193,5 +218,126 @@ enum ClamGlyph {
             path.curve(to: joint, controlPoint1: control, controlPoint2: control)
         }
         return path
+    }
+}
+
+/// Slow pulse of the menu bar badge while the Mac stays awake, done by Core Animation on a
+/// layer added to the status item button, so the window server animates it and the app does
+/// nothing per frame. Swapping the icon image instead cost about 4.5 % of a core (measured
+/// 2026-11-27): each swap makes macOS redraw the status item for every menu bar. Same approach
+/// as RunCat Neo (runcat-dev/RunCatNeo, `RunnerLayer`). The layer only shows on the menu bar of
+/// the active display; the icon image keeps a dimmed badge for the others.
+@MainActor
+final class BadgeAnimator {
+    /// Opacity of the badge in the icon image while the layer pulses on top of it.
+    static let dimmedOpacity: CGFloat = 0.35
+    /// One step every 0.25 s: fades out quickly (0.75 s), comes back slowly (1.75 s).
+    static let opacitySteps: [Double] = [1, 0.55, 0.2, 0, 0.12, 0.27, 0.44, 0.62, 0.8, 0.93]
+    static let period: CFTimeInterval = 0.25 * Double(opacitySteps.count)
+
+    private let colorLayer = CALayer()
+    private let maskLayer = CALayer()
+    private weak var button: NSStatusBarButton?
+    private var appearanceObservation: NSKeyValueObservation?
+    private var shown: (MenuBarIconStyle, AwakeReason)?
+
+    /// Whether the badge pulses (and the icon image should carry a dimmed badge).
+    static var enabled: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    init() {
+        colorLayer.mask = maskLayer
+        maskLayer.contentsGravity = .resizeAspect
+    }
+
+    func update(_ state: MenuBarIconState, style: MenuBarIconStyle) {
+        guard case .awake(let reason) = state, Self.enabled,
+              let button = NSApp.statusItemButton, let layout = style.badgeLayout(reason) else {
+            if case .awake = state {
+                let windows = NSApp.windows.map { String(describing: type(of: $0)) }.joined(separator: ",")
+                badgeLogger.info("badge: no status item button (windows: \(windows, privacy: .public))")
+            }
+            hide()
+            return
+        }
+        if let shown, shown == (style, reason), self.button === button, colorLayer.superlayer != nil { return }
+        self.button = button
+        button.wantsLayer = true
+        guard let host = button.layer else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let bounds = button.bounds
+        let origin = NSPoint(x: (bounds.width - layout.iconSize.width) / 2,
+                             y: (bounds.height - layout.iconSize.height) / 2)
+        var frame = layout.badge.offsetBy(dx: origin.x, dy: origin.y)
+        if button.isFlipped { frame.origin.y = bounds.height - frame.maxY }
+        colorLayer.frame = frame
+        maskLayer.frame = CGRect(origin: .zero, size: frame.size)
+        let scale = button.window?.backingScaleFactor ?? 2
+        var rect = CGRect(origin: .zero, size: layout.symbol.size)
+        maskLayer.contents = layout.symbol.cgImage(forProposedRect: &rect, context: nil,
+                                                   hints: [.ctm: AffineTransform(scale: scale)])
+        maskLayer.contentsScale = scale
+        colorLayer.contentsScale = scale
+        updateColor()
+        if colorLayer.superlayer !== host { host.addSublayer(colorLayer) }
+        if colorLayer.animation(forKey: "pulse") == nil {
+            // Discrete steps, not a smooth animation: a continuous one made the window server
+            // recomposite the menu bar at the display refresh rate (+25 % of a core, measured
+            // 2026-11-27); 4 steps per second look like a slow fade.
+            let pulse = CAKeyframeAnimation(keyPath: "opacity")
+            pulse.values = Self.opacitySteps
+            pulse.calculationMode = .discrete
+            pulse.duration = Self.period
+            pulse.repeatCount = .infinity
+            pulse.isRemovedOnCompletion = false
+            colorLayer.add(pulse, forKey: "pulse")
+        }
+        CATransaction.commit()
+        appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] _, _ in
+            DispatchQueue.main.async { self?.updateColor() }
+        }
+        shown = (style, reason)
+        badgeLogger.info("badge layer \(NSStringFromRect(frame), privacy: .public) in \(NSStringFromRect(bounds), privacy: .public), flipped \(button.isFlipped)")
+    }
+
+    private func hide() {
+        guard colorLayer.superlayer != nil else { return }
+        colorLayer.removeAllAnimations()
+        colorLayer.removeFromSuperlayer()
+        appearanceObservation = nil
+        shown = nil
+    }
+
+    /// The color macOS gives template images in this menu bar (light, dark, tinted).
+    private func updateColor() {
+        guard let button else { return }
+        var color = NSColor.labelColor.cgColor
+        button.effectiveAppearance.performAsCurrentDrawingAppearance {
+            color = NSColor.labelColor.cgColor
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        colorLayer.backgroundColor = color
+        CATransaction.commit()
+    }
+}
+
+extension NSApplication {
+    /// The button of the `MenuBarExtra`'s status item (SwiftUI does not expose it).
+    var statusItemButton: NSStatusBarButton? {
+        for window in windows where String(describing: type(of: window)).contains("NSStatusBarWindow") {
+            if let button = window.contentView?.firstSubview(of: NSStatusBarButton.self) { return button }
+        }
+        return nil
+    }
+}
+
+private extension NSView {
+    func firstSubview<T: NSView>(of type: T.Type) -> T? {
+        if let match = self as? T { return match }
+        for view in subviews {
+            if let match = view.firstSubview(of: type) { return match }
+        }
+        return nil
     }
 }
