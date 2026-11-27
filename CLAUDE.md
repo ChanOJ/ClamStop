@@ -124,6 +124,9 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - "Stay Awake" sessions from the menu (spec C1, C2): `PowerController.startSession(until:)`; an
   idle-sleep assertion while it runs, `disablesleep` with the lid closed within the agent guards
   (same path as agents, `LidDecision.keepAwake`); any sleep, Sleep Now or the battery floor ends it.
+- Notifications (spec H5): the root daemon cannot post them, so `PowerController.notify` keeps the
+  last `Notice`s in `DaemonStatus.notices` and the app's `Notifier` posts the new ones
+  (`DefaultsKey.lastNoticeDate`); the approval notice comes from the app's service state.
 - First launch opens the first-run assistant (`WelcomeView`); its choices reach the daemon once
   the service answers (`AppModel.applyPendingFirstRun`). Audio pause is automatic (spec F1).
 - The daemon decides through the pure `SleepPolicy.decide`: power-source profile, low battery

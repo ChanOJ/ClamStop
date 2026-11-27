@@ -67,6 +67,8 @@ public final class PowerController {
     public private(set) var lastLidDecision: String?
     /// "Stay awake" session from the menu (spec C1, C2), nil when none runs.
     public private(set) var session: StayAwakeSession?
+    /// Recent notices for the app's notifications (spec H5), oldest first.
+    public private(set) var notices: [Notice] = []
     /// How often a session checks the battery floor while the lid is open.
     public static let sessionCheckInterval: TimeInterval = 60
 
@@ -213,6 +215,7 @@ public final class PowerController {
             let context = effects.powerContext()
             if !context.onPowerAdapter, let percent = context.batteryPercent, percent < settings.batteryFloorPercent {
                 endSession(reason: "battery below \(settings.batteryFloorPercent) %")
+                notify(.sessionEnded, .batteryFloor, value: settings.batteryFloorPercent)
             }
         }
         updateSleepPrevention()
@@ -226,7 +229,12 @@ public final class PowerController {
         lastLidDecision = decision.summary
         log("\(trigger), lid closed: \(decision.summary)")
         if case .sleep = decision, agentsWorking { keepAwakeReleased = true }
-        if case .sleep(_, let reason) = decision { endSession(reason: reason) }
+        if case .sleep(_, let reason) = decision {
+            endSession(reason: reason)
+            if let guardReason = Notice.Reason(decisionReason: reason) {
+                notify(.safetyStop, guardReason, value: noticeValue(for: guardReason))
+            }
+        }
         stopKeepingAwake()
         record(.agentsDone, trigger)
         act(on: decision)
@@ -454,6 +462,7 @@ public final class PowerController {
             effects.run(at: until) { [weak self] in
                 guard let self, self.sessionGeneration == generation else { return }
                 self.endSession(reason: "time is up")
+                self.notify(.sessionEnded, .timeUp)
                 self.reevaluate(trigger: "session ended")
             }
         }
@@ -478,6 +487,21 @@ public final class PowerController {
             guard let self, self.sessionGeneration == generation, self.session != nil else { return }
             self.reevaluate(trigger: "session check")
             self.scheduleSessionCheck(generation: generation)
+        }
+    }
+
+    private func notify(_ kind: Notice.Kind, _ reason: Notice.Reason, value: Int? = nil) {
+        notices.append(Notice(date: effects.now(), kind: kind, reason: reason, value: value))
+        if notices.count > Notice.limit { notices.removeFirst(notices.count - Notice.limit) }
+        log("notice: \(kind.rawValue) (\(reason.rawValue))")
+    }
+
+    private func noticeValue(for reason: Notice.Reason) -> Int? {
+        switch reason {
+        case .maxDuration: settings.maxAwakeHours
+        case .batteryFloor: settings.batteryFloorPercent
+        case .lowBattery: settings.lowBatteryPercent
+        default: nil
         }
     }
 

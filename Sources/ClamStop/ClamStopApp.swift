@@ -23,6 +23,8 @@ struct ClamStopApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
     private let audioPauser = AudioPauser()
+    private let notifier = Notifier()
+    private var notifierObservers: [AnyCancellable] = []
     private var settingsWindow: FittedWindow?
     private var welcomeWindow: FittedWindow?
     private var untilWindow: FittedWindow?
@@ -46,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.serviceState == .running && model.enabled && model.delayMinutes != ClamStopSettings.never
         }
         audioPauser.start()
+        startNotifications()
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)
@@ -164,6 +167,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         welcomeWindow?.show()
     }
 
+    /// Notifications (spec H5) from the daemon's notices and the service state.
+    private func startNotifications() {
+        // Not from previews and snapshots (development aids).
+        guard !AppModel.previewSettings, !AppModel.previewApproval,
+              !CommandLine.arguments.contains("--snapshot") else { return }
+        notifier.onOpen = { [weak self] in self?.showSettings() }
+        notifier.start()
+        notifierObservers.append(model.$status.sink { [notifier] status in
+            if let status { notifier.process(status) }
+        })
+        notifierObservers.append(model.$serviceState.removeDuplicates().sink { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .requiresApproval where self.welcomeWindow?.isVisible != true:
+                self.notifier.serviceNeedsApproval()
+            case .running:
+                self.notifier.serviceApproved()
+            default:
+                break
+            }
+        })
+    }
+
     /// "Stay Awake > Until…" from the menu: pick an end time.
     func showSessionUntil() {
         if untilWindow == nil {
@@ -219,6 +245,8 @@ final class FittedWindow {
     func close() {
         window.close()
     }
+
+    var isVisible: Bool { window.isVisible }
 
     /// Resize the window to the SwiftUI content's ideal height, keeping its top edge in place.
     private func fit() {
