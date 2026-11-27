@@ -3,11 +3,13 @@ import ClamStopShared
 
 enum DaemonClientError: Error {
     case unreachable(String)
+    case timeout
     case badReply
 }
 
 /// XPC client of the privileged daemon.
 final class DaemonClient {
+    static let timeout: TimeInterval = 8
     private var connection: NSXPCConnection?
 
     private func proxy(onError: @escaping (Error) -> Void) -> ClamStopDaemonXPC? {
@@ -32,6 +34,11 @@ final class DaemonClient {
             guard let proxy = proxy(onError: fail) else {
                 fail(DaemonClientError.badReply)
                 return
+            }
+            // A daemon launchd cannot start ("spawn scheduled", EX_CONFIG after an ad-hoc update)
+            // never answers and no error comes back (seen on macOS 27.2): give up after a while.
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.timeout) {
+                once.run { continuation.resume(throwing: DaemonClientError.timeout) }
             }
             body(proxy) { data in
                 once.run {
