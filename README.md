@@ -268,6 +268,19 @@ Once the Apple credentials are configured, the same workflow signs and notarizes
 Signed releases also publish the feed that installed copies check for updates (Sparkle), see
 [docs/updates.md](docs/updates.md).
 
+## Support
+
+ClamStop is free, with every feature, and stays free. If it is useful to you, you can
+[buy its developer a coffee](https://github.com/sponsors/ChanOJ).
+
+- A donation is a gift: it unlocks no feature and gives no priority support, listing or other
+  benefit in return.
+- Donations go to the company of ClamStop's developer and help pay for the Apple developer account
+  and the time spent on the app.
+- No tax receipt is issued: donations are not tax-deductible.
+- Payments are handled by GitHub Sponsors and Stripe, under their own terms; refund requests go
+  through GitHub Sponsors.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
