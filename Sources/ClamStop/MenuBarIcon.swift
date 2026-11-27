@@ -25,6 +25,11 @@ enum AwakeReason: CaseIterable {
         case .app: "hourglass"
         }
     }
+
+    /// The sparkles are thin and look smaller than the filled symbols at the same size.
+    var badgePointSize: CGFloat {
+        self == .agents ? 9.5 : 7
+    }
 }
 
 /// Icon shown in the menu bar, chosen in the settings.
@@ -46,7 +51,8 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         switch state {
         case .active: image(active: true)
         case .inactive: image(active: false)
-        case .awake(let reason): Self.withBadge(reason.badgeSymbol, on: image(active: true))
+        case .awake(let reason): Self.withBadge(reason.badgeSymbol, pointSize: reason.badgePointSize,
+                                                on: image(active: true))
         }
     }
 
@@ -66,11 +72,11 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
 
     /// The icon with a small symbol in its lower right corner, cut out of the icon so it stays
     /// readable at menu bar size.
-    static func withBadge(_ symbol: String, on base: NSImage) -> NSImage {
-        let config = NSImage.SymbolConfiguration(pointSize: 7, weight: .semibold)
+    static func withBadge(_ symbol: String, pointSize: CGFloat, on base: NSImage) -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
         guard let cup = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
             .withSymbolConfiguration(config) else { return base }
-        let size = NSSize(width: base.size.width + 6, height: base.size.height)
+        let size = NSSize(width: base.size.width + (cup.size.width * 0.55).rounded(), height: base.size.height)
         let image = NSImage(size: size, flipped: false) { _ in
             base.draw(in: NSRect(origin: .zero, size: base.size))
             let badge = NSRect(x: size.width - cup.size.width, y: 0, width: cup.size.width, height: cup.size.height)
