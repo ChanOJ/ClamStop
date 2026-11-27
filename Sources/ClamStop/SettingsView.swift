@@ -274,6 +274,12 @@ struct DonationLink: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Link("Buy me a coffee", destination: Links.donation)
+            // Wording approved by the user on their accountant's advice (2026-11-27); full terms
+            // in the README and on the website. Full edition only, like the link.
+            Text("A gift, with nothing in return: no feature, no priority support, no tax receipt.")
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .font(.footnote)
         .frame(maxWidth: .infinity)
