@@ -112,12 +112,20 @@
       </ul>
     </section>
 
-    <!-- PRO SLOT (planned: freemium with license keys, prices not decided). Hidden for now:
-         add the content and its pro.* strings, then remove the "hidden" attribute. -->
-    <section id="pro" class="wrap" hidden>
-      <h2>Pro</h2>
+    <section id="support" class="wrap narrow" aria-labelledby="support-title">
+      <h2 id="support-title">{{support.title}}</h2>
+      <p>{{support.intro}}</p>
+      <p class="actions"><a class="button" href="{{@donation}}">{{support.button}}</a></p>
+      <h3>{{support.terms.title}}</h3>
+      <ul>
+        <li>{{support.terms.gift}}</li>
+        <li>{{support.terms.recipient}}</li>
+        <li>{{support.terms.receipt}}</li>
+        <li>{{support.terms.payment}}</li>
+        <li>{{support.terms.refund}}</li>
+      </ul>
     </section>
-    <!-- END OF PRO SLOT -->
+
 
     <section id="install" class="wrap narrow" aria-labelledby="install-title">
       <h2 id="install-title">{{install.title}}</h2>
@@ -190,7 +198,7 @@
 
   <footer>
     <div class="wrap">
-      <p><a href="{{@repo}}">{{footer.repo}}</a> · <a href="{{@repo}}/issues">{{footer.issues}}</a> · <a href="{{@repo}}/blob/main/LICENSE">{{footer.license}}</a></p>
+      <p><a href="{{@repo}}">{{footer.repo}}</a> · <a href="{{@repo}}/issues">{{footer.issues}}</a> · <a href="{{@repo}}/blob/main/LICENSE">{{footer.license}}</a> · <a href="#support">{{footer.support}}</a></p>
       <p>{{footer.privacy}}</p>
       <p>{{footer.apple}}</p>
     </div>

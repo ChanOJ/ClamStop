@@ -56,6 +56,16 @@
   "editions.light.source": "Installed and updated by the App Store",
   "editions.light.download": "Get it on the Mac App Store",
 
+  "support.title": "Support ClamStop",
+  "support.intro": "ClamStop is free, with every feature, and stays free. If it is useful to you, you can buy its developer a coffee.",
+  "support.button": "Buy me a coffee",
+  "support.terms.title": "About donations",
+  "support.terms.gift": "A donation is a gift: it unlocks no feature and gives no priority support, listing or other benefit in return.",
+  "support.terms.recipient": "Donations go to the company of ClamStop's developer and help pay for the Apple developer account and the time spent on the app.",
+  "support.terms.receipt": "No tax receipt is issued: donations are not tax-deductible.",
+  "support.terms.payment": "Payments are handled by GitHub Sponsors and Stripe, under their own terms. ClamStop never sees your payment details.",
+  "support.terms.refund": "Refund requests go through GitHub Sponsors.",
+
   "install.title": "Install",
   "install.scope": "These steps are for ClamStop, downloaded from GitHub. ClamStop Light installs from the Mac App Store.",
   "requirements.title": "Requirements",
@@ -99,6 +109,7 @@
   "footer.repo": "Source code",
   "footer.issues": "Report a problem",
   "footer.license": "MIT license",
+  "footer.support": "Support",
   "footer.privacy": "No cookies, no trackers.",
   "footer.apple": "ClamStop is an independent project, not affiliated with Apple Inc. Mac, MacBook, macOS and App Store are trademarks of Apple Inc.",
 
