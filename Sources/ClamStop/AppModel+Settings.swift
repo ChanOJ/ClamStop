@@ -70,8 +70,9 @@ extension AppModel {
         guard statusIsOK, let status else { return .inactive }
         let agentsHolding = !(status.agents ?? []).isEmpty
             && (status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true)
-        if agentsHolding { return .awake(.agents) }
+        // Same precedence as the menu lines: a Stay Awake session first, then AI agents.
         if status.session != nil { return .awake(.session) }
+        if agentsHolding { return .awake(.agents) }
         return .active
     }
 

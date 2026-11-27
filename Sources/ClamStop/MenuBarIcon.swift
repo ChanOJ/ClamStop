@@ -9,8 +9,8 @@ private let badgeLogger = Logger(subsystem: ClamStopID.appBundleID, category: "b
 enum MenuBarIconState: Equatable {
     /// ClamStop works: the lid puts the Mac to sleep.
     case active
-    /// The Mac stays awake, with a badge saying why (highest priority first): AI agents work,
-    /// a Stay Awake session, another app works (video export, encoding; spec C5).
+    /// The Mac stays awake, with a badge saying why (highest priority first): a Stay Awake
+    /// session, AI agents work, another app works (video export, encoding; spec C5).
     case awake(AwakeReason)
     /// ClamStop is off, inactive or not working: the icon is crossed out.
     case inactive
@@ -18,8 +18,8 @@ enum MenuBarIconState: Equatable {
 
 /// Why the Mac stays awake, in order of priority for the menu bar badge.
 enum AwakeReason: CaseIterable {
-    case agents
     case session
+    case agents
     case app
 
     var badgeSymbol: String {
