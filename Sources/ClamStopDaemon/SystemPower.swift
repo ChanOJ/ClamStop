@@ -177,6 +177,26 @@ final class SystemPower: PowerEffects {
         return (onAdapter, nil)
     }
 
+    /// Processes keeping the Mac from sleeping with a power assertion, their own or one held for
+    /// them (coreaudiod holds one for each app playing sound).
+    static func processesPreventingSleep() -> Set<Int32> {
+        var reference: Unmanaged<CFDictionary>?
+        guard IOPMCopyAssertionsByProcess(&reference) == kIOReturnSuccess,
+              let byProcess = reference?.takeRetainedValue() as? [NSNumber: [[String: Any]]] else { return [] }
+        let blocking: Set<String> = [kIOPMAssertPreventUserIdleSystemSleep, "PreventSystemSleep"]
+        var result: Set<Int32> = []
+        for (owner, assertions) in byProcess {
+            for assertion in assertions {
+                // The "true" type resolves legacy names (NoIdleSleepAssertion).
+                guard let type = (assertion["AssertionTrueType"] ?? assertion["AssertType"]) as? String,
+                      blocking.contains(type),
+                      (assertion["AssertLevel"] as? Int ?? 0) > 0 else { continue }
+                result.insert((assertion["AssertionOnBehalfOfPID"] as? NSNumber)?.int32Value ?? owner.int32Value)
+            }
+        }
+        return result
+    }
+
     // MARK: Helpers
 
     static func rootDomainProperty(_ key: String) -> Any? {

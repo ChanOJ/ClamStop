@@ -11,7 +11,7 @@ func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettin
             set: { value in model.changeSettings { $0[keyPath: keyPath] = value } })
 }
 
-/// Stay Awake: AI agents and their hooks (spec C7, I5).
+/// Stay Awake: AI agents and their hooks (spec C7, I5), then the watched apps (C5).
 struct StayAwakeTab: View {
     @ObservedObject var model: AppModel
 
@@ -44,6 +44,7 @@ struct StayAwakeTab: View {
             } footer: {
                 Footnote("With the lid closed, your Mac can get hot. Keep it out in the open while agents work: the Safety tab puts it to sleep if it gets too hot.")
             }
+            WatchedAppsSection(model: model)
         }
     }
 

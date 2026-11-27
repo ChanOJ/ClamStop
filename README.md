@@ -24,8 +24,9 @@ Everything is free. The settings window has five tabs:
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
   battery (sleep or not, and another delay), the menu bar icon,
   opening at login, and the background service.
-- **Stay Awake**: stay awake with the lid closed while AI agents work, and install or remove the
-  AI agent hooks. See [AI agents](#ai-agents).
+- **Stay Awake**: stay awake with the lid closed while AI agents work (install or remove the AI
+  agent hooks, see [AI agents](#ai-agents)), or while chosen apps and commands work, see
+  [Apps that work](#apps-that-work).
 - **Rules**: "when these conditions are true, do this when the lid closes". Conditions: power
   adapter or battery, external screen plugged in or not, time of day and days of the week. Action:
   sleep (with its own hibernation delay), stay awake, or do what macOS does. The first matching
@@ -49,6 +50,20 @@ A **stay awake** rule costs nothing with both an external screen and the power a
 stays awake by itself. In any other case ClamStop has to block sleep (`pmset disablesleep`) as
 long as the rule applies, even with the lid open: the Mac does not sleep when idle and Apple menu
 > Sleep does nothing. **Sleep Now** in the ClamStop menu works.
+
+### Apps that work
+
+Choose apps or commands in the Stay Awake tab (the list is empty at first): ready-made entries for
+those found on this Mac among HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro,
+Blender, ffmpeg, Xcode builds, Ollama and LM Studio, any other app, or a command by the name of its
+program (`rsync`; a script runs as its interpreter, such as `python3`).
+
+An app works while it, or one of the processes it started, keeps the Mac from sleeping on its own
+(a power assertion) or uses more than 5 % of a processor core. The Mac then stays awake, even with
+the lid closed, within the Safety guards (on power adapter only by default), and goes to sleep 90
+seconds after the work ends. ClamStop checks every 15 seconds while the list is not empty. An app
+that blocks sleep all the time keeps the Mac awake as long as it runs: the list shows "Working
+now", and you can remove it.
 
 The menu bar menu has **Stay Awake**: keep the Mac awake until you turn it off, for 5 minutes to
 8 hours, or until a time of day. It does not sleep when idle, and with the lid closed it stays

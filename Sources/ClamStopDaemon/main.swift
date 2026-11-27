@@ -17,6 +17,7 @@ final class DaemonService {
     let power = SystemPower()
     let controller: PowerController
     let agents = AgentMonitor()
+    let apps = AppMonitor()
     private(set) var settings: ClamStopSettings
     private(set) var sleepLog: [SleepEvent]
 
@@ -31,6 +32,15 @@ final class DaemonService {
             self.controller.agentsChanged(working: working)
             self.controller.reevaluate(trigger: "agent check")
         }
+        apps.onChange = { [unowned self] working in
+            self.controller.appsChanged(working: working)
+            self.controller.reevaluate(trigger: "app check")
+        }
+    }
+
+    /// Watch the chosen apps only while ClamStop is on and the app runs.
+    func updateApps() {
+        apps.update(watched: settings.watchedApps, active: settings.enabled && controller.appRunning)
     }
 
     private var appWatcher: DispatchSourceProcess?
@@ -51,6 +61,7 @@ final class DaemonService {
             self.appWatcher = nil
             self.appPID = 0
             self.controller.setAppRunning(false)
+            self.updateApps()
         }
         source.resume()
         appWatcher = source
@@ -60,10 +71,12 @@ final class DaemonService {
             appWatcher = nil
             appPID = 0
             controller.setAppRunning(false)
+            updateApps()
             return
         }
         Log.info("app process \(pid) connected")
         controller.setAppRunning(true)
+        updateApps()
     }
 
     func externalDisplayChanged(_ connected: Bool) {
@@ -85,6 +98,7 @@ final class DaemonService {
         settings = newSettings
         store.saveSettings(newSettings)
         controller.apply(settings: newSettings)
+        updateApps()
         Log.info("settings: \(String(decoding: (try? JSONEncoder().encode(newSettings)) ?? Data(), as: UTF8.self))")
     }
 
@@ -93,6 +107,7 @@ final class DaemonService {
     func restoreDefaults() {
         agents.reset()
         controller.agentsChanged(working: false)
+        apps.update(watched: [], active: false)
         controller.restoreDefaults()
         store.removeAll()
         Log.info("removed \(store.directory.path)")
@@ -108,7 +123,7 @@ final class DaemonService {
             agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
             lastLidDecision: controller.lastLidDecision, appRunning: controller.appRunning, session: controller.session,
-            notices: controller.notices, lidPlan: controller.currentPlan)
+            notices: controller.notices, lidPlan: controller.currentPlan, apps: apps.tracker.activity)
     }
 }
 
@@ -150,7 +165,11 @@ if service.power.sleepDisabled {
 
 service.controller.start()
 // Inactive until the app connects (in the foreground test mode there is no app).
-if !foreground { service.controller.setAppRunning(false) }
+if foreground {
+    service.updateApps()
+} else {
+    service.controller.setAppRunning(false)
+}
 
 let monitor = PowerEventMonitor()
 monitor.onLidChange = { closed in

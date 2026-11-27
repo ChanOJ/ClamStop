@@ -11,6 +11,5 @@ OUT="$ROOT/tmp/mockups"
 swift build --product ClamStop
 BIN=$(swift build --show-bin-path)
 rm -rf "$OUT"
-# -showMenuBarIcon NO: no menu bar icon flashing while the renderer runs.
-"$BIN/ClamStop" --mockups "$OUT" --icon "$ROOT/Resources/AppIcon.icns" -showMenuBarIcon NO
+"$BIN/ClamStop" --mockups "$OUT" --icon "$ROOT/Resources/AppIcon.icns"
 log "Contact sheet: $OUT/index.html"
