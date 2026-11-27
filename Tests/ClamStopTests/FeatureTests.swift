@@ -651,3 +651,70 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(e.sleepDisabled)
     }
 }
+
+// MARK: Notices for notifications (spec H5)
+
+@Suite struct NoticeTests {
+    @Test func guardReasonsFromPolicyDecisions() {
+        #expect(Notice.Reason(decisionReason: "time limit reached") == .maxDuration)
+        #expect(Notice.Reason(decisionReason: "Mac too hot") == .heat)
+        #expect(Notice.Reason(decisionReason: "on battery") == .unplugged)
+        #expect(Notice.Reason(decisionReason: "battery below 20 %") == .batteryFloor)
+        #expect(Notice.Reason(decisionReason: "battery at 10 %") == .lowBattery)
+        #expect(Notice.Reason(decisionReason: "lid closed") == nil)
+    }
+
+    @Test func sessionTimeUpIsNoticed() {
+        let (c, e, _) = controller()
+        c.startSession(until: e.clock.addingTimeInterval(600))
+        e.advance(600)
+        #expect(c.notices.map(\.kind) == [.sessionEnded])
+        #expect(c.notices.first?.reason == .timeUp)
+    }
+
+    @Test func turningOffIsNotNoticed() {
+        let (c, _, _) = controller()
+        c.startSession(until: nil)
+        c.stopSession()
+        c.startSession(until: nil)
+        c.sleepNow()
+        #expect(c.notices.isEmpty)
+    }
+
+    @Test func heatStopWithTheLidClosedIsNoticed() {
+        let (c, e, _) = controller()
+        c.agentsChanged(working: true)
+        closeLid(c, e)
+        e.context.thermalPressure = true
+        c.reevaluate(trigger: "agent check")
+        #expect(c.notices.map(\.kind) == [.safetyStop])
+        #expect(c.notices.first?.reason == .heat)
+    }
+
+    @Test func agentsDoneIsNotNoticed() {
+        let (c, e, _) = controller()
+        c.agentsChanged(working: true)
+        closeLid(c, e)
+        c.agentsChanged(working: false)
+        #expect(c.notices.isEmpty)
+    }
+
+    @Test func batteryFloorWithTheLidOpenEndsTheSessionWithANotice() {
+        let (c, e, _) = controller(context: PowerContext(onPowerAdapter: false, batteryPercent: 50))
+        c.startSession(until: nil)
+        e.context.batteryPercent = 10
+        e.advance(PowerController.sessionCheckInterval)
+        #expect(c.notices.first?.kind == .sessionEnded)
+        #expect(c.notices.first?.reason == .batteryFloor)
+        #expect(c.notices.first?.value == 20)
+    }
+
+    @Test func keepsOnlyTheLastNotices() {
+        let (c, e, _) = controller()
+        for _ in 0..<(Notice.limit + 3) {
+            c.startSession(until: e.clock.addingTimeInterval(60))
+            e.advance(60)
+        }
+        #expect(c.notices.count == Notice.limit)
+    }
+}

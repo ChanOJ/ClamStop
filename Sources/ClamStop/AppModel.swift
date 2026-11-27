@@ -23,9 +23,11 @@ enum DefaultsKey {
     /// No longer a setting (audio pause is automatic, spec F1); listed so uninstall removes it.
     static let pauseAudio = "pauseAudioWhileAsleep"
     static let menuBarIconStyle = "menuBarIconStyle"
+    /// Date of the newest daemon notice already turned into a notification.
+    static let lastNoticeDate = "lastNoticeDate"
 
     /// Every key, removed on uninstall.
-    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle]
+    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate]
 }
 
 @MainActor

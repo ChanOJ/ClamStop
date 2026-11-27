@@ -189,12 +189,15 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     public var lastLidDecision: String?
     /// The "Stay awake" session, if one runs.
     public var session: StayAwakeSession?
+    /// Recent notices, oldest first (spec H5).
+    public var notices: [Notice]?
 
     public init(version: String, settings: ClamStopSettings, phase: PowerPhase, pendingWake: Date?,
                 lidClosed: Bool, sleepDisabled: Bool, hibernateMode: Int?,
                 sleepDisabledByClamStop: Bool? = nil, agents: [AgentSessionInfo]? = nil,
                 keepingAwakeForAgents: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
-                lastLidDecision: String? = nil, session: StayAwakeSession? = nil) {
+                lastLidDecision: String? = nil, session: StayAwakeSession? = nil,
+                notices: [Notice]? = nil) {
         self.version = version
         self.settings = settings
         self.phase = phase
@@ -209,6 +212,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.batteryPercent = batteryPercent
         self.lastLidDecision = lastLidDecision
         self.session = session
+        self.notices = notices
     }
 
     public func encoded() -> Data {

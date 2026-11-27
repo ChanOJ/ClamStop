@@ -65,7 +65,8 @@ final class DaemonService {
             sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
             agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
-            lastLidDecision: controller.lastLidDecision, session: controller.session)
+            lastLidDecision: controller.lastLidDecision, session: controller.session,
+            notices: controller.notices)
     }
 }
 
