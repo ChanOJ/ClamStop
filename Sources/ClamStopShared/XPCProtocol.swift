@@ -22,6 +22,9 @@ import Foundation
     /// "Stay awake" from the menu: `seconds` > 0 for a duration, 0 until turned off.
     func startSession(seconds: Double, reply: @escaping (Data) -> Void)
     func stopSession(reply: @escaping (Data) -> Void)
+    /// The app's status poll: also says the app runs. The daemon watches the caller's process and
+    /// stays inactive while no app process is alive (not called by `--agent-hook`).
+    func appStatus(reply: @escaping (Data) -> Void)
 }
 
 public extension NSXPCInterface {

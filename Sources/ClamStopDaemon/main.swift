@@ -31,6 +31,39 @@ final class DaemonService {
         }
     }
 
+    private var appWatcher: DispatchSourceProcess?
+    private var appPID: pid_t = 0
+
+    /// The app polls its status: watch its process, and stay inactive once it ends.
+    func appConnected(pid: pid_t) {
+        if pid == appPID, appWatcher != nil {
+            return
+        }
+        appWatcher?.cancel()
+        appPID = pid
+        let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit, queue: .main)
+        source.setEventHandler { [weak self] in
+            guard let self, self.appPID == pid else { return }
+            Log.info("app process \(pid) ended")
+            self.appWatcher?.cancel()
+            self.appWatcher = nil
+            self.appPID = 0
+            self.controller.setAppRunning(false)
+        }
+        source.resume()
+        appWatcher = source
+        // The process may have ended before the watch started.
+        if kill(pid, 0) != 0, errno == ESRCH {
+            source.cancel()
+            appWatcher = nil
+            appPID = 0
+            controller.setAppRunning(false)
+            return
+        }
+        Log.info("app process \(pid) connected")
+        controller.setAppRunning(true)
+    }
+
     func record(_ kind: SleepEvent.Kind, _ detail: String?) {
         let battery = SystemPower.battery()
         sleepLog = SleepLog.appending(SleepEvent(date: Date(), kind: kind, batteryPercent: battery.percent,
@@ -65,7 +98,7 @@ final class DaemonService {
             sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
             agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
-            lastLidDecision: controller.lastLidDecision, session: controller.session,
+            lastLidDecision: controller.lastLidDecision, appRunning: controller.appRunning, session: controller.session,
             notices: controller.notices)
     }
 }
@@ -107,6 +140,8 @@ if service.power.sleepDisabled {
 }
 
 service.controller.start()
+// Inactive until the app connects (in the foreground test mode there is no app).
+if !foreground { service.controller.setAppRunning(false) }
 
 let monitor = PowerEventMonitor()
 monitor.onLidChange = { closed in

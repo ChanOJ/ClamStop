@@ -124,6 +124,10 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - "Stay Awake" sessions from the menu (spec C1, C2): `PowerController.startSession(until:)`; an
   idle-sleep assertion while it runs, `disablesleep` with the lid closed within the agent guards
   (same path as agents, `LidDecision.keepAwake`); any sleep, Sleep Now or the battery floor ends it.
+- Inactive without the app: the app's status poll is the XPC call `appStatus`; the daemon watches
+  that process (`DaemonService.appConnected`, `DispatchSource` exit) and `PowerController.appRunning`
+  makes `decide` return `leaveAlone` while no app runs (also after a daemon start, until the app
+  connects; not in `--foreground`). The agent hook never calls `appStatus`.
 - Notifications (spec H5): the root daemon cannot post them, so `PowerController.notify` keeps the
   last `Notice`s in `DaemonStatus.notices` and the app's `Notifier` posts the new ones
   (`DefaultsKey.lastNoticeDate`); the approval notice comes from the app's service state.

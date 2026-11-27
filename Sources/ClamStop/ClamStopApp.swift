@@ -143,12 +143,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard model.status?.session != nil, !model.uninstalling else { return .terminateNow }
-        model.endSessionBeforeQuitting { NSApp.reply(toApplicationShouldTerminate: true) }
-        return .terminateLater
-    }
-
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }

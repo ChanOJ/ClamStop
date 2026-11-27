@@ -45,8 +45,9 @@ final class DaemonClient {
         }
     }
 
+    /// The app's poll: also tells the daemon that the app runs (see `appStatus`).
     func status() async throws -> DaemonStatus {
-        try await call { $0.getStatus(reply: $1) }
+        try await call { $0.appStatus(reply: $1) }
     }
 
     func setEnabled(_ enabled: Bool) async throws -> DaemonStatus {

@@ -44,6 +44,14 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
 
     // MARK: ClamStopDaemonXPC (called on XPC queues; the service hops to the main queue)
 
+    func appStatus(reply: @escaping (Data) -> Void) {
+        let pid = NSXPCConnection.current()?.processIdentifier ?? 0
+        DispatchQueue.main.async {
+            if pid > 0 { self.service.appConnected(pid: pid) }
+            reply(self.service.status().encoded())
+        }
+    }
+
     func getStatus(reply: @escaping (Data) -> Void) {
         DispatchQueue.main.async { reply(self.service.status().encoded()) }
     }
