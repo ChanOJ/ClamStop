@@ -65,6 +65,24 @@ extension AppModel {
         return calendar.date(byAdding: .hour, value: 1, to: hour) ?? date.addingTimeInterval(3600)
     }
 
+    /// Menu bar icon state (spec H1).
+    var iconState: MenuBarIconState {
+        guard statusIsOK, let status else { return .inactive }
+        if status.session != nil || status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true {
+            return .awake
+        }
+        return .active
+    }
+
+    /// Short time left next to the icon: "25m", "1h 20m" (nil without an end time).
+    var sessionTimeLeft: String? {
+        guard serviceRunning, let until = status?.session?.until else { return nil }
+        let minutes = max(1, Int((until.timeIntervalSinceNow / 60).rounded(.up)))
+        if minutes < 60 { return String(localized: "\(minutes)m", comment: "Time left in the menu bar") }
+        if minutes % 60 == 0 { return String(localized: "\(minutes / 60)h", comment: "Time left in the menu bar") }
+        return String(localized: "\(minutes / 60)h \(minutes % 60)m", comment: "Time left in the menu bar")
+    }
+
     /// "Staying awake until 15:30 (25 min left)" or "Staying awake until you turn it off".
     var sessionLine: String? {
         guard serviceRunning, let session = status?.session else { return nil }

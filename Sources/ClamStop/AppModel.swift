@@ -29,10 +29,11 @@ enum DefaultsKey {
     /// Date of the newest daemon notice already turned into a notification.
     static let lastNoticeDate = "lastNoticeDate"
     static let skipQuitConfirmation = "skipQuitConfirmation"
+    static let showTimeLeft = "showTimeLeftInMenuBar"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
-                      skipQuitConfirmation]
+                      skipQuitConfirmation, showTimeLeft]
 }
 
 @MainActor

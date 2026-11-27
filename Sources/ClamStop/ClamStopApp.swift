@@ -80,6 +80,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MockupRenderer.run(outputDirectory: URL(fileURLWithPath: directory))
             return true
         }
+        if let directory = Self.argument(after: "--export-icons") {
+            // Menu bar icons in every state, 4x, black on clear (review aid).
+            for style in MenuBarIconStyle.allCases {
+                for (name, state) in [("active", MenuBarIconState.active), ("awake", .awake), ("inactive", .inactive)] {
+                    let image = style.image(state)
+                    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(image.size.width * 4),
+                                               pixelsHigh: Int(image.size.height * 4), bitsPerSample: 8,
+                                               samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                               colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+                    rep.size = image.size
+                    NSGraphicsContext.saveGraphicsState()
+                    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+                    image.draw(in: NSRect(origin: .zero, size: image.size))
+                    NSGraphicsContext.restoreGraphicsState()
+                    let url = URL(fileURLWithPath: directory).appendingPathComponent("\(style.rawValue)-\(name).png")
+                    try? rep.representation(using: .png, properties: [:])?.write(to: url)
+                }
+            }
+            NSApp.terminate(nil)
+            return true
+        }
         guard let path = Self.argument(after: "--export-illustration") else { return false }
         do {
             try ApprovalIllustration.export(to: URL(fileURLWithPath: path))

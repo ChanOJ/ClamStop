@@ -1,6 +1,16 @@
 import AppKit
 import SwiftUI
 
+/// What the menu bar icon shows (spec H1).
+enum MenuBarIconState: Equatable {
+    /// ClamStop works: the lid puts the Mac to sleep.
+    case active
+    /// The Mac stays awake: a Stay Awake session, or AI agents keep it awake with the lid closed.
+    case awake
+    /// ClamStop is off, inactive or not working: the icon is crossed out.
+    case inactive
+}
+
 /// Icon shown in the menu bar, chosen in the settings.
 enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     case laptop
@@ -16,6 +26,14 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     }
 
     /// Template image: AppKit tints it for the menu bar (light, dark, tinted or opaque).
+    func image(_ state: MenuBarIconState) -> NSImage {
+        switch state {
+        case .active: image(active: true)
+        case .inactive: image(active: false)
+        case .awake: Self.withCupBadge(image(active: true))
+        }
+    }
+
     /// `active` = ClamStop is on and working; otherwise the icon is crossed out.
     func image(active: Bool) -> NSImage {
         let image: NSImage
@@ -29,17 +47,44 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         image.isTemplate = true
         return image
     }
+
+    /// The icon with a small cup (the Stay Awake symbol of the menu) in its lower right corner,
+    /// cut out of the icon so it stays readable at menu bar size.
+    static func withCupBadge(_ base: NSImage) -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: 7, weight: .semibold)
+        guard let cup = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(config) else { return base }
+        let size = NSSize(width: base.size.width + 6, height: base.size.height)
+        let image = NSImage(size: size, flipped: false) { _ in
+            base.draw(in: NSRect(origin: .zero, size: base.size))
+            let badge = NSRect(x: size.width - cup.size.width, y: 0, width: cup.size.width, height: cup.size.height)
+            NSGraphicsContext.current?.compositingOperation = .destinationOut
+            NSBezierPath(roundedRect: badge.insetBy(dx: -1.5, dy: -1.5), xRadius: 3, yRadius: 3).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            cup.draw(in: badge)
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
 }
 
 /// Label of the `MenuBarExtra`.
 struct MenuBarIcon: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.menuBarIconStyle) private var style = MenuBarIconStyle.laptop
+    @AppStorage(DefaultsKey.showTimeLeft) private var showTimeLeft = false
 
     var body: some View {
-        Image(nsImage: style.image(active: model.statusIsOK))
-            .accessibilityLabel("ClamStop")
-            .accessibilityValue(model.statusLine)
+        HStack(spacing: 3) {
+            Image(nsImage: style.image(model.iconState))
+            if showTimeLeft, let left = model.sessionTimeLeft {
+                Text(left)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("ClamStop")
+        .accessibilityValue(model.sessionLine ?? model.statusLine)
     }
 }
 

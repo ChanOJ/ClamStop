@@ -134,6 +134,7 @@ struct GeneralTab: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(DefaultsKey.menuBarIconStyle) private var menuBarIconStyle = MenuBarIconStyle.laptop
+    @AppStorage(DefaultsKey.showTimeLeft) private var showTimeLeft = false
 
     private var settings: ClamStopSettings { model.settings }
 
@@ -195,6 +196,9 @@ struct GeneralTab: View {
                     }
                 }
                 .disabled(!showMenuBarIcon)
+                Toggle("Show the time left of Stay Awake", isOn: $showTimeLeft)
+                    .toggleStyle(.switch)
+                    .disabled(!showMenuBarIcon)
                 Toggle("Open at login", isOn: Binding(
                     get: { model.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
