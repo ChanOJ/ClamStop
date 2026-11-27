@@ -58,6 +58,8 @@ final class AppModel: ObservableObject {
     @Published var sessionUntil = AppModel.nextFullHour()
     /// Rule being added or changed in the Rules tab (see RulesTab.swift).
     @Published var ruleDraft: Rule?
+    /// Apps and commands offered by "Add App…" (see WatchedAppsView.swift).
+    @Published var knownApps: [WatchedApp] = []
     // First run (see FirstRunView.swift)
     @Published var firstRunStep = 1
     @Published var firstRunChoice = FirstRunChoice.sleep
@@ -258,7 +260,7 @@ final class AppModel: ObservableObject {
         }
         let alert = NSAlert()
         alert.messageText = String(localized: "Quit ClamStop and turn off Stay Awake?")
-        alert.informativeText = String(localized: "Until you open ClamStop again, your Mac sleeps as macOS decides: no sleep with the lid closed when a screen is plugged in, no hibernation, no staying awake for AI agents.")
+        alert.informativeText = String(localized: "Until you open ClamStop again, your Mac sleeps as macOS decides: no sleep with the lid closed when a screen is plugged in, no hibernation, no staying awake for AI agents or apps.")
         alert.addButton(withTitle: String(localized: "Quit"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         alert.showsSuppressionButton = true

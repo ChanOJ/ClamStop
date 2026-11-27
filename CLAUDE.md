@@ -142,6 +142,11 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   window server), the daemon hears power changes through `notify` and checks time windows each
   minute; `PowerController.conditionsChanged` waits 5 s (a screen can drop for a moment). A rule
   alone takes `disablesleep` only without screen + adapter, and never during a dark wake.
+- Watched apps (spec C5, `WatchedApps.swift`, `AppMonitor.swift`, `WatchedAppsView.swift`): busy =
+  power assertion (`IOPMCopyAssertionsByProcess`, "AssertionTrueType", on-behalf PID for audio)
+  or over 5 % of a core for the app's process tree; probed every 15 s only while the list is not
+  empty, 90 s grace. Same keep-awake path and guards as agents. Checked 2026-11-27 on real
+  processes (Transmission, VLC, a busy command), about 5 ms per probe.
 - Windows are sized with `NSHostingController.sizeThatFits` (`FittedWindow`): `view.fittingSize`
   stays zero for them on macOS 27.2.
 - Agent keep-awake, adapted from `IshaanChamoli/clamshut` (MIT, notice in

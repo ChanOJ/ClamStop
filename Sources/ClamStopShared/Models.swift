@@ -50,6 +50,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     public var maxAwakeHours: Int
     /// "When conditions are true, do this" (spec D1), in order of priority.
     public var rules: [Rule]
+    /// Stay awake while these apps or commands work (spec C5).
+    public var watchedApps: [WatchedApp]
 
     public static let defaultDelayMinutes = 60
     public static let delayChoices = [0, 5, 15, 30, 60, 120, 240, never]
@@ -69,7 +71,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
                 battery: PowerSourceProfile = PowerSourceProfile(),
                 lowBatteryHibernation: Bool = false, lowBatteryPercent: Int = 10,
                 batteryFloorPercent: Int = 20, heatGuard: Bool = true, onlyWhileCharging: Bool = true,
-                maxAwakeHours: Int = 0, rules: [Rule] = []) {
+                maxAwakeHours: Int = 0, rules: [Rule] = [],
+                watchedApps: [WatchedApp] = []) {
         self.enabled = enabled
         self.hibernateDelayMinutes = ClamStopSettings.clampDelay(hibernateDelayMinutes)
         self.keepAwakeForAgents = keepAwakeForAgents
@@ -83,12 +86,13 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
         self.onlyWhileCharging = onlyWhileCharging
         self.maxAwakeHours = max(0, maxAwakeHours)
         self.rules = rules
+        self.watchedApps = watchedApps
     }
 
     private enum CodingKeys: String, CodingKey {
         case enabled, hibernateDelayMinutes, keepAwakeForAgents, separateBatterySettings,
              onPowerAdapterEnabled, battery, lowBatteryHibernation, lowBatteryPercent,
-             batteryFloorPercent, heatGuard, onlyWhileCharging, maxAwakeHours, rules
+             batteryFloorPercent, heatGuard, onlyWhileCharging, maxAwakeHours, rules, watchedApps
     }
 
     public init(from decoder: Decoder) throws {
@@ -107,7 +111,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
             heatGuard: try c.decodeIfPresent(Bool.self, forKey: .heatGuard) ?? d.heatGuard,
             onlyWhileCharging: try c.decodeIfPresent(Bool.self, forKey: .onlyWhileCharging) ?? d.onlyWhileCharging,
             maxAwakeHours: try c.decodeIfPresent(Int.self, forKey: .maxAwakeHours) ?? d.maxAwakeHours,
-            rules: try c.decodeIfPresent([Rule].self, forKey: .rules) ?? d.rules)
+            rules: try c.decodeIfPresent([Rule].self, forKey: .rules) ?? d.rules,
+            watchedApps: try c.decodeIfPresent([WatchedApp].self, forKey: .watchedApps) ?? d.watchedApps)
     }
 
     public static func clampDelay(_ minutes: Int) -> Int {
@@ -200,13 +205,16 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     /// What closing the lid does now, sessions and agents aside, with the rule that applies
     /// (spec D1). nil while ClamStop is off or inactive.
     public var lidPlan: LidPlan?
+    /// The watched apps and whether they work (spec C5).
+    public var apps: [WatchedAppActivity]?
 
     public init(version: String, settings: ClamStopSettings, phase: PowerPhase, pendingWake: Date?,
                 lidClosed: Bool, sleepDisabled: Bool, hibernateMode: Int?,
                 sleepDisabledByClamStop: Bool? = nil, agents: [AgentSessionInfo]? = nil,
                 keepingAwakeForAgents: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
                 lastLidDecision: String? = nil, appRunning: Bool? = nil, session: StayAwakeSession? = nil,
-                notices: [Notice]? = nil, lidPlan: LidPlan? = nil) {
+                notices: [Notice]? = nil, lidPlan: LidPlan? = nil,
+                apps: [WatchedAppActivity]? = nil) {
         self.version = version
         self.settings = settings
         self.phase = phase
@@ -224,6 +232,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.notices = notices
         self.appRunning = appRunning
         self.lidPlan = lidPlan
+        self.apps = apps
     }
 
     public func encoded() -> Data {

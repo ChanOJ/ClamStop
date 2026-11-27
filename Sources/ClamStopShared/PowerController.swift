@@ -62,7 +62,9 @@ public final class PowerController {
     public var record: (SleepEvent.Kind, String?) -> Void = { _, _ in }
     /// An AI agent session holds a lease (see `AgentTracker`).
     public private(set) var agentsWorking = false
-    /// The lid is closed and the Mac stays awake for agents.
+    /// A watched app works (see `AppTracker`).
+    public private(set) var appsWorking = false
+    /// The lid is closed and the Mac stays awake (agents, apps, session or rule).
     public private(set) var keepingAwakeForAgents = false
     public private(set) var lastLidDecision: String?
     /// "Stay awake" session from the menu (spec C1, C2), nil when none runs.
@@ -150,7 +152,7 @@ public final class PowerController {
         guard appRunning else { return .leaveAlone(reason: "app not running") }
         return SleepPolicy.decide(settings: settings, context: context(),
                            agentsWorking: working ?? agentsWorking, sessionActive: session != nil,
-                           agentTimeUp: agentTimeUp, mayStayAwake: mayStayAwake)
+                           agentTimeUp: agentTimeUp, mayStayAwake: mayStayAwake, appsWorking: appsWorking)
     }
 
     // MARK: Lifecycle
@@ -185,8 +187,10 @@ public final class PowerController {
 
     /// Uninstall: back to macOS defaults (`hibernatemode 3`, no ClamStop wake).
     public func restoreDefaults() {
-        // No rule may hold the Mac awake again before the daemon is removed.
+        // No rule or app may hold the Mac awake again before the daemon is removed.
         settings.rules = []
+        settings.watchedApps = []
+        appsWorking = false
         ruleClockGeneration += 1
         conditionsGeneration += 1
         cancelPendingWake()
@@ -295,6 +299,13 @@ public final class PowerController {
         reevaluate(trigger: working ? "agents working" : "agents done")
     }
 
+    /// Watched apps started or stopped working (`AppTracker.isWorking`).
+    public func appsChanged(working: Bool) {
+        guard working != appsWorking else { return }
+        appsWorking = working
+        reevaluate(trigger: working ? "apps working" : "apps done")
+    }
+
     /// Check the decision again: agents, battery, heat or settings changed, or the time limit
     /// passed. Called on agent events and on each agent probe tick.
     public func reevaluate(trigger: String) {
@@ -316,9 +327,10 @@ public final class PowerController {
         guard decision != .keepAwake else { return }
         lastLidDecision = decision.summary
         log("\(trigger), lid closed: \(decision.summary)")
-        // Do not stay awake again before the lid opens: agents keep working, or a guard stopped it.
+        // Do not stay awake again before the lid opens: agents or apps keep working, or a guard
+        // stopped it.
         if case .sleep(_, let reason) = decision,
-           agentsWorking || Notice.Reason(decisionReason: reason) != nil {
+           agentsWorking || appsWorking || Notice.Reason(decisionReason: reason) != nil {
             keepAwakeReleased = true
         }
         if case .sleep(_, let reason) = decision {
@@ -403,7 +415,7 @@ public final class PowerController {
         keepAwakeGeneration += 1
     }
 
-    /// Hold `disablesleep` while agents work, a session runs or a rule says to stay awake, and
+    /// Hold `disablesleep` while agents or watched apps work, a session runs or a rule says to stay awake, and
     /// closing the lid would keep the Mac awake: it must already be set when the lid closes, or a
     /// Mac without external display sleeps at once (clamshell sleep happens before ClamStop hears
     /// about the lid). A rule alone needs nothing with a screen and the power adapter: macOS then
@@ -412,7 +424,7 @@ public final class PowerController {
         var want = false
         if state.phase == .idle, awake || !effects.isLidClosed(), decide() == .keepAwake {
             let context = context()
-            want = (settings.keepAwakeForAgents && agentsWorking) || session != nil
+            want = (settings.keepAwakeForAgents && agentsWorking) || appsWorking || session != nil
                 || !(context.externalDisplay && context.onPowerAdapter)
         }
         if want { preventSleep() } else { releaseSleepPrevention() }
@@ -431,7 +443,8 @@ public final class PowerController {
         }
         state.sleepDisabledByClamStop = true
         store.save(state)
-        let why = session != nil ? "stay awake session" : agentsWorking ? "agents working" : "rule"
+        let why = session != nil ? "stay awake session" : agentsWorking ? "agents working"
+            : appsWorking ? "apps working" : "rule"
         log("disablesleep 1 (\(why))")
     }
 

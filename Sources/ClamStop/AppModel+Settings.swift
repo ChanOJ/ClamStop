@@ -103,9 +103,13 @@ extension AppModel {
         guard statusIsOK, let status else { return .inactive }
         let agentsHolding = !(status.agents ?? []).isEmpty
             && (status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true)
-        // Same precedence as the menu lines: a Stay Awake session first, then AI agents.
+        // Same precedence as the menu lines: a Stay Awake session first, then AI agents, then apps.
         if status.session != nil { return .awake(.session) }
         if agentsHolding { return .awake(.agents) }
+        if !workingApps.isEmpty,
+           status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true {
+            return .awake(.app)
+        }
         return .active
     }
 
@@ -116,17 +120,34 @@ extension AppModel {
             && (status?.sleepDisabledByClamStop == true || status?.keepingAwakeForAgents == true)
     }
 
-    /// Grey menu line saying why the Mac stays awake when AI agents hold it: "Staying awake
-    /// while Claude Code works". nil otherwise (a session has its own line).
+    /// Watched apps that hold the Mac awake.
+    private var workingApps: [WatchedAppActivity] {
+        (status?.apps ?? []).filter(\.holdsTheMac)
+    }
+
+    /// Grey menu line saying why the Mac stays awake when AI agents or watched apps hold it:
+    /// "Staying awake while Claude Code works". nil otherwise (a session has its own line).
     var awakeLine: String? {
-        guard iconState == .awake(.agents), let sessions = status?.agents, !sessions.isEmpty else { return nil }
-        let kinds = Set(sessions.map(\.agent.displayName)).sorted()
-        let names = kinds.formatted(.list(type: .and))
-        switch (kinds.count > 1, sessions.allSatisfy(\.finishing)) {
-        case (false, false): return String(localized: "Staying awake while \(names) works")
-        case (false, true): return String(localized: "Staying awake while \(names) finishes")
-        case (true, false): return String(localized: "Staying awake while \(names) work")
-        case (true, true): return String(localized: "Staying awake while \(names) finish")
+        let names: [String]
+        let finishing: Bool
+        switch iconState {
+        case .awake(.agents):
+            let sessions = status?.agents ?? []
+            names = Set(sessions.map(\.agent.displayName)).sorted()
+            finishing = sessions.allSatisfy(\.finishing)
+        case .awake(.app):
+            names = workingApps.map(\.name)
+            finishing = workingApps.allSatisfy { $0.state == .finishing }
+        default:
+            return nil
+        }
+        guard !names.isEmpty else { return nil }
+        let list = names.formatted(.list(type: .and))
+        switch (names.count > 1, finishing) {
+        case (false, false): return String(localized: "Staying awake while \(list) works")
+        case (false, true): return String(localized: "Staying awake while \(list) finishes")
+        case (true, false): return String(localized: "Staying awake while \(list) work")
+        case (true, true): return String(localized: "Staying awake while \(list) finish")
         }
     }
 
@@ -201,8 +222,13 @@ extension AppModel {
                 ? String(localized: "On battery, when you close the lid, macOS decides, as if ClamStop were not installed.")
                 : String(localized: "When you close the lid, macOS decides, as if ClamStop were not installed."))
         }
-        if s.keepAwakeForAgents, agentHooksInstalled, action == .sleep {
-            parts.append(String(localized: "While AI agents work, it stays awake."))
+        if action == .sleep {
+            switch (s.keepAwakeForAgents && agentHooksInstalled, !s.watchedApps.isEmpty) {
+            case (true, true): parts.append(String(localized: "While AI agents or your chosen apps work, it stays awake."))
+            case (true, false): parts.append(String(localized: "While AI agents work, it stays awake."))
+            case (false, true): parts.append(String(localized: "While your chosen apps work, it stays awake."))
+            case (false, false): break
+            }
         }
         return parts.joined(separator: " ")
     }
@@ -243,6 +269,9 @@ extension AppModel {
                                             Rule(power: .adapter, display: .connected, action: .stayAwake),
                                             Rule(time: TimeWindow(start: 23 * 60, end: 7 * 60), action: .sleep,
                                                  hibernateDelayMinutes: 0),
+                                        ], watchedApps: [
+                                            WatchedApp(name: "HandBrake", bundlePath: "/Applications/HandBrake.app"),
+                                            WatchedApp(name: "ffmpeg", executables: ["ffmpeg"]),
                                         ])
         let onBattery = CommandLine.arguments.contains("--on-battery")
         let status = DaemonStatus(
@@ -250,7 +279,10 @@ extension AppModel {
             sleepDisabled: true, hibernateMode: 3, sleepDisabledByClamStop: true,
             agents: [AgentSessionInfo(agent: .claude, since: Date(), finishing: false, subagents: 0)],
             keepingAwakeForAgents: false, onPowerAdapter: !onBattery, batteryPercent: 76, lastLidDecision: nil,
-            lidPlan: settings.lidPlan(for: PowerContext(onPowerAdapter: !onBattery, externalDisplay: !onBattery)))
+            lidPlan: settings.lidPlan(for: PowerContext(onPowerAdapter: !onBattery, externalDisplay: !onBattery)),
+            apps: zip(settings.watchedApps, [WatchedAppActivity.State.working, .notRunning]).map {
+                WatchedAppActivity(id: $0.id, name: $0.name, state: $1)
+            })
         setPreviewStatus(status)
         // Development aid: `--edit-rule` shows the rule editor.
         if CommandLine.arguments.contains("--edit-rule") {

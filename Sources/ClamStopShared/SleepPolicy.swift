@@ -26,7 +26,8 @@ public struct PowerContext: Equatable, Sendable {
 public enum LidDecision: Equatable, Sendable {
     /// Leave the Mac alone: ClamStop is off on this power source.
     case leaveAlone(reason: String)
-    /// Stay awake: an AI agent is working, a "Stay awake" session runs or a rule asks for it.
+    /// Stay awake: an AI agent or a watched app is working, a "Stay awake" session runs or a
+    /// rule asks for it.
     case keepAwake
     /// Sleep, then hibernate after this many seconds (0 = hibernate now, nil = never).
     case sleep(hibernateAfter: TimeInterval?, reason: String)
@@ -34,7 +35,7 @@ public enum LidDecision: Equatable, Sendable {
     public var summary: String {
         switch self {
         case .leaveAlone(let reason): "left alone: \(reason)"
-        case .keepAwake: "kept awake: agents working, session or rule"
+        case .keepAwake: "kept awake: agents or apps working, session or rule"
         case .sleep(let after, let reason):
             "sleep (\(reason)), hibernate " + (after.map { $0 == 0 ? "now" : "after \(Int($0)) s" } ?? "never")
         }
@@ -45,11 +46,12 @@ public enum SleepPolicy {
     /// - Parameters:
     ///   - agentsWorking: an agent session holds a lease.
     ///   - sessionActive: a "Stay awake" session from the menu runs (spec C1, C2).
+    ///   - appsWorking: a watched app works (spec C5).
     ///   - agentTimeUp: the longest time to stay awake (`maxAwakeHours`) has passed.
     ///   - mayStayAwake: false when the Mac is going to sleep anyway: only the delay is wanted.
     public static func decide(settings: ClamStopSettings, context: PowerContext, agentsWorking: Bool,
                               sessionActive: Bool = false, agentTimeUp: Bool = false,
-                              mayStayAwake: Bool = true) -> LidDecision {
+                              mayStayAwake: Bool = true, appsWorking: Bool = false) -> LidDecision {
         guard settings.enabled else { return .leaveAlone(reason: "ClamStop off") }
         let plan = settings.lidPlan(for: context)
         guard plan.action != .macOS else {
@@ -61,7 +63,8 @@ public enum SleepPolicy {
            percent <= settings.lowBatteryPercent {
             return .sleep(hibernateAfter: 0, reason: "battery at \(percent) %")
         }
-        let wanted = (settings.keepAwakeForAgents && agentsWorking) || sessionActive || plan.action == .stayAwake
+        let wanted = (settings.keepAwakeForAgents && agentsWorking) || appsWorking || sessionActive
+            || plan.action == .stayAwake
         if mayStayAwake, wanted {
             // Safety guards (spec section E).
             if agentTimeUp {
