@@ -363,18 +363,20 @@ struct MenuContent: View {
         if let line = model.sessionLine {
             Text(line)
         }
-        Menu {
-            Button("Until I Turn It Off") { model.startSession(minutes: nil) }
-            Divider()
-            ForEach(AppModel.sessionDurations, id: \.self) { minutes in
-                Button(AppModel.durationTitle(minutes)) { model.startSession(minutes: minutes) }
+        // A disabled Menu still opens in a MenuBarExtra (seen on macOS 27.2): hide it instead.
+        if model.serviceRunning {
+            Menu {
+                Button("Until I Turn It Off") { model.startSession(minutes: nil) }
+                Divider()
+                ForEach(AppModel.sessionDurations, id: \.self) { minutes in
+                    Button(AppModel.durationTitle(minutes)) { model.startSession(minutes: minutes) }
+                }
+                Divider()
+                Button("Until…") { openUntil() }
+            } label: {
+                Label("Stay Awake", systemImage: "cup.and.saucer")
             }
-            Divider()
-            Button("Until…") { openUntil() }
-        } label: {
-            Label("Stay Awake", systemImage: "cup.and.saucer")
         }
-        .disabled(!model.serviceRunning)
         if model.sessionLine != nil {
             Button { model.stopSession() } label: { Label("Turn Off Stay Awake", systemImage: "cup.and.saucer.fill") }
         }
