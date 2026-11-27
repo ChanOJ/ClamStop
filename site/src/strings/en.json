@@ -63,8 +63,8 @@
   "support.terms.gift": "A donation is a gift: it unlocks no feature and gives no priority support, listing or other benefit in return.",
   "support.terms.recipient": "Donations go to the company of ClamStop's developer and help pay for the Apple developer account and the time spent on the app.",
   "support.terms.receipt": "No tax receipt is issued: donations are not tax-deductible.",
-  "support.terms.payment": "Payments are handled by GitHub Sponsors and Stripe, under their own terms. ClamStop never sees your payment details.",
-  "support.terms.refund": "Refund requests go through GitHub Sponsors.",
+  "support.terms.payment": "Payments are handled by Stripe, under its own terms. ClamStop never sees your payment details.",
+  "support.terms.refund": "To ask for a refund, use the contact details on your Stripe receipt.",
 
   "install.title": "Install",
   "install.scope": "These steps are for ClamStop, downloaded from GitHub. ClamStop Light installs from the Mac App Store.",

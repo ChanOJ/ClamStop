@@ -271,15 +271,15 @@ Signed releases also publish the feed that installed copies check for updates (S
 ## Support
 
 ClamStop is free, with every feature, and stays free. If it is useful to you, you can
-[buy its developer a coffee](https://github.com/sponsors/ChanOJ).
+[buy its developer a coffee](https://buy.stripe.com/placeholder).
 
 - A donation is a gift: it unlocks no feature and gives no priority support, listing or other
   benefit in return.
 - Donations go to the company of ClamStop's developer and help pay for the Apple developer account
   and the time spent on the app.
 - No tax receipt is issued: donations are not tax-deductible.
-- Payments are handled by GitHub Sponsors and Stripe, under their own terms; refund requests go
-  through GitHub Sponsors.
+- Payments are handled by Stripe, under its own terms. To ask for a refund, use the contact
+  details on your Stripe receipt.
 
 ## License
 
