@@ -65,6 +65,46 @@ extension AppModel {
         return calendar.date(byAdding: .hour, value: 1, to: hour) ?? date.addingTimeInterval(3600)
     }
 
+    /// Menu bar icon state (spec H1).
+    var iconState: MenuBarIconState {
+        guard statusIsOK, let status else { return .inactive }
+        let agentsHolding = !(status.agents ?? []).isEmpty
+            && (status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true)
+        // Same precedence as the menu lines: a Stay Awake session first, then AI agents.
+        if status.session != nil { return .awake(.session) }
+        if agentsHolding { return .awake(.agents) }
+        return .active
+    }
+
+    /// Closing the lid would keep the Mac awake now (a session or AI agents, within the Safety
+    /// guards): the "Sleeps when you close the lid" line no longer applies.
+    var lidLineOverridden: Bool {
+        statusIsOK && (status?.sleepDisabledByClamStop == true || status?.keepingAwakeForAgents == true)
+    }
+
+    /// Grey menu line saying why the Mac stays awake when AI agents hold it: "Staying awake
+    /// while Claude Code works". nil otherwise (a session has its own line).
+    var awakeLine: String? {
+        guard iconState == .awake(.agents), let sessions = status?.agents, !sessions.isEmpty else { return nil }
+        let kinds = Set(sessions.map(\.agent.displayName)).sorted()
+        let names = kinds.formatted(.list(type: .and))
+        switch (kinds.count > 1, sessions.allSatisfy(\.finishing)) {
+        case (false, false): return String(localized: "Staying awake while \(names) works")
+        case (false, true): return String(localized: "Staying awake while \(names) finishes")
+        case (true, false): return String(localized: "Staying awake while \(names) work")
+        case (true, true): return String(localized: "Staying awake while \(names) finish")
+        }
+    }
+
+    /// Short time left next to the icon: "25m", "1h 20m" (nil without an end time).
+    var sessionTimeLeft: String? {
+        guard serviceRunning, let until = status?.session?.until else { return nil }
+        let minutes = max(1, Int((until.timeIntervalSinceNow / 60).rounded(.up)))
+        if minutes < 60 { return String(localized: "\(minutes)m", comment: "Time left in the menu bar") }
+        if minutes % 60 == 0 { return String(localized: "\(minutes / 60)h", comment: "Time left in the menu bar") }
+        return String(localized: "\(minutes / 60)h \(minutes % 60)m", comment: "Time left in the menu bar")
+    }
+
     /// "Staying awake until 15:30 (25 min left)" or "Staying awake until you turn it off".
     var sessionLine: String? {
         guard serviceRunning, let session = status?.session else { return nil }
@@ -117,7 +157,7 @@ extension AppModel {
 
     /// Second line of the menu status, nil when there is nothing to add.
     var menuDetail: String? {
-        guard serviceRunning, let s = status?.settings, s.enabled, status?.keepingAwakeForAgents != true else { return nil }
+        guard serviceRunning, let s = status?.settings, s.enabled else { return nil }
         switch s.hibernateDelayMinutes {
         case ..<0: return nil
         case 0: return String(localized: "Stops using the battery right away")

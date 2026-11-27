@@ -134,6 +134,8 @@ struct GeneralTab: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(DefaultsKey.menuBarIconStyle) private var menuBarIconStyle = MenuBarIconStyle.laptop
+    @AppStorage(DefaultsKey.showTimeLeft) private var showTimeLeft = false
+    @AppStorage(DefaultsKey.animateBadge) private var animateBadge = false
 
     private var settings: ClamStopSettings { model.settings }
 
@@ -195,6 +197,12 @@ struct GeneralTab: View {
                     }
                 }
                 .disabled(!showMenuBarIcon)
+                Toggle("Show the time left of Stay Awake", isOn: $showTimeLeft)
+                    .toggleStyle(.switch)
+                    .disabled(!showMenuBarIcon)
+                Toggle("Animate the icon while staying awake", isOn: $animateBadge)
+                    .toggleStyle(.switch)
+                    .disabled(!showMenuBarIcon)
                 Toggle("Open at login", isOn: Binding(
                     get: { model.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
@@ -270,6 +278,12 @@ struct DonationLink: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Link("Buy me a coffee", destination: Links.donation)
+            // Wording approved by the user on their accountant's advice (2026-11-27); full terms
+            // in the README and on the website. Full edition only, like the link.
+            Text("A gift, with nothing in return: no feature, no priority support, no tax receipt.")
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .font(.footnote)
         .frame(maxWidth: .infinity)
@@ -354,15 +368,21 @@ struct MenuContent: View {
     let openUntil: () -> Void
 
     var body: some View {
+        // Status lines, the one that wins first: Stay Awake, AI agents, lid, hibernation.
+        // A line overridden by one above is struck through.
+        if let line = model.sessionLine {
+            Text(line)
+        }
+        if let awake = model.awakeLine {
+            Text(awake)
+        }
         Text(model.statusLine)
+            .strikethrough(model.lidLineOverridden)
         if let detail = model.menuDetail {
             Text(detail)
         }
         Divider()
         // Always available, so a running session can be changed in two clicks.
-        if let line = model.sessionLine {
-            Text(line)
-        }
         // A disabled Menu still opens in a MenuBarExtra (seen on macOS 27.2): hide it instead.
         if model.serviceRunning {
             Menu {

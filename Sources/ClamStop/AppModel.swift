@@ -29,10 +29,12 @@ enum DefaultsKey {
     /// Date of the newest daemon notice already turned into a notification.
     static let lastNoticeDate = "lastNoticeDate"
     static let skipQuitConfirmation = "skipQuitConfirmation"
+    static let showTimeLeft = "showTimeLeftInMenuBar"
+    static let animateBadge = "animateMenuBarBadge"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
-                      skipQuitConfirmation]
+                      skipQuitConfirmation, showTimeLeft, animateBadge]
 }
 
 @MainActor
@@ -321,10 +323,6 @@ final class AppModel: ObservableObject {
         case .running:
             guard let status else { return String(localized: "Checking…") }
             if !status.settings.enabled { return String(localized: "Off: macOS decides when you close the lid") }
-            if status.keepingAwakeForAgents == true {
-                if status.session != nil { return String(localized: "Lid closed: staying awake") }
-                return String(localized: "Lid closed: staying awake while AI agents work")
-            }
             if status.sleepDisabled && status.sleepDisabledByClamStop != true {
                 return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
             }

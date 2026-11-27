@@ -15,7 +15,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// Called when a notification is clicked.
     var onOpen: () -> Void = {}
 
-    private let center = UNUserNotificationCenter.current()
+    /// Only from a ClamStop.app bundle: `current()` raises an exception outside one (`swift run`).
+    private var center: UNUserNotificationCenter { .current() }
+    private var available: Bool { Bundle.main.bundleIdentifier != nil }
     /// Date of the newest notice already handled; older ones are never shown again.
     private var lastNoticeDate: Date {
         get { UserDefaults.standard.object(forKey: DefaultsKey.lastNoticeDate) as? Date ?? .distantPast }
@@ -26,6 +28,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     static let maxAge: TimeInterval = 12 * 3600
 
     func start() {
+        guard available else { return }
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error { logger.error("notifications: \(error.localizedDescription, privacy: .public)") }
@@ -56,10 +59,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     func serviceApproved() {
         approvalNotified = false
+        guard available else { return }
         center.removeDeliveredNotifications(withIdentifiers: ["approval"])
     }
 
     private func post(id: String, title: String, body: String) {
+        guard available else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

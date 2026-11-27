@@ -22,9 +22,11 @@ struct ClamStopApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    let badgeAnimator = BadgeAnimator()
     private let audioPauser = AudioPauser()
     private let notifier = Notifier()
     private var notifierObservers: [AnyCancellable] = []
+    private var badgeObserver: AnyCancellable?
     private var settingsWindow: FittedWindow?
     private var welcomeWindow: FittedWindow?
     private var untilWindow: FittedWindow?
@@ -49,6 +51,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         audioPauser.start()
         startNotifications()
+        // Status refresh, or a setting changed (animation, time left, icon style). After a short
+        // delay, so that the menu bar label has its new layout.
+        badgeObserver = model.$status.map { _ in () }
+            .merge(with: NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).map { _ in () })
+            .sink { [weak self] _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    guard let self else { return }
+                    let style = MenuBarIconStyle(rawValue: UserDefaults.standard.string(forKey: DefaultsKey.menuBarIconStyle) ?? "") ?? .laptop
+                    self.badgeAnimator.update(self.model.iconState, style: style)
+                }
+            }
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)
@@ -78,6 +91,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.applicationIconImage = image  // when run outside the app bundle
             }
             MockupRenderer.run(outputDirectory: URL(fileURLWithPath: directory))
+            return true
+        }
+        if let directory = Self.argument(after: "--export-icons") {
+            // Menu bar icons in every state, 4x, black on clear (review aid).
+            for style in MenuBarIconStyle.allCases {
+                for (name, state) in [("active", MenuBarIconState.active), ("agents", .awake(.agents)),
+                                      ("session", .awake(.session)), ("app", .awake(.app)), ("inactive", .inactive)] {
+                    let image = style.image(state)
+                    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(image.size.width * 4),
+                                               pixelsHigh: Int(image.size.height * 4), bitsPerSample: 8,
+                                               samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                               colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+                    rep.size = image.size
+                    NSGraphicsContext.saveGraphicsState()
+                    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+                    image.draw(in: NSRect(origin: .zero, size: image.size))
+                    NSGraphicsContext.restoreGraphicsState()
+                    let url = URL(fileURLWithPath: directory).appendingPathComponent("\(style.rawValue)-\(name).png")
+                    try? rep.representation(using: .png, properties: [:])?.write(to: url)
+                }
+            }
+            NSApp.terminate(nil)
             return true
         }
         guard let path = Self.argument(after: "--export-illustration") else { return false }

@@ -81,7 +81,8 @@ public enum ProcessTable {
     }()
 
     /// Total CPU seconds of `root` and all its descendants.
-    public static func treeCPUSeconds(root: Int32) -> Double? {
+    /// - Parameter includeRoot: false = only the descendants (the tools and builds an agent runs).
+    public static func treeCPUSeconds(root: Int32, includeRoot: Bool = true) -> Double? {
         guard let rootCPU = cpuSeconds(root) else { return nil }
         var children: [Int32: [Int32]] = [:]
         for pid in allPIDs() {
@@ -90,7 +91,7 @@ public enum ProcessTable {
             guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { continue }
             children[Int32(info.pbi_ppid), default: []].append(pid)
         }
-        var total = rootCPU
+        var total = includeRoot ? rootCPU : 0
         var stack = children[root] ?? []
         var seen: Set<Int32> = [root]
         while let pid = stack.popLast() {
