@@ -70,8 +70,8 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         return image
     }
 
-    /// The icon with a small symbol in its lower right corner, cut out of the icon so it stays
-    /// readable at menu bar size.
+    /// The icon with a small symbol in its lower right corner, with a thin gap around its strokes
+    /// so both stay readable at menu bar size.
     static func withBadge(_ symbol: String, pointSize: CGFloat, on base: NSImage) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
         guard let cup = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
@@ -80,9 +80,14 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         let image = NSImage(size: size, flipped: false) { _ in
             base.draw(in: NSRect(origin: .zero, size: base.size))
             let badge = NSRect(x: size.width - cup.size.width, y: 0, width: cup.size.width, height: cup.size.height)
-            NSGraphicsContext.current?.compositingOperation = .destinationOut
-            NSBezierPath(roundedRect: badge.insetBy(dx: -1.5, dy: -1.5), xRadius: 3, yRadius: 3).fill()
-            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            // Cut a margin that follows the symbol's strokes (the symbol drawn around a small
+            // circle), so the icon stays visible between them.
+            let margin: CGFloat = 1.2
+            for step in 0..<16 {
+                let angle = CGFloat(step) * .pi / 8
+                cup.draw(in: badge.offsetBy(dx: cos(angle) * margin, dy: sin(angle) * margin),
+                         from: .zero, operation: .destinationOut, fraction: 1)
+            }
             cup.draw(in: badge)
             return true
         }
