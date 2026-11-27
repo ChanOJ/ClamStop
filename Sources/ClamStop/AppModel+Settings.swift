@@ -68,9 +68,10 @@ extension AppModel {
     /// Menu bar icon state (spec H1).
     var iconState: MenuBarIconState {
         guard statusIsOK, let status else { return .inactive }
-        if status.session != nil || status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true {
-            return .awake
-        }
+        let agentsHolding = !(status.agents ?? []).isEmpty
+            && (status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true)
+        if agentsHolding { return .awake(.agents) }
+        if status.session != nil { return .awake(.session) }
         return .active
     }
 

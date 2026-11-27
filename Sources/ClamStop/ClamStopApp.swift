@@ -83,7 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let directory = Self.argument(after: "--export-icons") {
             // Menu bar icons in every state, 4x, black on clear (review aid).
             for style in MenuBarIconStyle.allCases {
-                for (name, state) in [("active", MenuBarIconState.active), ("awake", .awake), ("inactive", .inactive)] {
+                for (name, state) in [("active", MenuBarIconState.active), ("agents", .awake(.agents)),
+                                      ("session", .awake(.session)), ("app", .awake(.app)), ("inactive", .inactive)] {
                     let image = style.image(state)
                     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(image.size.width * 4),
                                                pixelsHigh: Int(image.size.height * 4), bitsPerSample: 8,

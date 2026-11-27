@@ -5,10 +5,26 @@ import SwiftUI
 enum MenuBarIconState: Equatable {
     /// ClamStop works: the lid puts the Mac to sleep.
     case active
-    /// The Mac stays awake: a Stay Awake session, or AI agents keep it awake with the lid closed.
-    case awake
+    /// The Mac stays awake, with a badge saying why (highest priority first): AI agents work,
+    /// a Stay Awake session, another app works (video export, encoding; spec C5).
+    case awake(AwakeReason)
     /// ClamStop is off, inactive or not working: the icon is crossed out.
     case inactive
+}
+
+/// Why the Mac stays awake, in order of priority for the menu bar badge.
+enum AwakeReason: CaseIterable {
+    case agents
+    case session
+    case app
+
+    var badgeSymbol: String {
+        switch self {
+        case .agents: "sparkles"
+        case .session: "cup.and.saucer.fill"
+        case .app: "hourglass"
+        }
+    }
 }
 
 /// Icon shown in the menu bar, chosen in the settings.
@@ -30,7 +46,7 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         switch state {
         case .active: image(active: true)
         case .inactive: image(active: false)
-        case .awake: Self.withCupBadge(image(active: true))
+        case .awake(let reason): Self.withBadge(reason.badgeSymbol, on: image(active: true))
         }
     }
 
@@ -48,11 +64,11 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
         return image
     }
 
-    /// The icon with a small cup (the Stay Awake symbol of the menu) in its lower right corner,
-    /// cut out of the icon so it stays readable at menu bar size.
-    static func withCupBadge(_ base: NSImage) -> NSImage {
+    /// The icon with a small symbol in its lower right corner, cut out of the icon so it stays
+    /// readable at menu bar size.
+    static func withBadge(_ symbol: String, on base: NSImage) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: 7, weight: .semibold)
-        guard let cup = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: nil)?
+        guard let cup = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
             .withSymbolConfiguration(config) else { return base }
         let size = NSSize(width: base.size.width + 6, height: base.size.height)
         let image = NSImage(size: size, flipped: false) { _ in
