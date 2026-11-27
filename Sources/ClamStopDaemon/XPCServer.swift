@@ -44,9 +44,11 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
 
     // MARK: ClamStopDaemonXPC (called on XPC queues; the service hops to the main queue)
 
-    func appStatus(reply: @escaping (Data) -> Void) {
+    func appStatus(externalDisplay: Bool, reply: @escaping (Data) -> Void) {
         let pid = NSXPCConnection.current()?.processIdentifier ?? 0
         DispatchQueue.main.async {
+            // First, so that the app connecting sees the right screens.
+            self.service.externalDisplayChanged(externalDisplay)
             if pid > 0 { self.service.appConnected(pid: pid) }
             reply(self.service.status().encoded())
         }

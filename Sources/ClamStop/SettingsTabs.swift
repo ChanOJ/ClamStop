@@ -6,7 +6,7 @@ import ClamStopShared
 
 /// Binding to one setting, sent to the daemon on change.
 @MainActor
-private func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettings, Value>) -> Binding<Value> {
+func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettings, Value>) -> Binding<Value> {
     Binding(get: { model.settings[keyPath: keyPath] },
             set: { value in model.changeSettings { $0[keyPath: keyPath] = value } })
 }
@@ -54,40 +54,6 @@ struct StayAwakeTab: View {
             return String(localized: "Lid closed, staying awake for \(names)")
         }
         return String(localized: "Working now: \(names)")
-    }
-}
-
-/// Rules: separate settings on battery (spec B4).
-struct RulesTab: View {
-    @ObservedObject var model: AppModel
-
-    private var settings: ClamStopSettings { model.settings }
-
-    var body: some View {
-        Form {
-            Section {
-                ToggleRow(title: "Different settings on battery",
-                          note: "Choose another lid action and hibernation delay when unplugged.",
-                          isOn: setting(model, \.separateBatterySettings))
-                if settings.separateBatterySettings {
-                    Picker("On battery, when I close the lid", selection: setting(model, \.battery.enabled)) {
-                        Text("Sleep, even with a screen plugged in").tag(true)
-                        Text("Do what macOS does").tag(false)
-                    }
-                    Picker("Hibernate on battery", selection: setting(model, \.battery.hibernateDelayMinutes)) {
-                        ForEach(delayChoices(current: settings.battery.hibernateDelayMinutes), id: \.self) { minutes in
-                            Text(AppModel.delayTitle(minutes)).tag(minutes)
-                        }
-                    }
-                    .disabled(!settings.battery.enabled)
-                }
-            } footer: {
-                if settings.separateBatterySettings {
-                    Footnote("On power, the settings of the General tab apply.")
-                }
-            }
-            .disabled(!model.serviceRunning || !settings.enabled)
-        }
     }
 }
 

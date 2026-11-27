@@ -133,9 +133,15 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   (`DefaultsKey.lastNoticeDate`); the approval notice comes from the app's service state.
 - First launch opens the first-run assistant (`WelcomeView`); its choices reach the daemon once
   the service answers (`AppModel.applyPendingFirstRun`). Audio pause is automatic (spec F1).
-- The daemon decides through the pure `SleepPolicy.decide`: power-source profile, low battery
-  hibernation, then agents with the safety guards (time limit, heat, only on power adapter,
+- The daemon decides through the pure `SleepPolicy.decide`: `ClamStopSettings.lidPlan` (first
+  matching rule, else the power-source profile), low battery hibernation, then agents, sessions
+  and "stay awake" rules with the safety guards (time limit, heat, only on power adapter,
   battery floor). Menu Sleep Now / Hibernate Now go through XPC (`sleepNow`, `hibernateNow`).
+- Rules (spec D1, `Rules.swift`, `RulesTab.swift`): conditions power, external screen, time
+  window. The app reports the external screen in `appStatus` (CoreGraphics; the root daemon has no
+  window server), the daemon hears power changes through `notify` and checks time windows each
+  minute; `PowerController.conditionsChanged` waits 5 s (a screen can drop for a moment). A rule
+  alone takes `disablesleep` only without screen + adapter, and never during a dark wake.
 - Windows are sized with `NSHostingController.sizeThatFits` (`FittedWindow`): `view.fittingSize`
   stays zero for them on macOS 27.2.
 - Agent keep-awake, adapted from `IshaanChamoli/clamshut` (MIT, notice in

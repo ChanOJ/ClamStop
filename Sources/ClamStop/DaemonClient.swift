@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import ClamStopShared
 
@@ -54,7 +55,16 @@ final class DaemonClient {
 
     /// The app's poll: also tells the daemon that the app runs (see `appStatus`).
     func status() async throws -> DaemonStatus {
-        try await call { $0.appStatus(reply: $1) }
+        let externalDisplay = Self.externalDisplayConnected
+        return try await call { $0.appStatus(externalDisplay: externalDisplay, reply: $1) }
+    }
+
+    /// A screen other than the built-in one is connected (including one that sleeps).
+    static var externalDisplayConnected: Bool {
+        var count: UInt32 = 0
+        var displays = [CGDirectDisplayID](repeating: 0, count: 16)
+        guard CGGetOnlineDisplayList(UInt32(displays.count), &displays, &count) == .success else { return false }
+        return displays.prefix(Int(count)).contains { CGDisplayIsBuiltin($0) == 0 }
     }
 
     func setEnabled(_ enabled: Bool) async throws -> DaemonStatus {

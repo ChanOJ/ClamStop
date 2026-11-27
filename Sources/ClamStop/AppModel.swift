@@ -56,6 +56,8 @@ final class AppModel: ObservableObject {
     @Published var sleepLog: [SleepEvent] = []
     /// End time chosen in the "Stay awake until…" window.
     @Published var sessionUntil = AppModel.nextFullHour()
+    /// Rule being added or changed in the Rules tab (see RulesTab.swift).
+    @Published var ruleDraft: Rule?
     // First run (see FirstRunView.swift)
     @Published var firstRunStep = 1
     @Published var firstRunChoice = FirstRunChoice.sleep
@@ -98,6 +100,11 @@ final class AppModel: ObservableObject {
         updateOutdatedAgentHooks()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refresh() }
+        }
+        // A screen plugged in or unplugged: tell the daemon at once (rules, spec D1).
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
     }
@@ -326,7 +333,11 @@ final class AppModel: ObservableObject {
             if status.sleepDisabled && status.sleepDisabledByClamStop != true {
                 return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
             }
-            return String(localized: "Sleeps when you close the lid")
+            switch status.lidPlan?.action {
+            case .stayAwake: return String(localized: "Rule: stays awake when you close the lid")
+            case .macOS: return String(localized: "macOS decides when you close the lid, for now")
+            case .sleep, nil: return String(localized: "Sleeps when you close the lid")
+            }
         }
     }
 

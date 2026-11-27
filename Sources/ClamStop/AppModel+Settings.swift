@@ -22,6 +22,39 @@ extension AppModel {
         update { try await $0.setSettings(next) }
     }
 
+    // MARK: Rules (spec D1)
+
+    func saveRuleDraft() {
+        guard let rule = ruleDraft, rule.isValid else { return }
+        ruleDraft = nil
+        changeSettings {
+            if let index = $0.rules.firstIndex(where: { $0.id == rule.id }) {
+                $0.rules[index] = rule
+            } else {
+                $0.rules.append(rule)
+            }
+        }
+    }
+
+    func setRule(_ rule: Rule, enabled: Bool) {
+        changeSettings {
+            guard let index = $0.rules.firstIndex(where: { $0.id == rule.id }) else { return }
+            $0.rules[index].enabled = enabled
+        }
+    }
+
+    func moveRule(_ rule: Rule, by offset: Int) {
+        changeSettings {
+            guard let index = $0.rules.firstIndex(where: { $0.id == rule.id }),
+                  $0.rules.indices.contains(index + offset) else { return }
+            $0.rules.swapAt(index, index + offset)
+        }
+    }
+
+    func deleteRule(_ rule: Rule) {
+        changeSettings { $0.rules.removeAll { $0.id == rule.id } }
+    }
+
     // MARK: Menu actions
 
     func sleepNow() {
@@ -79,7 +112,8 @@ extension AppModel {
     /// Closing the lid would keep the Mac awake now (a session or AI agents, within the Safety
     /// guards): the "Sleeps when you close the lid" line no longer applies.
     var lidLineOverridden: Bool {
-        statusIsOK && (status?.sleepDisabledByClamStop == true || status?.keepingAwakeForAgents == true)
+        statusIsOK && status?.lidPlan?.action != .stayAwake
+            && (status?.sleepDisabledByClamStop == true || status?.keepingAwakeForAgents == true)
     }
 
     /// Grey menu line saying why the Mac stays awake when AI agents hold it: "Staying awake
@@ -140,16 +174,27 @@ extension AppModel {
         guard s.enabled else {
             return String(localized: "When you close the lid, macOS decides, as if ClamStop were not installed.")
         }
-        var parts = [String(localized: "When you close the lid, your Mac goes to sleep, even with a screen plugged in.")]
-        switch s.hibernateDelayMinutes {
-        case ..<0: break
-        case 0: parts.append(String(localized: "Right away, it stops using the battery completely (hibernation)."))
-        case let m: parts.append(String(localized: "\(Self.delayTitle(m)) asleep, it stops using the battery completely (hibernation)."))
+        let plan = status.lidPlan
+        let action = plan?.action ?? .sleep
+        var parts: [String] = []
+        if plan?.rule != nil { parts.append(String(localized: "A rule applies now.")) }
+        switch action {
+        case .sleep:
+            parts.append(String(localized: "When you close the lid, your Mac goes to sleep, even with a screen plugged in."))
+            switch plan?.hibernateDelayMinutes ?? s.hibernateDelayMinutes {
+            case ..<0: break
+            case 0: parts.append(String(localized: "Right away, it stops using the battery completely (hibernation)."))
+            case let m: parts.append(String(localized: "\(Self.delayTitle(m)) asleep, it stops using the battery completely (hibernation)."))
+            }
+        case .stayAwake:
+            parts.append(String(localized: "When you close the lid, your Mac stays awake."))
+        case .macOS:
+            parts.append(String(localized: "When you close the lid, macOS decides, as if ClamStop were not installed."))
         }
-        if s.separateBatterySettings {
-            parts.append(String(localized: "On battery, the settings of the Rules tab apply."))
+        if plan?.rule == nil, !s.rules.isEmpty || s.separateBatterySettings {
+            parts.append(String(localized: "The Rules tab can change this."))
         }
-        if s.keepAwakeForAgents, agentHooksInstalled {
+        if s.keepAwakeForAgents, agentHooksInstalled, action == .sleep {
             parts.append(String(localized: "While AI agents work, it stays awake."))
         }
         return parts.joined(separator: " ")
@@ -158,7 +203,9 @@ extension AppModel {
     /// Second line of the menu status, nil when there is nothing to add.
     var menuDetail: String? {
         guard serviceRunning, let s = status?.settings, s.enabled else { return nil }
-        switch s.hibernateDelayMinutes {
+        let plan = status?.lidPlan
+        guard plan == nil || plan?.action == .sleep else { return nil }
+        switch plan?.hibernateDelayMinutes ?? s.hibernateDelayMinutes {
         case ..<0: return nil
         case 0: return String(localized: "Stops using the battery right away")
         case 60: return String(localized: "Stops using the battery after 1 hour asleep")
@@ -176,13 +223,24 @@ extension AppModel {
     func startSettingsPreview() {
         let settings = ClamStopSettings(hibernateDelayMinutes: 60, separateBatterySettings: true,
                                         battery: PowerSourceProfile(enabled: true, hibernateDelayMinutes: 15),
-                                        lowBatteryHibernation: true, lowBatteryPercent: 10)
+                                        lowBatteryHibernation: true, lowBatteryPercent: 10, rules: [
+                                            Rule(power: .adapter, display: .connected, action: .stayAwake),
+                                            Rule(time: TimeWindow(start: 23 * 60, end: 7 * 60), action: .sleep,
+                                                 hibernateDelayMinutes: 0),
+                                        ])
         let status = DaemonStatus(
             version: ClamStopVersion.current, settings: settings, phase: .idle, pendingWake: nil, lidClosed: false,
             sleepDisabled: true, hibernateMode: 3, sleepDisabledByClamStop: true,
             agents: [AgentSessionInfo(agent: .claude, since: Date(), finishing: false, subagents: 0)],
-            keepingAwakeForAgents: false, onPowerAdapter: true, batteryPercent: 76, lastLidDecision: nil)
+            keepingAwakeForAgents: false, onPowerAdapter: true, batteryPercent: 76, lastLidDecision: nil,
+            lidPlan: settings.lidPlan(for: PowerContext(onPowerAdapter: true, externalDisplay: true)))
         setPreviewStatus(status)
+        // Development aid: `--edit-rule` shows the rule editor.
+        if CommandLine.arguments.contains("--edit-rule") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.ruleDraft = Rule(power: .battery, time: TimeWindow(start: 22 * 60, end: 7 * 60), action: .stayAwake)
+            }
+        }
         agentHookStates = [.claude: .installed, .codex: .notFound]
         let now = Date()
         sleepLog = [
