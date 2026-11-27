@@ -11,7 +11,7 @@ func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettin
             set: { value in model.changeSettings { $0[keyPath: keyPath] = value } })
 }
 
-/// Stay Awake: AI agents (spec C7).
+/// Stay Awake: AI agents and their hooks (spec C7, I5).
 struct StayAwakeTab: View {
     @ObservedObject var model: AppModel
 
@@ -28,23 +28,29 @@ struct StayAwakeTab: View {
                     }
                 }
                 .disabled(!model.serviceRunning)
-                if model.settings.keepAwakeForAgents {
-                    if model.agentsFound.isEmpty {
-                        Footnote("Neither Claude Code nor Codex was found on this Mac.")
-                    } else if !model.agentHooksInstalled {
-                        OptionRow(title: "AI agent hooks are not installed",
-                                  note: "The agents need them to tell ClamStop when they work.") {
-                            Button("Install Hooks…") { model.confirmAgentHooks = true }
-                        }
-                    } else if let line = agentActivityLine {
-                        Label(line, systemImage: "sparkles")
-                            .foregroundStyle(.secondary)
+                // Always there, so the hooks can be removed with the switch off too (spec I5).
+                OptionRow(title: "AI agent hooks", note: hooksNote) {
+                    if model.agentHooksInstalled {
+                        Button("Remove Hooks") { model.setAgentHooks(installed: false) }
+                    } else {
+                        Button("Install Hooks…") { model.confirmAgentHooks = true }
+                            .disabled(model.agentsFound.isEmpty)
                     }
+                }
+                if model.settings.keepAwakeForAgents, model.agentHooksInstalled, let line = agentActivityLine {
+                    Label(line, systemImage: "sparkles")
+                        .foregroundStyle(.secondary)
                 }
             } footer: {
                 Footnote("With the lid closed, your Mac can get hot. Keep it out in the open while agents work: the Safety tab puts it to sleep if it gets too hot.")
             }
         }
+    }
+
+    private var hooksNote: LocalizedStringKey {
+        if model.agentsFound.isEmpty { return "Claude Code and Codex were not found on this Mac." }
+        if model.agentHooksInstalled { return "Installed: Claude Code and Codex tell ClamStop when they work." }
+        return "Not installed: the agents need them to tell ClamStop when they work. You see the change first."
     }
 
     private var agentActivityLine: String? {
@@ -104,14 +110,13 @@ struct SafetyTab: View {
     }
 }
 
-/// More: the few actions, automation and journal settings, one section each.
+/// More: the few actions and journal settings, one section each.
 struct MoreTab: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Form {
             ActionsSection(model: model)
-            AutomationSection(model: model)
             JournalSection(model: model)
         }
     }
@@ -139,30 +144,6 @@ private struct ActionsSection: View {
             }
         }
         .disabled(!model.serviceRunning || !model.settings.enabled)
-    }
-}
-
-/// Automation: AI agent hooks (spec I5).
-private struct AutomationSection: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Section("Automation") {
-            OptionRow(title: "AI agent hooks", note: note) {
-                if model.agentHooksInstalled {
-                    Button("Remove Hooks") { model.setAgentHooks(installed: false) }
-                } else {
-                    Button("Install Hooks…") { model.confirmAgentHooks = true }
-                        .disabled(model.agentsFound.isEmpty)
-                }
-            }
-        }
-    }
-
-    private var note: LocalizedStringKey {
-        if model.agentsFound.isEmpty { return "Claude Code and Codex were not found on this Mac." }
-        if model.agentHooksInstalled { return "Installed: Claude Code and Codex tell ClamStop when they work." }
-        return "Adds ClamStop to Claude Code and Codex. You see the change first."
     }
 }
 

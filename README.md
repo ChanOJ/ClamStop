@@ -24,7 +24,8 @@ Everything is free. The settings window has six tabs:
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
   battery (sleep or not, and another delay), the menu bar icon,
   opening at login, and the background service.
-- **Stay Awake**: stay awake with the lid closed while AI agents work. See [AI agents](#ai-agents).
+- **Stay Awake**: stay awake with the lid closed while AI agents work, and install or remove the
+  AI agent hooks. See [AI agents](#ai-agents).
 - **Rules**: "when these conditions are true, do this when the lid closes". Conditions: power
   adapter or battery, external screen plugged in or not, time of day and days of the week. Action:
   sleep (with its own hibernation delay), stay awake, or do what macOS does. The first matching
@@ -32,9 +33,9 @@ Everything is free. The settings window has six tabs:
   rule, the General tab applies. See [Rules](#rules).
 - **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
   default), heat, power adapter unplugged (on by default), longest time (no limit by default).
-- **More**: hibernate at once when the lid closes on battery below a level; install or remove
-  the AI agent hooks; the sleep journal (when the Mac slept, for how long, whether it hibernated
-  and how much battery it used, kept for 30 days on this Mac only).
+- **More**: hibernate at once when the lid closes on battery below a level, and the sleep
+  journal (when the Mac slept, for how long, whether it hibernated and how much battery it used,
+  kept for 30 days on this Mac only).
 - **About**: version, links and credits.
 
 ### Rules
@@ -65,7 +66,7 @@ wake before hibernation stays silent.
 
 ### AI agents
 
-When you install the hooks (More tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
+When you install the hooks (Stay Awake tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
 (`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
 app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
 is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling ClamStop, removes the

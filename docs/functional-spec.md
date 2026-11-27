@@ -203,8 +203,8 @@ screen offers both directions instead of assuming one.
   goes to sleep. After 1 hour it hibernates." Updated live when rules or sessions apply.
 - **Simple settings** (always visible): *When I close the lid* (picker), *Hibernate*
   (picker), *Show in the menu bar*, *Open at login*.
-- **More options** (tabs): Sessions, Rules and presets, Safety, then one *More* tab for actions,
-  shortcuts and automation, and the journal. Full edition: a discreet "Buy me a coffee" link at the bottom of
+- **More options** (tabs): Sessions (with the agent hooks), Rules and presets, Safety, then one
+  *More* tab for actions, shortcuts and automation, and the journal. Full edition: a discreet "Buy me a coffee" link at the bottom of
   the first tab, never a pop-up interrupting the user.
 - Every option has a one-line footnote in plain words and an ⓘ help popover with an example.
 
