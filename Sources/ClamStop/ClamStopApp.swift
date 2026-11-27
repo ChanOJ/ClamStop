@@ -51,13 +51,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         audioPauser.start()
         startNotifications()
-        badgeObserver = model.$status.sink { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let style = MenuBarIconStyle(rawValue: UserDefaults.standard.string(forKey: DefaultsKey.menuBarIconStyle) ?? "") ?? .laptop
-                self.badgeAnimator.update(self.model.iconState, style: style)
+        // Status refresh, or a setting changed (animation, time left, icon style). After a short
+        // delay, so that the menu bar label has its new layout.
+        badgeObserver = model.$status.map { _ in () }
+            .merge(with: NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).map { _ in () })
+            .sink { [weak self] _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    guard let self else { return }
+                    let style = MenuBarIconStyle(rawValue: UserDefaults.standard.string(forKey: DefaultsKey.menuBarIconStyle) ?? "") ?? .laptop
+                    self.badgeAnimator.update(self.model.iconState, style: style)
+                }
             }
-        }
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)

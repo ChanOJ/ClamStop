@@ -125,11 +125,12 @@ struct MenuBarIcon: View {
     @ObservedObject var model: AppModel
     @AppStorage(DefaultsKey.menuBarIconStyle) private var style = MenuBarIconStyle.laptop
     @AppStorage(DefaultsKey.showTimeLeft) private var showTimeLeft = false
+    @AppStorage(DefaultsKey.animateBadge) private var animateBadge = false
 
     var body: some View {
         HStack(spacing: 3) {
             Image(nsImage: style.image(model.iconState,
-                                       badgeOpacity: BadgeAnimator.enabled ? BadgeAnimator.dimmedOpacity : 1))
+                                       badgeOpacity: animateBadge && BadgeAnimator.enabled ? BadgeAnimator.dimmedOpacity : 1))
             if showTimeLeft, let left = model.sessionTimeLeft {
                 Text(left)
             }
@@ -231,8 +232,8 @@ enum ClamGlyph {
 final class BadgeAnimator {
     /// Opacity of the badge in the icon image while the layer pulses on top of it.
     static let dimmedOpacity: CGFloat = 0.35
-    /// One step every 0.25 s: fades out quickly (0.75 s), comes back slowly (1.75 s).
-    static let opacitySteps: [Double] = [1, 0.55, 0.2, 0, 0.12, 0.27, 0.44, 0.62, 0.8, 0.93]
+    /// One step every 0.25 s: lights up quickly (0.5 s), fades slowly (1.25 s).
+    static let opacitySteps: [Double] = [0, 0.5, 1, 0.8, 0.6, 0.4, 0.2]
     static let period: CFTimeInterval = 0.25 * Double(opacitySteps.count)
 
     private let colorLayer = CALayer()
@@ -242,7 +243,11 @@ final class BadgeAnimator {
     private var shown: (MenuBarIconStyle, AwakeReason)?
 
     /// Whether the badge pulses (and the icon image should carry a dimmed badge).
-    static var enabled: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    /// Off by default (setting in General), and never with "Reduce motion".
+    static var enabled: Bool {
+        UserDefaults.standard.bool(forKey: DefaultsKey.animateBadge)
+            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
 
     init() {
         colorLayer.mask = maskLayer
@@ -259,17 +264,27 @@ final class BadgeAnimator {
             hide()
             return
         }
-        if let shown, shown == (style, reason), self.button === button, colorLayer.superlayer != nil { return }
+        // Where the button draws the icon: not centered when the time left is shown as a title.
+        let bounds = button.bounds
+        let imageRect = button.cell?.imageRect(forBounds: bounds)
+            ?? NSRect(x: (bounds.width - layout.iconSize.width) / 2, y: (bounds.height - layout.iconSize.height) / 2,
+                      width: layout.iconSize.width, height: layout.iconSize.height)
+        var frame = layout.badge.offsetBy(dx: imageRect.minX, dy: imageRect.minY)
+        if button.isFlipped { frame.origin.y = imageRect.minY + layout.iconSize.height - layout.badge.maxY }
+        if let shown, shown == (style, reason), self.button === button, colorLayer.superlayer != nil {
+            if colorLayer.frame != frame {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                colorLayer.frame = frame
+                CATransaction.commit()
+            }
+            return
+        }
         self.button = button
         button.wantsLayer = true
         guard let host = button.layer else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        let bounds = button.bounds
-        let origin = NSPoint(x: (bounds.width - layout.iconSize.width) / 2,
-                             y: (bounds.height - layout.iconSize.height) / 2)
-        var frame = layout.badge.offsetBy(dx: origin.x, dy: origin.y)
-        if button.isFlipped { frame.origin.y = bounds.height - frame.maxY }
         colorLayer.frame = frame
         maskLayer.frame = CGRect(origin: .zero, size: frame.size)
         let scale = button.window?.backingScaleFactor ?? 2
@@ -283,7 +298,7 @@ final class BadgeAnimator {
         if colorLayer.animation(forKey: "pulse") == nil {
             // Discrete steps, not a smooth animation: a continuous one made the window server
             // recomposite the menu bar at the display refresh rate (+25 % of a core, measured
-            // 2026-11-27); 4 steps per second look like a slow fade.
+            // 2026-11-27); 4 steps per second look like a fade.
             let pulse = CAKeyframeAnimation(keyPath: "opacity")
             pulse.values = Self.opacitySteps
             pulse.calculationMode = .discrete

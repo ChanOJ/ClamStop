@@ -30,10 +30,11 @@ enum DefaultsKey {
     static let lastNoticeDate = "lastNoticeDate"
     static let skipQuitConfirmation = "skipQuitConfirmation"
     static let showTimeLeft = "showTimeLeftInMenuBar"
+    static let animateBadge = "animateMenuBarBadge"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
-                      skipQuitConfirmation, showTimeLeft]
+                      skipQuitConfirmation, showTimeLeft, animateBadge]
 }
 
 @MainActor
