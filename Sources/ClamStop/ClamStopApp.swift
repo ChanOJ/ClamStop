@@ -12,7 +12,7 @@ struct ClamStopApp: App {
         MenuBarExtra(isInserted: $showMenuBarIcon) {
             MenuContent(model: delegate.model,
                         openSettings: { delegate.showSettings() },
-                        openAbout: { delegate.showAbout() })
+                        openUntil: { delegate.showSessionUntil() })
         } label: {
             MenuBarIcon(model: delegate.model)
         }
@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let audioPauser = AudioPauser()
     private var settingsWindow: FittedWindow?
     private var welcomeWindow: FittedWindow?
-    private var aboutWindow: FittedWindow?
+    private var untilWindow: FittedWindow?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Development aid: `ClamStop --snapshot /path/to/file.png [--tab name]
-    /// [--show-help [agent|history]] [--welcome step] [--about]` renders the visible windows to
+    /// [--show-help [agent|history]] [--welcome step] [--until]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         guard let path = Self.argument(after: "--snapshot") else { return }
@@ -104,8 +104,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.firstRunStep = step
             if args.contains("agents") { model.firstRunChoice = .agents }
             showWelcome()
-        } else if args.contains("--about") {
-            showAbout()
+        } else if args.contains("--until") {
+            showSessionUntil()
         } else {
             showSettings()
         }
@@ -164,12 +164,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         welcomeWindow?.show()
     }
 
-    func showAbout() {
-        if aboutWindow == nil {
-            aboutWindow = FittedWindow(title: String(localized: "About ClamStop"), model: model,
-                                       rootView: AboutWindowView())
+    /// "Stay Awake > Until…" from the menu: pick an end time.
+    func showSessionUntil() {
+        if untilWindow == nil {
+            untilWindow = FittedWindow(title: String(localized: "Stay Awake"), model: model,
+                                       rootView: SessionUntilView(model: model) { [weak self] in
+                                           self?.untilWindow?.close()
+                                       })
         }
-        aboutWindow?.show()
+        model.sessionUntil = AppModel.nextFullHour()
+        untilWindow?.show()
     }
 
     private func launchedAsLoginItem(_ notification: Notification) -> Bool {

@@ -20,7 +20,7 @@ developer alike.
    are immediate and cost no battery.
 5. **Private.** No account, no analytics. Network use is limited to update checks, documented.
 6. **Everything free.** No tiers, no license, no purchase, in both editions. The full edition
-   asks for support with a discreet "Buy me a coffee" link (About window, bottom of the first
+   asks for support with a discreet "Buy me a coffee" link (About tab, bottom of the first
    settings tab, website); the Store edition has no donation link (guideline 3.1.1).
 
 ### Positioning
@@ -170,7 +170,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | J3 | Menu bar icon styles (laptop, clam, more) | F+S | M (exists) |
 | J4 | Languages: English, Simplified Chinese, Japanese, German, French, Spanish | F+S | 1 |
 | J5 | Automatic updates (Sparkle) | F | M |
-| J6 | "Buy me a coffee" link in the About window and at the bottom of the first settings tab; never a pop-up or a reminder | F | M |
+| J6 | "Buy me a coffee" link in the About tab and at the bottom of the first settings tab; never a pop-up or a reminder | F | M |
 | J7 | Uninstall from the app: restore all settings, remove the service and preferences | F | M (exists) |
 | J8 | Light and dark mode, VoiceOver labels on every control, full keyboard navigation | F+S | M |
 
@@ -234,7 +234,7 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
 | Low Power Mode, crash watchdog in a daemon (B6, E4) | yes | no (sessions use assertions, released by macOS when the app quits) |
 | CLI, agent hook installer (I3, I5) | yes | no (URL scheme and Shortcuts instead) |
 | Price | free | free |
-| "Buy me a coffee" link | About window, bottom of the first settings tab, website | none in the app (guideline 3.1.1: tips only through In-App Purchase); no mention of the full edition |
+| "Buy me a coffee" link | About tab, bottom of the first settings tab, website | none in the app (guideline 3.1.1: tips only through In-App Purchase); no mention of the full edition |
 | Link to the website | anywhere | App Store listing (marketing and support URLs) may point to the home page; inside the app only a neutral "Help" link to a help page, never to a download or donation page, and no text pointing to the full edition |
 
 ## 7. Non-functional requirements

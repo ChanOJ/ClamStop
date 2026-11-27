@@ -19,12 +19,13 @@ struct SettingsRootView: View {
                 case .actions: ActionsTab(model: model)
                 case .automation: AutomationTab(model: model)
                 case .journal: JournalTab(model: model)
+                case .about: AboutTab()
                 }
             }
             .formStyle(.grouped)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 580)
+        .frame(width: 640)
         .confirmationDialog("Uninstall ClamStop?", isPresented: $model.confirmUninstall) {
             Button("Uninstall", role: .destructive) { model.uninstall() }
         } message: {
@@ -56,6 +57,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case actions
     case automation
     case journal
+    case about
 
     var id: String { rawValue }
 
@@ -68,6 +70,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .actions: "Actions"
         case .automation: "Automation"
         case .journal: "Journal"
+        case .about: "About"
         }
     }
 
@@ -80,6 +83,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .actions: "bolt"
         case .automation: "keyboard"
         case .journal: "book"
+        case .about: "info.circle"
         }
     }
 
@@ -248,7 +252,7 @@ private struct ServiceSection: View {
             }
         } footer: {
             if Edition.current == .full {
-                DonationLink(text: "ClamStop is free. A coffee helps pay for the developer account and the time spent designing and building it.")
+                DonationLink(text: "ClamStop is free. You can help pay for the developer account, and the time spent building it.")
                     .padding(.top, 4)
             }
         }
@@ -347,12 +351,32 @@ struct LidHelpView: View {
 struct MenuContent: View {
     @ObservedObject var model: AppModel
     let openSettings: () -> Void
-    let openAbout: () -> Void
+    let openUntil: () -> Void
 
     var body: some View {
         Text(model.statusLine)
         if let detail = model.menuDetail {
             Text(detail)
+        }
+        Divider()
+        // Always available, so a running session can be changed in two clicks.
+        if let line = model.sessionLine {
+            Text(line)
+        }
+        Menu {
+            Button("Until I Turn It Off") { model.startSession(minutes: nil) }
+            Divider()
+            ForEach(AppModel.sessionDurations, id: \.self) { minutes in
+                Button(AppModel.durationTitle(minutes)) { model.startSession(minutes: minutes) }
+            }
+            Divider()
+            Button("Until…") { openUntil() }
+        } label: {
+            Label("Stay Awake", systemImage: "cup.and.saucer")
+        }
+        .disabled(!model.serviceRunning)
+        if model.sessionLine != nil {
+            Button { model.stopSession() } label: { Label("Turn Off Stay Awake", systemImage: "cup.and.saucer.fill") }
         }
         Divider()
         Button { model.sleepNow() } label: { Label("Sleep Now", systemImage: "moon") }
@@ -362,7 +386,6 @@ struct MenuContent: View {
                 .disabled(!model.serviceRunning)
         }
         Divider()
-        Button { openAbout() } label: { Label("About ClamStop", systemImage: "info.circle") }
         Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
         CheckForUpdatesMenuItem(updater: .shared)

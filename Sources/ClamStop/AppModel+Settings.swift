@@ -32,6 +32,54 @@ extension AppModel {
         update { try await $0.hibernateNow() }
     }
 
+    /// "Stay awake" (spec C1): `minutes` nil = until turned off.
+    func startSession(minutes: Int?) {
+        update { try await $0.startSession(seconds: Double((minutes ?? 0) * 60)) }
+    }
+
+    func startSession(until date: Date) {
+        let seconds = date.timeIntervalSinceNow
+        guard seconds > 0 else { return }
+        update { try await $0.startSession(seconds: seconds) }
+    }
+
+    func stopSession() {
+        update { try await $0.stopSession() }
+    }
+
+    /// Durations offered in the "Stay Awake" menu, in minutes.
+    static let sessionDurations = [5, 10, 15, 30, 60, 120, 300, 480]
+
+    /// "For 5 Minutes", "For 1 Hour", "For 2 Hours" (menu titles).
+    static func durationTitle(_ minutes: Int) -> String {
+        switch minutes {
+        case 60: String(localized: "For 1 Hour")
+        case let m where m % 60 == 0: String(localized: "For \(m / 60) Hours")
+        case let m: String(localized: "For \(m) Minutes")
+        }
+    }
+
+    static func nextFullHour(after date: Date = Date()) -> Date {
+        let calendar = Calendar.current
+        let hour = calendar.dateInterval(of: .hour, for: date)?.start ?? date
+        return calendar.date(byAdding: .hour, value: 1, to: hour) ?? date.addingTimeInterval(3600)
+    }
+
+    /// "Staying awake until 15:30 (25 min left)" or "Staying awake until you turn it off".
+    var sessionLine: String? {
+        guard serviceRunning, let session = status?.session else { return nil }
+        guard let until = session.until else { return String(localized: "Staying awake until you turn it off") }
+        let time = until.formatted(date: .omitted, time: .shortened)
+        let minutes = max(1, Int((until.timeIntervalSinceNow / 60).rounded(.up)))
+        let left: String
+        switch minutes {
+        case ..<60: left = String(localized: "\(minutes) min left")
+        case let m where m % 60 == 0: left = String(localized: "\(m / 60) h left")
+        case let m: left = String(localized: "\(m / 60) h \(m % 60) min left")
+        }
+        return String(localized: "Staying awake until \(time) (\(left))")
+    }
+
     // MARK: Sentences
 
     /// "Immediately", "After 5 minutes", "After 1 hour", "Never".

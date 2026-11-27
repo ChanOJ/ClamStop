@@ -114,13 +114,16 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 ## Features and settings (2026-11-26)
 
 - Everything is free (no Pro tier, no license). Full edition: "Buy me a coffee" (`Links.donation`)
-  in the About window and at the bottom of General; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
+  in the About tab and at the bottom of General; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
   turns it off for a future Store build.
-- Settings window: seven tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
+- Settings window: eight tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
   tabs in `SettingsTabs.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with
   `scripts/mockups.sh`). Only settings with real behavior are shown; others arrive with their feature.
-  Preview with `--preview-settings --tab general|sessions|rules|safety|actions|automation|journal`
-  (+ `--snapshot`, `--show-help agent|history`, `--welcome 1|2|3 [agents]`, `--about`).
+  Preview with `--preview-settings --tab general|sessions|rules|safety|actions|automation|journal|about`
+  (+ `--snapshot`, `--show-help agent|history`, `--welcome 1|2|3 [agents]`, `--until`).
+- "Stay Awake" sessions from the menu (spec C1, C2): `PowerController.startSession(until:)`; an
+  idle-sleep assertion while it runs, `disablesleep` with the lid closed within the agent guards
+  (same path as agents, `LidDecision.keepAwake`); any sleep, Sleep Now or the battery floor ends it.
 - First launch opens the first-run assistant (`WelcomeView`); its choices reach the daemon once
   the service answers (`AppModel.applyPendingFirstRun`). Audio pause is automatic (spec F1).
 - The daemon decides through the pure `SleepPolicy.decide`: power-source profile, low battery

@@ -99,6 +99,21 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
         }
     }
 
+    func startSession(seconds: Double, reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            let until = seconds > 0 ? Date().addingTimeInterval(min(seconds, 7 * 86_400)) : nil
+            self.service.controller.startSession(until: until)
+            reply(self.service.status().encoded())
+        }
+    }
+
+    func stopSession(reply: @escaping (Data) -> Void) {
+        DispatchQueue.main.async {
+            self.service.controller.stopSession()
+            reply(self.service.status().encoded())
+        }
+    }
+
     func restoreDefaults(reply: @escaping (Data) -> Void) {
         DispatchQueue.main.async {
             self.service.restoreDefaults()

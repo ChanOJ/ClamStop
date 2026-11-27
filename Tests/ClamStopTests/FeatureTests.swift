@@ -287,7 +287,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(decide(ClamStopSettings(enabled: false)) == .leaveAlone(reason: "ClamStop off"))
         #expect(decide(ClamStopSettings(hibernateDelayMinutes: 5)) == .sleep(hibernateAfter: 300, reason: "lid closed"))
         #expect(decide(ClamStopSettings(hibernateDelayMinutes: -1)) == .sleep(hibernateAfter: nil, reason: "lid closed"))
-        #expect(decide(ClamStopSettings(), agents: true) == .keepAwakeForAgents)
+        #expect(decide(ClamStopSettings(), agents: true) == .keepAwake)
     }
 
     @Test func batteryGuardsOnlyOnBattery() {
@@ -298,9 +298,9 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(decide(onBattery, PowerContext(onPowerAdapter: false, batteryPercent: 19), agents: true)
             == .sleep(hibernateAfter: 3600, reason: "battery below 20 %"))
         #expect(decide(onBattery, PowerContext(onPowerAdapter: false, batteryPercent: 20), agents: true)
-            == .keepAwakeForAgents)
+            == .keepAwake)
         #expect(decide(ClamStopSettings(), PowerContext(onPowerAdapter: true, batteryPercent: 5), agents: true)
-            == .keepAwakeForAgents)
+            == .keepAwake)
     }
 
     @Test func lowBatteryWinsOverAgents() {
@@ -580,5 +580,74 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         }
         #expect(events.count == SleepLog.capacity)
         #expect(events.first?.date == t0 + 10)
+    }
+}
+
+// MARK: "Stay awake" sessions (spec C1, C2)
+
+@Suite struct StayAwakeSessionTests {
+    @Test func sessionPreventsIdleSleepAndHoldsTheLid() {
+        let (c, e, _) = controller()
+        c.startSession(until: nil)
+        #expect(e.idleSleepPrevented)
+        #expect(e.sleepDisabled)  // before the lid closes
+        closeLid(c, e)
+        #expect(e.sleepRequests == 0)
+        #expect(c.keepingAwakeForAgents)
+        c.stopSession()
+        #expect(!e.idleSleepPrevented)
+        #expect(!e.sleepDisabled)
+        #expect(e.sleepRequests == 1)  // lid closed: sleep as usual
+    }
+
+    @Test func sessionEndsAtItsTime() {
+        let (c, e, _) = controller()
+        c.startSession(until: e.clock.addingTimeInterval(1800))
+        e.advance(1799)
+        #expect(c.session != nil)
+        e.advance(2)
+        #expect(c.session == nil)
+        #expect(!e.idleSleepPrevented)
+    }
+
+    @Test func onBatteryTheLidClosedHoldNeedsTheAdapterByDefault() {
+        let (c, e, _) = controller(context: PowerContext(onPowerAdapter: false, batteryPercent: 80))
+        c.startSession(until: nil)
+        #expect(e.idleSleepPrevented)  // lid open: idle sleep only
+        #expect(!e.sleepDisabled)
+        closeLid(c, e)
+        #expect(e.sleepRequests == 1)
+        c.systemWillSleep()
+        #expect(c.session == nil)  // any sleep ends the session
+    }
+
+    @Test func batteryFloorEndsTheSessionWithTheLidOpen() {
+        let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, batteryFloorPercent: 20),
+                                   context: PowerContext(onPowerAdapter: false, batteryPercent: 50))
+        c.startSession(until: nil)
+        e.context.batteryPercent = 19
+        e.advance(PowerController.sessionCheckInterval)
+        #expect(c.session == nil)
+        #expect(!e.idleSleepPrevented)
+    }
+
+    @Test func sleepNowEndsTheSession() {
+        let (c, e, _) = controller()
+        c.startSession(until: nil)
+        c.sleepNow()
+        #expect(c.session == nil)
+        #expect(!e.sleepDisabled)
+        #expect(e.sleepRequests == 1)
+    }
+
+    @Test func openingTheLidKeepsTheSession() {
+        let (c, e, _) = controller()
+        c.startSession(until: nil)
+        closeLid(c, e)
+        e.lidClosed = false
+        c.lidChanged(closed: false)
+        #expect(c.session != nil)
+        #expect(e.idleSleepPrevented)
+        #expect(e.sleepDisabled)
     }
 }

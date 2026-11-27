@@ -154,6 +154,18 @@ public struct PersistedState: Codable, Equatable, Sendable {
     }
 }
 
+/// A "Stay awake" session started from the menu (spec C1).
+public struct StayAwakeSession: Codable, Equatable, Sendable {
+    public var started: Date
+    /// nil = until turned off.
+    public var until: Date?
+
+    public init(started: Date, until: Date?) {
+        self.started = started
+        self.until = until
+    }
+}
+
 /// Snapshot sent to the app over XPC.
 public struct DaemonStatus: Codable, Equatable, Sendable {
     public var version: String
@@ -175,12 +187,14 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     public var batteryPercent: Int?
     /// Why ClamStop did or did not force sleep the last time the lid closed.
     public var lastLidDecision: String?
+    /// The "Stay awake" session, if one runs.
+    public var session: StayAwakeSession?
 
     public init(version: String, settings: ClamStopSettings, phase: PowerPhase, pendingWake: Date?,
                 lidClosed: Bool, sleepDisabled: Bool, hibernateMode: Int?,
                 sleepDisabledByClamStop: Bool? = nil, agents: [AgentSessionInfo]? = nil,
                 keepingAwakeForAgents: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
-                lastLidDecision: String? = nil) {
+                lastLidDecision: String? = nil, session: StayAwakeSession? = nil) {
         self.version = version
         self.settings = settings
         self.phase = phase
@@ -194,6 +208,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.onPowerAdapter = onPowerAdapter
         self.batteryPercent = batteryPercent
         self.lastLidDecision = lastLidDecision
+        self.session = session
     }
 
     public func encoded() -> Data {

@@ -18,7 +18,7 @@ Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
 ## Settings
 
-Everything is free. The settings window has seven tabs:
+Everything is free. The settings window has eight tabs:
 
 - **General**: what happens when you close the lid (sleep, or do what macOS does), the
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), the menu bar icon,
@@ -31,8 +31,12 @@ Everything is free. The settings window has seven tabs:
 - **Automation**: install or remove the AI agent hooks.
 - **Journal**: when the Mac slept, for how long, whether it hibernated and how much battery it
   used. Kept for 30 days, on this Mac only.
+- **About**: version, links and credits.
 
-The menu bar menu also has **Sleep Now** and **Hibernate Now**. While the Mac sleeps with
+The menu bar menu has **Stay Awake**: keep the Mac awake until you turn it off, for 5 minutes to
+8 hours, or until a time of day. It does not sleep when idle, and with the lid closed it stays
+awake within the Safety guards (on power adapter only by default); any sleep ends it. The menu
+also has **Sleep Now** and **Hibernate Now**. While the Mac sleeps with
 hibernation planned, ClamStop pauses audio and video and resumes them on wake, so the short
 wake before hibernation stays silent.
 

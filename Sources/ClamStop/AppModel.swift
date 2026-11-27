@@ -45,6 +45,8 @@ final class AppModel: ObservableObject {
     @Published var confirmAgentHooks = false
     @Published var agentHookStates: [AgentKind: AgentHookSettings.State] = [:]
     @Published var sleepLog: [SleepEvent] = []
+    /// End time chosen in the "Stay awake until…" window.
+    @Published var sessionUntil = AppModel.nextFullHour()
     // First run (see FirstRunView.swift)
     @Published var firstRunStep = 1
     @Published var firstRunChoice = FirstRunChoice.sleep
@@ -267,6 +269,7 @@ final class AppModel: ObservableObject {
             guard let status else { return String(localized: "Checking…") }
             if !status.settings.enabled { return String(localized: "Off: macOS decides when you close the lid") }
             if status.keepingAwakeForAgents == true {
+                if status.session != nil { return String(localized: "Lid closed: staying awake") }
                 return String(localized: "Lid closed: staying awake while AI agents work")
             }
             if status.sleepDisabled && status.sleepDisabledByClamStop != true {

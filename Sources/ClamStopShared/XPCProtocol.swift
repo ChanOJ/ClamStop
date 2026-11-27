@@ -19,6 +19,9 @@ import Foundation
     func sleepNow(reply: @escaping (Data) -> Void)
     /// "Hibernate Now" from the menu: hibernate at once, whatever the lid does.
     func hibernateNow(reply: @escaping (Data) -> Void)
+    /// "Stay awake" from the menu: `seconds` > 0 for a duration, 0 until turned off.
+    func startSession(seconds: Double, reply: @escaping (Data) -> Void)
+    func stopSession(reply: @escaping (Data) -> Void)
 }
 
 public extension NSXPCInterface {
