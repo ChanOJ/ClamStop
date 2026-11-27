@@ -35,7 +35,8 @@ Everything is free. The settings window has eight tabs:
 
 The menu bar menu has **Stay Awake**: keep the Mac awake until you turn it off, for 5 minutes to
 8 hours, or until a time of day. It does not sleep when idle, and with the lid closed it stays
-awake within the Safety guards (on power adapter only by default); any sleep ends it.
+awake within the Safety guards (on power adapter only by default); any sleep ends it, and so
+does quitting ClamStop (it asks first).
 ClamStop sends a notification when a Stay Awake session ends on its own, when a Safety guard
 puts the Mac to sleep (shown when it wakes), and when the background service needs your
 approval; turn them off in System Settings > Notifications. The menu

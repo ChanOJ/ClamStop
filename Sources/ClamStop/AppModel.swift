@@ -28,9 +28,11 @@ enum DefaultsKey {
     static let menuBarIconStyle = "menuBarIconStyle"
     /// Date of the newest daemon notice already turned into a notification.
     static let lastNoticeDate = "lastNoticeDate"
+    static let skipQuitConfirmation = "skipQuitConfirmation"
 
     /// Every key, removed on uninstall.
-    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate]
+    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
+                      skipQuitConfirmation]
 }
 
 @MainActor
@@ -68,6 +70,8 @@ final class AppModel: ObservableObject {
     /// Approved but not answering since then (see `repairIfStuck`).
     private var notRespondingSince: Date?
     private var repairAttempted = false
+    /// Quitting after an uninstall: no confirmation, nothing to end.
+    var uninstalling = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -235,6 +239,51 @@ final class AppModel: ObservableObject {
         reinstallService()
     }
 
+    // MARK: Quit
+
+    /// "Quit ClamStop" from the menu: while Stay Awake is on, ask first (spec section 5, "Menu bar
+    /// menu"), unless "Do not ask again" was checked.
+    func quit() {
+        guard status?.session != nil, !UserDefaults.standard.bool(forKey: DefaultsKey.skipQuitConfirmation) else {
+            NSApp.terminate(nil)
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Quit ClamStop and turn off Stay Awake?")
+        alert.informativeText = String(localized: "Your Mac will sleep as usual again.")
+        alert.addButton(withTitle: String(localized: "Quit"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = String(localized: "Do not ask again")
+        NSApp.activate()
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: DefaultsKey.skipQuitConfirmation)
+        }
+        NSApp.terminate(nil)
+    }
+
+    /// The app quits (menu, logout, shutdown): end a running session so the Mac sleeps normally;
+    /// the daemon keeps running. Calls `done` once it is ended, or after 2 s.
+    func endSessionBeforeQuitting(_ done: @escaping () -> Void) {
+        guard !uninstalling, serviceState == .running, status?.session != nil else {
+            done()
+            return
+        }
+        var finished = false
+        let finish = {
+            guard !finished else { return }
+            finished = true
+            done()
+        }
+        Task {
+            _ = try? await client.stopSession()
+            logger.info("quitting: Stay Awake turned off")
+            finish()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { finish() }
+    }
+
     func openLoginItemsSettings() {
         SMAppService.openSystemSettingsLoginItems()
     }
@@ -256,6 +305,7 @@ final class AppModel: ObservableObject {
 
     /// Restore the default power settings, remove the daemon and the login item, reveal the app, quit.
     func uninstall() {
+        uninstalling = true
         Task {
             if serviceState == .running {
                 _ = try? await client.restoreDefaults()
