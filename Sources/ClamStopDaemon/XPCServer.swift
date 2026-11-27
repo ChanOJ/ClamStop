@@ -5,7 +5,7 @@ import ClamStopShared
 /// Mach service for the app. Only the ClamStop app may connect (see `clientRequirement`).
 final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
     private let listener = NSXPCListener(machServiceName: ClamStopID.machServiceName)
-    private let requirement: String?
+    private var requirement: String?
     private let service: DaemonService
 
     init(service: DaemonService) {
@@ -25,6 +25,14 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
     }
 
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
+        // Read again for each connection: an ad-hoc app replaced while the daemon runs has a new
+        // cdhash, and the daemon binary (pinned by launchd) may be unchanged so it keeps running.
+        // No new trust: the daemon would read the same bundle on its next start (reboot).
+        let current = Self.clientRequirement()
+        if current != requirement {
+            Log.info("XPC client requirement changed: \(current ?? "none")")
+            requirement = current
+        }
         guard let requirement else { return false }
         // The system checks the peer's code signature on each message; unsigned callers are dropped.
         connection.setCodeSigningRequirement(requirement)
