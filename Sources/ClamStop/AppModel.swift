@@ -28,9 +28,11 @@ enum DefaultsKey {
     static let menuBarIconStyle = "menuBarIconStyle"
     /// Date of the newest daemon notice already turned into a notification.
     static let lastNoticeDate = "lastNoticeDate"
+    static let skipQuitConfirmation = "skipQuitConfirmation"
 
     /// Every key, removed on uninstall.
-    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate]
+    static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
+                      skipQuitConfirmation]
 }
 
 @MainActor
@@ -233,6 +235,31 @@ final class AppModel: ObservableObject {
         repairAttempted = true
         logger.info("service approved but not answering for 20 s: registering it again")
         reinstallService()
+    }
+
+    // MARK: Quit
+
+    /// "Quit ClamStop" from the menu. Once the app has quit the daemon does nothing (it watches the
+    /// app's process), so a running session ends too. While Stay Awake is on, ask first (spec section 5, "Menu bar
+    /// menu"), unless "Do not ask again" was checked.
+    func quit() {
+        guard status?.session != nil, !UserDefaults.standard.bool(forKey: DefaultsKey.skipQuitConfirmation) else {
+            NSApp.terminate(nil)
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Quit ClamStop and turn off Stay Awake?")
+        alert.informativeText = String(localized: "Until you open ClamStop again, your Mac sleeps as macOS decides: no sleep with the lid closed when a screen is plugged in, no hibernation, no staying awake for AI agents.")
+        alert.addButton(withTitle: String(localized: "Quit"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = String(localized: "Do not ask again")
+        NSApp.activate()
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: DefaultsKey.skipQuitConfirmation)
+        }
+        NSApp.terminate(nil)
     }
 
     func openLoginItemsSettings() {

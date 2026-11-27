@@ -67,6 +67,9 @@ public final class PowerController {
     public private(set) var lastLidDecision: String?
     /// "Stay awake" session from the menu (spec C1, C2), nil when none runs.
     public private(set) var session: StayAwakeSession?
+    /// The ClamStop app runs. While it does not, ClamStop does nothing: macOS decides as if
+    /// it were not installed (set by the daemon, which watches the app's process).
+    public private(set) var appRunning = true
     /// Recent notices for the app's notifications (spec H5), oldest first.
     public private(set) var notices: [Notice] = []
     /// How often a session checks the battery floor while the lid is open.
@@ -109,7 +112,8 @@ public final class PowerController {
 
     /// What to do with the lid closed, now.
     public func decide(agentsWorking working: Bool? = nil) -> LidDecision {
-        SleepPolicy.decide(settings: settings, context: effects.powerContext(),
+        guard appRunning else { return .leaveAlone(reason: "app not running") }
+        return SleepPolicy.decide(settings: settings, context: effects.powerContext(),
                            agentsWorking: working ?? agentsWorking, sessionActive: session != nil,
                            agentTimeUp: agentTimeUp)
     }
@@ -357,7 +361,7 @@ public final class PowerController {
             log("will sleep while keeping awake for agents")
             stopKeepingAwake()
         }
-        guard settings.enabled else { return }
+        guard settings.enabled, appRunning else { return }
         switch state.phase {
         case .hibernating:
             log("will sleep: going into hibernation")
@@ -447,6 +451,20 @@ public final class PowerController {
         guard effects.isLidClosed() else { return }
         log("deadline reached (\(trigger)) in a dark wake with the lid closed: hibernating")
         hibernate()
+    }
+
+    // MARK: App running
+
+    /// The app started (true) or its process ended (false): quit, crash, logout.
+    public func setAppRunning(_ running: Bool) {
+        guard running != appRunning else { return }
+        appRunning = running
+        log(running ? "app running: ClamStop active" : "app not running: ClamStop inactive")
+        if !running {
+            endSession(reason: "app quit")
+            if state.phase == .awaitingHibernation { endHibernationPlan() }
+        }
+        reevaluate(trigger: running ? "app started" : "app quit")
     }
 
     // MARK: Stay awake sessions (spec C1, C2)

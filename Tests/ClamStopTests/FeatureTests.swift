@@ -718,3 +718,38 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(c.notices.count == Notice.limit)
     }
 }
+
+// MARK: Inactive while the app is not running
+
+@Suite struct AppNotRunningTests {
+    @Test func lidCloseIsLeftToMacOS() {
+        let (c, e, _) = controller()
+        c.setAppRunning(false)
+        closeLid(c, e)
+        #expect(e.sleepRequests == 0)
+        c.systemWillSleep()
+        #expect(c.state.phase == .idle)
+        #expect(e.scheduled.isEmpty)
+    }
+
+    @Test func quittingEndsTheSessionAndReleasesSleep() {
+        let (c, e, _) = controller()
+        c.startSession(until: nil)
+        c.agentsChanged(working: true)
+        #expect(e.sleepDisabled)
+        c.setAppRunning(false)
+        #expect(c.session == nil)
+        #expect(!e.sleepDisabled)
+        #expect(!e.idleSleepPrevented)
+        #expect(c.notices.isEmpty)
+    }
+
+    @Test func agentsResumeWhenTheAppComesBack() {
+        let (c, e, _) = controller()
+        c.setAppRunning(false)
+        c.agentsChanged(working: true)
+        #expect(!e.sleepDisabled)
+        c.setAppRunning(true)
+        #expect(e.sleepDisabled)
+    }
+}

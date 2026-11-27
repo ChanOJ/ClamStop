@@ -391,7 +391,7 @@ struct MenuContent: View {
         Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
         CheckForUpdatesMenuItem(updater: .shared)
-        Button { NSApp.terminate(nil) } label: { Label("Quit ClamStop", systemImage: "door.left.hand.open") }
+        Button { model.quit() } label: { Label("Quit ClamStop", systemImage: "door.left.hand.open") }
             .keyboardShortcut("q")
     }
 }
