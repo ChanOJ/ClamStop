@@ -18,7 +18,7 @@ Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
 ## Settings
 
-Everything is free. The settings window has eight tabs:
+Everything is free. The settings window has six tabs:
 
 - **General**: what happens when you close the lid (sleep, or do what macOS does), the
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
@@ -32,10 +32,9 @@ Everything is free. The settings window has eight tabs:
   rule, the General tab applies. See [Rules](#rules).
 - **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
   default), heat, power adapter unplugged (on by default), longest time (no limit by default).
-- **Actions**: hibernate at once when the lid closes on battery below a level.
-- **Automation**: install or remove the AI agent hooks.
-- **Journal**: when the Mac slept, for how long, whether it hibernated and how much battery it
-  used. Kept for 30 days, on this Mac only.
+- **More**: hibernate at once when the lid closes on battery below a level; install or remove
+  the AI agent hooks; the sleep journal (when the Mac slept, for how long, whether it hibernated
+  and how much battery it used, kept for 30 days on this Mac only).
 - **About**: version, links and credits.
 
 ### Rules
@@ -66,7 +65,7 @@ wake before hibernation stays silent.
 
 ### AI agents
 
-When you install the hooks (Automation tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
+When you install the hooks (More tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
 (`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
 app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
 is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling ClamStop, removes the

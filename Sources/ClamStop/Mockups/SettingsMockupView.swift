@@ -20,9 +20,10 @@ struct SettingsMockupView: View {
                 case .sessions: sessionsSection
                 case .rules: rulesSection
                 case .safety: safetySection
-                case .actions: actionsSection
-                case .automation: automationSection
-                case .journal: journalSection
+                case .more:
+                    actionsSection
+                    automationSection
+                    journalSection
                 case .about: Section { AboutView(model: model) }
                 }
             }

@@ -104,47 +104,56 @@ struct SafetyTab: View {
     }
 }
 
-/// Actions: hibernate when the battery is low (spec B3).
-struct ActionsTab: View {
+/// More: the few actions, automation and journal settings, one section each.
+struct MoreTab: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Form {
-            Section {
-                OptionRow(title: "Hibernate when the battery is low",
-                          note: "On battery, at this level or below, your Mac stops using the battery completely when you close the lid.") {
-                    HStack {
-                        Picker("Battery level for hibernation", selection: setting(model, \.lowBatteryPercent)) {
-                            ForEach([5, 10, 15, 20, 25, 30], id: \.self) { Text(verbatim: "\($0) %").tag($0) }
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                        .disabled(!model.settings.lowBatteryHibernation)
-                        Toggle("Hibernate when the battery is low", isOn: setting(model, \.lowBatteryHibernation))
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                    }
-                }
-            }
-            .disabled(!model.serviceRunning || !model.settings.enabled)
+            ActionsSection(model: model)
+            AutomationSection(model: model)
+            JournalSection(model: model)
         }
     }
 }
 
-/// Automation: AI agent hooks (spec I5).
-struct AutomationTab: View {
+/// Actions: hibernate when the battery is low (spec B3).
+private struct ActionsSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                OptionRow(title: "AI agent hooks", note: note) {
-                    if model.agentHooksInstalled {
-                        Button("Remove Hooks") { model.setAgentHooks(installed: false) }
-                    } else {
-                        Button("Install Hooks…") { model.confirmAgentHooks = true }
-                            .disabled(model.agentsFound.isEmpty)
+        Section("Actions") {
+            OptionRow(title: "Hibernate when the battery is low",
+                      note: "On battery, at this level or below, your Mac stops using the battery completely when you close the lid.") {
+                HStack {
+                    Picker("Battery level for hibernation", selection: setting(model, \.lowBatteryPercent)) {
+                        ForEach([5, 10, 15, 20, 25, 30], id: \.self) { Text(verbatim: "\($0) %").tag($0) }
                     }
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(!model.settings.lowBatteryHibernation)
+                    Toggle("Hibernate when the battery is low", isOn: setting(model, \.lowBatteryHibernation))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
+        }
+        .disabled(!model.serviceRunning || !model.settings.enabled)
+    }
+}
+
+/// Automation: AI agent hooks (spec I5).
+private struct AutomationSection: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        Section("Automation") {
+            OptionRow(title: "AI agent hooks", note: note) {
+                if model.agentHooksInstalled {
+                    Button("Remove Hooks") { model.setAgentHooks(installed: false) }
+                } else {
+                    Button("Install Hooks…") { model.confirmAgentHooks = true }
+                        .disabled(model.agentsFound.isEmpty)
                 }
             }
         }
@@ -158,22 +167,20 @@ struct AutomationTab: View {
 }
 
 /// Journal: recent sleeps (spec H3).
-struct JournalTab: View {
+private struct JournalSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                OptionRow(title: "Sleep journal",
-                          note: "When your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
-                    Button("Show…") {
-                        model.loadSleepLog()
-                        model.showSleepLog = true
-                    }
-                    .disabled(!model.serviceRunning)
-                    .popover(isPresented: $model.showSleepLog, arrowEdge: .bottom) {
-                        SleepHistoryView(sessions: SleepLog.sessions(from: model.sleepLog))
-                    }
+        Section("Journal") {
+            OptionRow(title: "Sleep journal",
+                      note: "When your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
+                Button("Show…") {
+                    model.loadSleepLog()
+                    model.showSleepLog = true
+                }
+                .disabled(!model.serviceRunning)
+                .popover(isPresented: $model.showSleepLog, arrowEdge: .bottom) {
+                    SleepHistoryView(sessions: SleepLog.sessions(from: model.sleepLog))
                 }
             }
         }
