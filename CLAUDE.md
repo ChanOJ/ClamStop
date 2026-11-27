@@ -90,6 +90,9 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - No screenshots of System Settings in the app: `ApprovalIllustration` draws the row to turn on,
   so it follows the appearance and the language. The README PNGs in `docs/images/` are exports of
   it: `dist/ClamStop.app/Contents/MacOS/ClamStop --appearance light|dark --export-illustration <png>`.
+- Development runs (`--preview-*`, `--snapshot`, exports) start without a menu bar item
+  (`Main.swift`): they share the installed app's preferences, and a hidden item there made the
+  installed app's icon disappear. Add new development flags to `developmentRunFlags`.
 - Check the settings window in both appearances with
   `--preview-approval --appearance light|dark --snapshot <png>` (no registration, no Screen
   Recording permission). `screencapture` from Claude's shell returns a black image: the menu bar

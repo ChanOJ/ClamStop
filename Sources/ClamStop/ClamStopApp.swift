@@ -1,7 +1,10 @@
 import AppKit
 import Combine
 import SwiftUI
+import os
 import ClamStopShared
+
+private let iconLogger = Logger(subsystem: ClamStopID.appBundleID, category: "icon")
 
 /// Started by `Main` (not `@main`, so that `--agent-hook` runs without any UI).
 struct ClamStopApp: App {
@@ -27,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let notifier = Notifier()
     private var notifierObservers: [AnyCancellable] = []
     private var badgeObserver: AnyCancellable?
+    private var menuBarIconObserver: AnyCancellable?
     private var settingsWindow: FittedWindow?
     private var welcomeWindow: FittedWindow?
     private var untilWindow: FittedWindow?
@@ -65,7 +69,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let defaults = UserDefaults.standard
         let firstLaunch = !defaults.bool(forKey: DefaultsKey.hasLaunchedBefore)
-        defaults.set(true, forKey: DefaultsKey.hasLaunchedBefore)
+        // Not from snapshots (development aid): they share the installed app's preferences.
+        if !CommandLine.arguments.contains("--snapshot") {
+            defaults.set(true, forKey: DefaultsKey.hasLaunchedBefore)
+        }
+        // For support: the icon can disappear without the app quitting (setting, ⌘-drag, macOS).
+        menuBarIconObserver = NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .map { _ in () }
+            .prepend(())
+            .receive(on: RunLoop.main)
+            .map { defaults.object(forKey: DefaultsKey.showMenuBarIcon) as? Bool ?? true }
+            .removeDuplicates()
+            .sink { iconLogger.info("menu bar icon \($0 ? "shown" : "hidden", privacy: .public)") }
         let iconHidden = defaults.object(forKey: DefaultsKey.showMenuBarIcon) as? Bool == false
         // Without an icon the settings window is the only way in, except at login (stay quiet).
         if firstLaunch, !CommandLine.arguments.contains("--snapshot") {
