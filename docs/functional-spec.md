@@ -170,7 +170,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | J3 | Menu bar icon styles (laptop, clam, more) | F+S | M (exists) |
 | J4 | Languages: English, Simplified Chinese, Japanese, German, French, Spanish | F+S | 1 |
 | J5 | Automatic updates (Sparkle) | F | M |
-| J6 | "Buy me a coffee" link in the About tab and at the bottom of the first settings tab, "Donate…" in the menu bar menu; never a pop-up or a reminder. A donation gives nothing in return (no feature, no support priority, no listing) and no tax receipt: said next to the link, and in full in the website's Support section and the README | F | M |
+| J6 | "Buy me a coffee" link in the About tab and at the bottom of the first settings tab, "Donate…" in the menu bar menu; never a pop-up or a reminder. A donation gives nothing in return (no feature, no support priority, no listing) and no tax receipt: said next to the link in the app's windows (the menu item opens the donation page without it, decided 2026-11-27), and in full in the website's Support section and the README | F | M |
 | J7 | Uninstall from the app: restore all settings, remove the service and preferences | F | M (exists) |
 | J8 | Light and dark mode, VoiceOver labels on every control, full keyboard navigation | F+S | M |
 
