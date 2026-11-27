@@ -117,7 +117,7 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 ## Features and settings (2026-11-26)
 
 - Everything is free (no Pro tier, no license). Full edition: "Buy me a coffee" (`Links.donation`)
-  in the About tab and at the bottom of General; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
+  in the About tab and at the bottom of General, "Donate…" in the menu; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
   turns it off for a future Store build.
 - Settings window: five tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
   tabs in `SettingsTabs.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with

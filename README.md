@@ -303,7 +303,8 @@ Signed releases also publish the feed that installed copies check for updates (S
 ## Support
 
 ClamStop is free, with every feature, and stays free. If it is useful to you, you can
-[buy its developer a coffee](https://buy.stripe.com/9B600j1BrbSu2p9bCL6J200).
+[buy its developer a coffee](https://buy.stripe.com/9B600j1BrbSu2p9bCL6J200) (also **Donate…** in
+the app's menu).
 
 - A donation is a gift: it unlocks no feature and gives no priority support, listing or other
   benefit in return.

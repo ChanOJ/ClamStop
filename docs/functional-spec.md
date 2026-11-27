@@ -170,7 +170,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | J3 | Menu bar icon styles (laptop, clam, more) | F+S | M (exists) |
 | J4 | Languages: English, Simplified Chinese, Japanese, German, French, Spanish | F+S | 1 |
 | J5 | Automatic updates (Sparkle) | F | M |
-| J6 | "Buy me a coffee" link in the About tab and at the bottom of the first settings tab; never a pop-up or a reminder. A donation gives nothing in return (no feature, no support priority, no listing) and no tax receipt: said next to the link, and in full in the website's Support section and the README | F | M |
+| J6 | "Buy me a coffee" link in the About tab and at the bottom of the first settings tab, "Donate…" in the menu bar menu; never a pop-up or a reminder. A donation gives nothing in return (no feature, no support priority, no listing) and no tax receipt: said next to the link, and in full in the website's Support section and the README | F | M |
 | J7 | Uninstall from the app: restore all settings, remove the service and preferences | F | M (exists) |
 | J8 | Light and dark mode, VoiceOver labels on every control, full keyboard navigation | F+S | M |
 
@@ -211,8 +211,8 @@ screen offers both directions instead of assuming one.
 ### Menu bar menu
 
 Status line, *Stay awake* submenu (Until I turn it off, 5, 10, 15, 30 min, 1, 2, 5, 8 h,
-Until..., While an app runs...), *Sleep now*, *Settings...*, *Quit ClamStop*. Optional: left-click
-on the icon starts or stops a session with the default duration, as in KeepingYouAwake. Remaining time shown when a session
+Until..., While an app runs...), *Sleep now*, *Settings...*, *Donate...* (full edition),
+*Quit ClamStop*. Optional: left-click on the icon starts or stops a session with the default duration, as in KeepingYouAwake. Remaining time shown when a session
 runs. Quitting while a session or lid hold is active asks once and restores normal sleep.
 
 ### Wording and accessibility
@@ -234,7 +234,7 @@ runs. Quitting while a session or lid hold is active asks once and restores norm
 | Low Power Mode, crash watchdog in a daemon (B6, E4) | yes | no (sessions use assertions, released by macOS when the app quits) |
 | CLI, agent hook installer (I3, I5) | yes | no (URL scheme and Shortcuts instead) |
 | Price | free | free |
-| "Buy me a coffee" link | About tab, bottom of the first settings tab, website | none in the app (guideline 3.1.1: tips only through In-App Purchase); no mention of the full edition |
+| "Buy me a coffee" link | About tab, bottom of the first settings tab, menu bar menu, website | none in the app (guideline 3.1.1: tips only through In-App Purchase); no mention of the full edition |
 | Link to the website | anywhere | App Store listing (marketing and support URLs) may point to the home page; inside the app only a neutral "Help" link to a help page, never to a download or donation page, and no text pointing to the full edition |
 
 ## 7. Non-functional requirements

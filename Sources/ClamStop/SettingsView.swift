@@ -460,6 +460,9 @@ struct MenuContent: View {
         Divider()
         Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
+        if Edition.current == .full {
+            Button { NSWorkspace.shared.open(Links.donation) } label: { Label("Donate…", systemImage: "heart") }
+        }
         CheckForUpdatesMenuItem(updater: .shared)
         Button { model.quit() } label: { Label("Quit ClamStop", systemImage: "door.left.hand.open") }
             .keyboardShortcut("q")
