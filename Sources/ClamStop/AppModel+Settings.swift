@@ -75,6 +75,12 @@ extension AppModel {
         return .active
     }
 
+    /// Closing the lid would keep the Mac awake now (a session or AI agents, within the Safety
+    /// guards): the "Sleeps when you close the lid" line no longer applies.
+    var lidLineOverridden: Bool {
+        statusIsOK && (status?.sleepDisabledByClamStop == true || status?.keepingAwakeForAgents == true)
+    }
+
     /// Grey menu line saying why the Mac stays awake when AI agents hold it: "Staying awake
     /// while Claude Code works". nil otherwise (a session has its own line).
     var awakeLine: String? {
@@ -150,7 +156,7 @@ extension AppModel {
 
     /// Second line of the menu status, nil when there is nothing to add.
     var menuDetail: String? {
-        guard serviceRunning, let s = status?.settings, s.enabled, status?.keepingAwakeForAgents != true else { return nil }
+        guard serviceRunning, let s = status?.settings, s.enabled else { return nil }
         switch s.hibernateDelayMinutes {
         case ..<0: return nil
         case 0: return String(localized: "Stops using the battery right away")

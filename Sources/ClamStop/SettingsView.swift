@@ -358,18 +358,21 @@ struct MenuContent: View {
     let openUntil: () -> Void
 
     var body: some View {
-        Text(model.statusLine)
-        if let detail = model.menuDetail {
-            Text(detail)
+        // Status lines, the one that wins first: Stay Awake, AI agents, lid, hibernation.
+        // A line overridden by one above is struck through.
+        if let line = model.sessionLine {
+            Text(line)
         }
         if let awake = model.awakeLine {
             Text(awake)
         }
+        Text(model.statusLine)
+            .strikethrough(model.lidLineOverridden)
+        if let detail = model.menuDetail {
+            Text(detail)
+        }
         Divider()
         // Always available, so a running session can be changed in two clicks.
-        if let line = model.sessionLine {
-            Text(line)
-        }
         // A disabled Menu still opens in a MenuBarExtra (seen on macOS 27.2): hide it instead.
         if model.serviceRunning {
             Menu {
