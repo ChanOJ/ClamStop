@@ -27,8 +27,8 @@ REPO_URL = "https://github.com/ChanOJ/ClamStop"
 DEFAULT_LANG = "en"
 # Placeholder: replace with the direct link to ClamStop Light once it is on the Mac App Store.
 APP_STORE_URL = "https://www.apple.com/app-store/"
-# Placeholder, same as Links.donation in the app: replace once the Stripe Payment Link exists.
-DONATION_URL = "https://buy.stripe.com/placeholder"
+# Stripe Payment Link, same as Links.donation in the app and the link in README.md.
+DONATION_URL = "https://buy.stripe.com/9B600j1BrbSu2p9bCL6J200"
 
 # Pixel size of the PNG to extract -> icns entry that holds it.
 ICONS = {64: b"ic12", 256: b"ic08"}
