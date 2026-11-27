@@ -63,7 +63,8 @@ struct StayAwakeTab: View {
     }
 }
 
-/// Safety: guards that end staying awake with the lid closed (spec E1, E2, E3, E5).
+/// Safety: guards that end staying awake with the lid closed (spec E1, E2, E3, E5), then
+/// hibernation on a low battery and the sleep journal.
 struct SafetyTab: View {
     @ObservedObject var model: AppModel
 
@@ -98,6 +99,8 @@ struct SafetyTab: View {
                 Footnote("These guards are on by default.")
             }
             .disabled(!model.serviceRunning)
+            LowBatterySection(model: model)
+            JournalSection(model: model)
         }
     }
 
@@ -110,24 +113,12 @@ struct SafetyTab: View {
     }
 }
 
-/// More: the few actions and journal settings, one section each.
-struct MoreTab: View {
+/// Hibernate when the battery is low (spec B3).
+private struct LowBatterySection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        Form {
-            ActionsSection(model: model)
-            JournalSection(model: model)
-        }
-    }
-}
-
-/// Actions: hibernate when the battery is low (spec B3).
-private struct ActionsSection: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Section("Actions") {
+        Section {
             OptionRow(title: "Hibernate when the battery is low",
                       note: "On battery, at this level or below, your Mac stops using the battery completely when you close the lid.") {
                 HStack {
@@ -147,12 +138,12 @@ private struct ActionsSection: View {
     }
 }
 
-/// Journal: recent sleeps (spec H3).
+/// Sleep journal: recent sleeps (spec H3).
 private struct JournalSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        Section("Journal") {
+        Section {
             OptionRow(title: "Sleep journal",
                       note: "When your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
                 Button("Show…") {

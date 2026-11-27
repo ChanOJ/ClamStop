@@ -28,7 +28,7 @@ enum MockupRenderer {
     }
 
     private static let tabNames: [SettingsTab: String] = [
-        .sessions: "Stay Awake", .rules: "Rules", .safety: "Safety", .more: "More",
+        .sessions: "Stay Awake", .rules: "Rules", .safety: "Safety",
     ]
 
     static var screens: [Screen] {

@@ -1,7 +1,7 @@
 import SwiftUI
 import ClamStopShared
 
-/// Content of the settings window: a tab bar over six tabs (spec section 5, mockup
+/// Content of the settings window: a tab bar over five tabs (spec section 5, mockup
 /// `SettingsMockupView`). Only settings with real behavior behind them are shown.
 struct SettingsRootView: View {
     @ObservedObject var model: AppModel
@@ -18,7 +18,6 @@ struct SettingsRootView: View {
                     case .sessions: StayAwakeTab(model: model)
                     case .rules: RulesTab(model: model)
                     case .safety: SafetyTab(model: model)
-                    case .more: MoreTab(model: model)
                     case .about: AboutTab()
                     }
                 }
@@ -81,7 +80,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case sessions
     case rules
     case safety
-    case more
     case about
 
     var id: String { rawValue }
@@ -92,7 +90,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .sessions: "Stay Awake"
         case .rules: "Rules"
         case .safety: "Safety"
-        case .more: "More"
         case .about: "About"
         }
     }
@@ -103,7 +100,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .sessions: "cup.and.saucer"
         case .rules: "list.bullet.rectangle"
         case .safety: "checkmark.shield"
-        case .more: "ellipsis.circle"
         case .about: "info.circle"
         }
     }
