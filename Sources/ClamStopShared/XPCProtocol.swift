@@ -24,7 +24,8 @@ import Foundation
     func stopSession(reply: @escaping (Data) -> Void)
     /// The app's status poll: also says the app runs. The daemon watches the caller's process and
     /// stays inactive while no app process is alive (not called by `--agent-hook`).
-    func appStatus(reply: @escaping (Data) -> Void)
+    /// `externalDisplay`: a screen other than the built-in one is connected (rules, spec D1).
+    func appStatus(externalDisplay: Bool, reply: @escaping (Data) -> Void)
 }
 
 public extension NSXPCInterface {

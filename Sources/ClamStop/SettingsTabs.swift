@@ -6,12 +6,12 @@ import ClamStopShared
 
 /// Binding to one setting, sent to the daemon on change.
 @MainActor
-private func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettings, Value>) -> Binding<Value> {
+func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettings, Value>) -> Binding<Value> {
     Binding(get: { model.settings[keyPath: keyPath] },
             set: { value in model.changeSettings { $0[keyPath: keyPath] = value } })
 }
 
-/// Stay Awake: AI agents (spec C7).
+/// Stay Awake: AI agents and their hooks (spec C7, I5).
 struct StayAwakeTab: View {
     @ObservedObject var model: AppModel
 
@@ -28,23 +28,29 @@ struct StayAwakeTab: View {
                     }
                 }
                 .disabled(!model.serviceRunning)
-                if model.settings.keepAwakeForAgents {
-                    if model.agentsFound.isEmpty {
-                        Footnote("Neither Claude Code nor Codex was found on this Mac.")
-                    } else if !model.agentHooksInstalled {
-                        OptionRow(title: "AI agent hooks are not installed",
-                                  note: "The agents need them to tell ClamStop when they work.") {
-                            Button("Install Hooks…") { model.confirmAgentHooks = true }
-                        }
-                    } else if let line = agentActivityLine {
-                        Label(line, systemImage: "sparkles")
-                            .foregroundStyle(.secondary)
+                // Always there, so the hooks can be removed with the switch off too (spec I5).
+                OptionRow(title: "AI agent hooks", note: hooksNote) {
+                    if model.agentHooksInstalled {
+                        Button("Remove Hooks") { model.setAgentHooks(installed: false) }
+                    } else {
+                        Button("Install Hooks…") { model.confirmAgentHooks = true }
+                            .disabled(model.agentsFound.isEmpty)
                     }
+                }
+                if model.settings.keepAwakeForAgents, model.agentHooksInstalled, let line = agentActivityLine {
+                    Label(line, systemImage: "sparkles")
+                        .foregroundStyle(.secondary)
                 }
             } footer: {
                 Footnote("With the lid closed, your Mac can get hot. Keep it out in the open while agents work: the Safety tab puts it to sleep if it gets too hot.")
             }
         }
+    }
+
+    private var hooksNote: LocalizedStringKey {
+        if model.agentsFound.isEmpty { return "Claude Code and Codex were not found on this Mac." }
+        if model.agentHooksInstalled { return "Installed: Claude Code and Codex tell ClamStop when they work." }
+        return "Not installed: the agents need them to tell ClamStop when they work. You see the change first."
     }
 
     private var agentActivityLine: String? {
@@ -57,55 +63,14 @@ struct StayAwakeTab: View {
     }
 }
 
-/// Rules: separate settings on battery (spec B4).
-struct RulesTab: View {
-    @ObservedObject var model: AppModel
-
-    private var settings: ClamStopSettings { model.settings }
-
-    var body: some View {
-        Form {
-            Section {
-                ToggleRow(title: "Different settings on battery",
-                          note: "Choose another lid action and hibernation delay when unplugged.",
-                          isOn: setting(model, \.separateBatterySettings))
-                if settings.separateBatterySettings {
-                    Picker("On battery, when I close the lid", selection: setting(model, \.battery.enabled)) {
-                        Text("Sleep, even with a screen plugged in").tag(true)
-                        Text("Do what macOS does").tag(false)
-                    }
-                    Picker("Hibernate on battery", selection: setting(model, \.battery.hibernateDelayMinutes)) {
-                        ForEach(delayChoices(current: settings.battery.hibernateDelayMinutes), id: \.self) { minutes in
-                            Text(AppModel.delayTitle(minutes)).tag(minutes)
-                        }
-                    }
-                    .disabled(!settings.battery.enabled)
-                }
-            } footer: {
-                if settings.separateBatterySettings {
-                    Footnote("On power, the settings of the General tab apply.")
-                }
-            }
-            .disabled(!model.serviceRunning || !settings.enabled)
-        }
-    }
-}
-
-/// Safety: guards that end staying awake with the lid closed (spec E1, E2, E3, E5).
+/// Safety: guards that end staying awake with the lid closed (spec E1, E2, E3, E5), then
+/// hibernation on a low battery and the sleep journal.
 struct SafetyTab: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Form {
             Section {
-                OptionRow(title: "Sleep when the battery falls below",
-                          note: "Ends staying awake to keep enough battery.") {
-                    Picker("Sleep when the battery falls below", selection: setting(model, \.batteryFloorPercent)) {
-                        ForEach(ClamStopSettings.batteryFloorChoices, id: \.self) { Text(verbatim: "\($0) %").tag($0) }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                }
                 ToggleRow(title: "Sleep when the Mac gets hot",
                           note: "With the lid closed, a warm Mac goes to sleep to cool down.",
                           isOn: setting(model, \.heatGuard))
@@ -126,6 +91,8 @@ struct SafetyTab: View {
                 Footnote("These guards are on by default.")
             }
             .disabled(!model.serviceRunning)
+            BatteryLevelSection(model: model)
+            JournalSection(model: model)
         }
     }
 
@@ -138,26 +105,33 @@ struct SafetyTab: View {
     }
 }
 
-/// Actions: hibernate when the battery is low (spec B3).
-struct ActionsTab: View {
+/// Battery levels: end staying awake (spec E1), hibernate when low (spec B3).
+private struct BatteryLevelSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                OptionRow(title: "Hibernate when the battery is low",
-                          note: "On battery, at this level or below, your Mac stops using the battery completely when you close the lid.") {
-                    HStack {
-                        Picker("Battery level for hibernation", selection: setting(model, \.lowBatteryPercent)) {
-                            ForEach([5, 10, 15, 20, 25, 30], id: \.self) { Text(verbatim: "\($0) %").tag($0) }
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                        .disabled(!model.settings.lowBatteryHibernation)
-                        Toggle("Hibernate when the battery is low", isOn: setting(model, \.lowBatteryHibernation))
-                            .labelsHidden()
-                            .toggleStyle(.switch)
+        Section {
+            OptionRow(title: "Sleep when the battery falls below",
+                      note: "Ends staying awake to keep enough battery.") {
+                Picker("Sleep when the battery falls below", selection: setting(model, \.batteryFloorPercent)) {
+                    ForEach(ClamStopSettings.batteryFloorChoices, id: \.self) { Text(verbatim: "\($0) %").tag($0) }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            .disabled(!model.serviceRunning)
+            OptionRow(title: "Hibernate when the battery is low",
+                      note: "On battery, at this level or below, your Mac stops using the battery completely when you close the lid.") {
+                HStack {
+                    Picker("Battery level for hibernation", selection: setting(model, \.lowBatteryPercent)) {
+                        ForEach([5, 10, 15, 20, 25, 30], id: \.self) { Text(verbatim: "\($0) %").tag($0) }
                     }
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(!model.settings.lowBatteryHibernation)
+                    Toggle("Hibernate when the battery is low", isOn: setting(model, \.lowBatteryHibernation))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
                 }
             }
             .disabled(!model.serviceRunning || !model.settings.enabled)
@@ -165,49 +139,21 @@ struct ActionsTab: View {
     }
 }
 
-/// Automation: AI agent hooks (spec I5).
-struct AutomationTab: View {
+/// Sleep journal: recent sleeps (spec H3).
+private struct JournalSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                OptionRow(title: "AI agent hooks", note: note) {
-                    if model.agentHooksInstalled {
-                        Button("Remove Hooks") { model.setAgentHooks(installed: false) }
-                    } else {
-                        Button("Install Hooks…") { model.confirmAgentHooks = true }
-                            .disabled(model.agentsFound.isEmpty)
-                    }
+        Section {
+            OptionRow(title: "Sleep journal",
+                      note: "When your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
+                Button("Show…") {
+                    model.loadSleepLog()
+                    model.showSleepLog = true
                 }
-            }
-        }
-    }
-
-    private var note: LocalizedStringKey {
-        if model.agentsFound.isEmpty { return "Claude Code and Codex were not found on this Mac." }
-        if model.agentHooksInstalled { return "Installed: Claude Code and Codex tell ClamStop when they work." }
-        return "Adds ClamStop to Claude Code and Codex. You see the change first."
-    }
-}
-
-/// Journal: recent sleeps (spec H3).
-struct JournalTab: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Form {
-            Section {
-                OptionRow(title: "Sleep journal",
-                          note: "When your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
-                    Button("Show…") {
-                        model.loadSleepLog()
-                        model.showSleepLog = true
-                    }
-                    .disabled(!model.serviceRunning)
-                    .popover(isPresented: $model.showSleepLog, arrowEdge: .bottom) {
-                        SleepHistoryView(sessions: SleepLog.sessions(from: model.sleepLog))
-                    }
+                .disabled(!model.serviceRunning)
+                .popover(isPresented: $model.showSleepLog, arrowEdge: .bottom) {
+                    SleepHistoryView(sessions: SleepLog.sessions(from: model.sleepLog))
                 }
             }
         }

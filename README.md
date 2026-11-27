@@ -18,20 +18,37 @@ Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
 ## Settings
 
-Everything is free. The settings window has eight tabs:
+Everything is free. The settings window has five tabs:
 
 - **General**: what happens when you close the lid (sleep, or do what macOS does), the
-  hibernation delay (immediately, after 5 minutes to 4 hours, or never), the menu bar icon,
+  hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
+  battery (sleep or not, and another delay), the menu bar icon,
   opening at login, and the background service.
-- **Stay Awake**: stay awake with the lid closed while AI agents work. See [AI agents](#ai-agents).
-- **Rules**: different settings on battery (sleep or not, and another hibernation delay).
-- **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
-  default), heat, power adapter unplugged (on by default), longest time (no limit by default).
-- **Actions**: hibernate at once when the lid closes on battery below a level.
-- **Automation**: install or remove the AI agent hooks.
-- **Journal**: when the Mac slept, for how long, whether it hibernated and how much battery it
-  used. Kept for 30 days, on this Mac only.
+- **Stay Awake**: stay awake with the lid closed while AI agents work, and install or remove the
+  AI agent hooks. See [AI agents](#ai-agents).
+- **Rules**: "when these conditions are true, do this when the lid closes". Conditions: power
+  adapter or battery, external screen plugged in or not, time of day and days of the week. Action:
+  sleep (with its own hibernation delay), stay awake, or do what macOS does. The first matching
+  rule applies; the Safety guards and the low battery hibernation come first. Without a matching
+  rule, the General tab applies. See [Rules](#rules).
+- **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
+  (on by default), longest time (no limit by default), battery below a level (20 % by default).
+  An option hibernates at once when the lid closes on battery below a level. Then the
+  sleep journal (when the Mac slept, for how long, whether it hibernated and how much battery it
+  used, kept for 30 days on this Mac only).
 - **About**: version, links and credits.
+
+### Rules
+
+Conditions are checked when the lid closes. While the Mac stays awake with the lid closed,
+unplugging the screen or the power adapter, or the end of a time window, puts it to sleep (screen
+and power changes after 5 seconds, time windows at the start of the minute). A rule never wakes a
+sleeping Mac.
+
+A **stay awake** rule costs nothing with both an external screen and the power adapter: macOS then
+stays awake by itself. In any other case ClamStop has to block sleep (`pmset disablesleep`) as
+long as the rule applies, even with the lid open: the Mac does not sleep when idle and Apple menu
+> Sleep does nothing. **Sleep Now** in the ClamStop menu works.
 
 The menu bar menu has **Stay Awake**: keep the Mac awake until you turn it off, for 5 minutes to
 8 hours, or until a time of day. It does not sleep when idle, and with the lid closed it stays
@@ -49,7 +66,7 @@ wake before hibernation stays silent.
 
 ### AI agents
 
-When you install the hooks (Automation tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
+When you install the hooks (Stay Awake tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
 (`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
 app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
 is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling ClamStop, removes the

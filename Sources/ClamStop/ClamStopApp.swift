@@ -292,6 +292,10 @@ final class FittedWindow {
         let top = window.frame.maxY
         window.setContentSize(size)
         window.setFrameTopLeftPoint(NSPoint(x: window.frame.minX, y: top))
+        // A taller tab must not end below the screen.
+        if let bottom = window.screen?.visibleFrame.minY, window.frame.minY < bottom {
+            window.setFrameOrigin(NSPoint(x: window.frame.minX, y: bottom))
+        }
     }
 }
 

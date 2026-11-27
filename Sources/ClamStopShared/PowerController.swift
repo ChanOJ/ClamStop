@@ -74,6 +74,10 @@ public final class PowerController {
     public private(set) var notices: [Notice] = []
     /// How often a session checks the battery floor while the lid is open.
     public static let sessionCheckInterval: TimeInterval = 60
+    /// Wait after a power or display change before acting: a screen can drop for a moment.
+    public static let settleDelay: TimeInterval = 5
+    /// Local time of the rules' time windows.
+    public var calendar = Calendar.autoupdatingCurrent
 
     private let effects: PowerEffects
     private let store: StateStore
@@ -94,6 +98,12 @@ public final class PowerController {
     /// Staying awake for agents ended early (time limit, heat, battery): no more until the lid opens.
     private var keepAwakeReleased = false
     private var sessionGeneration = 0
+    private var conditionsGeneration = 0
+    private var ruleClockGeneration = 0
+    /// What was decided for the lid closed now; nil when the lid is open, after a sleep, or when
+    /// the user changed something since. A change of conditions only puts the Mac to sleep (or
+    /// holds it awake) when this says ClamStop had let it run.
+    private var lidClosedDecision: LidDecision?
 
     public init(settings: ClamStopSettings, effects: PowerEffects, store: StateStore,
                 log: @escaping (String) -> Void = { _ in }) {
@@ -110,12 +120,37 @@ public final class PowerController {
         return effects.now().timeIntervalSince(since) >= TimeInterval(settings.maxAwakeHours * 3600)
     }
 
+    /// Power, battery, screen and local time, now.
+    private func context() -> PowerContext {
+        var context = effects.powerContext()
+        context.time = LocalTime(date: effects.now(), calendar: calendar)
+        return context
+    }
+
+    /// What closing the lid does now, sessions and agents aside: the settings or the rule that
+    /// applies, after the Safety guards. nil while ClamStop is off or inactive.
+    public var currentPlan: LidPlan? {
+        guard appRunning, settings.enabled else { return nil }
+        let context = context()
+        var plan = settings.lidPlan(for: context)
+        switch SleepPolicy.decide(settings: settings, context: context, agentsWorking: false) {
+        case .keepAwake:
+            plan.action = .stayAwake
+        case .leaveAlone:
+            plan.action = .macOS
+        case .sleep(let after, _):
+            plan.action = .sleep
+            plan.hibernateDelayMinutes = after.map { Int($0 / 60) } ?? ClamStopSettings.never
+        }
+        return plan
+    }
+
     /// What to do with the lid closed, now.
-    public func decide(agentsWorking working: Bool? = nil) -> LidDecision {
+    public func decide(agentsWorking working: Bool? = nil, mayStayAwake: Bool = true) -> LidDecision {
         guard appRunning else { return .leaveAlone(reason: "app not running") }
-        return SleepPolicy.decide(settings: settings, context: effects.powerContext(),
+        return SleepPolicy.decide(settings: settings, context: context(),
                            agentsWorking: working ?? agentsWorking, sessionActive: session != nil,
-                           agentTimeUp: agentTimeUp)
+                           agentTimeUp: agentTimeUp, mayStayAwake: mayStayAwake)
     }
 
     // MARK: Lifecycle
@@ -132,10 +167,13 @@ public final class PowerController {
         releaseSleepPrevention()
         effects.setIdleSleepPrevented(false)
         update(phase: .idle, pendingWake: nil)
+        scheduleRuleClock()
     }
 
     /// Daemon exit (SIGTERM, unregister): leave the system as it was.
     public func stop() {
+        ruleClockGeneration += 1
+        conditionsGeneration += 1
         cancelPendingWake()
         effects.cancelAllOwnWakes()
         restoreHibernateMode()
@@ -147,6 +185,10 @@ public final class PowerController {
 
     /// Uninstall: back to macOS defaults (`hibernatemode 3`, no ClamStop wake).
     public func restoreDefaults() {
+        // No rule may hold the Mac awake again before the daemon is removed.
+        settings.rules = []
+        ruleClockGeneration += 1
+        conditionsGeneration += 1
         cancelPendingWake()
         effects.cancelAllOwnWakes()
         if effects.currentHibernateMode() != HibernateMode.default {
@@ -168,7 +210,48 @@ public final class PowerController {
             restoreHibernateMode()
             update(phase: .idle, pendingWake: nil)
         }
+        // The user is changing settings: do not put the Mac to sleep under their hands.
+        lidClosedDecision = nil
+        scheduleRuleClock()
         reevaluate(trigger: "settings changed")
+    }
+
+    // MARK: Conditions (rules and power source)
+
+    /// The power source or the external screen changed: look again once it has settled.
+    public func conditionsChanged(trigger: String) {
+        conditionsGeneration += 1
+        let generation = conditionsGeneration
+        effects.run(at: effects.now().addingTimeInterval(Self.settleDelay)) { [weak self] in
+            guard let self, self.conditionsGeneration == generation else { return }
+            self.evaluateConditions(trigger: trigger)
+        }
+    }
+
+    /// Apply the current conditions: sessions and keep-awake first (`reevaluate`), then a Mac that
+    /// ClamStop had left running with the lid closed.
+    private func evaluateConditions(trigger: String) {
+        reevaluate(trigger: trigger)
+        guard effects.isLidClosed(), awake, state.phase == .idle, !keepingAwakeForAgents,
+              case .leaveAlone = lidClosedDecision else { return }
+        let decision = decide()
+        if case .leaveAlone = decision { return }
+        lastLidDecision = decision.summary
+        log("\(trigger), lid closed: \(decision.summary)")
+        act(on: decision)
+    }
+
+    /// While there are rules, look at the time windows and the guards at the start of each minute.
+    private func scheduleRuleClock() {
+        ruleClockGeneration += 1
+        guard settings.rules.contains(where: \.enabled) else { return }
+        let generation = ruleClockGeneration
+        let nextMinute = (effects.now().timeIntervalSince1970 / 60).rounded(.down) * 60 + 60
+        effects.run(at: Date(timeIntervalSince1970: nextMinute)) { [weak self] in
+            guard let self, self.ruleClockGeneration == generation else { return }
+            self.evaluateConditions(trigger: "rule clock")
+            self.scheduleRuleClock()
+        }
     }
 
     // MARK: Events
@@ -188,6 +271,7 @@ public final class PowerController {
                 stopKeepingAwake()
             }
             plannedDelay = nil
+            lidClosedDecision = nil
             // Lid opened while awake (after an early lid-closed wake): the user is here.
             if lastLidClosed, awake, state.phase == .awaitingHibernation {
                 log("lid opened while awake: cancelling hibernation")
@@ -232,7 +316,11 @@ public final class PowerController {
         guard decision != .keepAwake else { return }
         lastLidDecision = decision.summary
         log("\(trigger), lid closed: \(decision.summary)")
-        if case .sleep = decision, agentsWorking { keepAwakeReleased = true }
+        // Do not stay awake again before the lid opens: agents keep working, or a guard stopped it.
+        if case .sleep(_, let reason) = decision,
+           agentsWorking || Notice.Reason(decisionReason: reason) != nil {
+            keepAwakeReleased = true
+        }
         if case .sleep(_, let reason) = decision {
             endSession(reason: reason)
             if let guardReason = Notice.Reason(decisionReason: reason) {
@@ -271,6 +359,7 @@ public final class PowerController {
     }
 
     private func act(on decision: LidDecision) {
+        lidClosedDecision = appRunning && settings.enabled && effects.isLidClosed() ? decision : nil
         switch decision {
         case .leaveAlone:
             plannedDelay = nil
@@ -314,12 +403,18 @@ public final class PowerController {
         keepAwakeGeneration += 1
     }
 
-    /// Hold `disablesleep` while agents work and closing the lid would keep the Mac awake for
-    /// them: it must already be set when the lid closes, or a Mac without external display
-    /// sleeps at once (clamshell sleep happens before ClamStop hears about the lid).
+    /// Hold `disablesleep` while agents work, a session runs or a rule says to stay awake, and
+    /// closing the lid would keep the Mac awake: it must already be set when the lid closes, or a
+    /// Mac without external display sleeps at once (clamshell sleep happens before ClamStop hears
+    /// about the lid). A rule alone needs nothing with a screen and the power adapter: macOS then
+    /// stays awake by itself. Never taken during a dark wake with the lid closed.
     private func updateSleepPrevention() {
-        let wanted = agentsWorking || session != nil
-        let want = wanted && state.phase == .idle && decide(agentsWorking: agentsWorking) == .keepAwake
+        var want = false
+        if state.phase == .idle, awake || !effects.isLidClosed(), decide() == .keepAwake {
+            let context = context()
+            want = (settings.keepAwakeForAgents && agentsWorking) || session != nil
+                || !(context.externalDisplay && context.onPowerAdapter)
+        }
         if want { preventSleep() } else { releaseSleepPrevention() }
         effects.setIdleSleepPrevented(session != nil)
     }
@@ -336,7 +431,8 @@ public final class PowerController {
         }
         state.sleepDisabledByClamStop = true
         store.save(state)
-        log("disablesleep 1 (\(session != nil ? "stay awake session" : "agents working"))")
+        let why = session != nil ? "stay awake session" : agentsWorking ? "agents working" : "rule"
+        log("disablesleep 1 (\(why))")
     }
 
     private func releaseSleepPrevention() {
@@ -356,6 +452,7 @@ public final class PowerController {
         record(.sleep, nil)
         let planned = plannedDelay
         plannedDelay = nil
+        lidClosedDecision = nil
         endSession(reason: "Mac going to sleep")
         if keepingAwakeForAgents {
             log("will sleep while keeping awake for agents")
@@ -381,7 +478,7 @@ public final class PowerController {
             let delay: TimeInterval?
             if let planned {
                 delay = planned
-            } else if case .sleep(let after, _) = decide(agentsWorking: false) {
+            } else if case .sleep(let after, _) = decide(mayStayAwake: false) {
                 // Sleep ClamStop did not ask for (a Mac without display, the Apple menu).
                 delay = after == 0 ? 0 : (delayOverride ?? after)
             } else {
@@ -395,6 +492,7 @@ public final class PowerController {
     /// - Parameter fullWake: display/graphics available (user wake). False for a dark wake, which
     ///   on AC power can also be notified (verified: capabilities 9 = CPU + network).
     public func systemDidWake(fullWake: Bool = true) {
+        defer { if fullWake { resumeAfterWake() } }
         if fullWake { awake = true }
         let lidClosed = effects.isLidClosed()
         if fullWake {
@@ -442,6 +540,17 @@ public final class PowerController {
         }
     }
 
+    /// After a full wake: take back the sleep prevention a rule or an agent asks for. With the
+    /// lid still closed (external keyboard), a "stay awake" decision applies again.
+    private func resumeAfterWake() {
+        guard awake, state.phase == .idle else { return }
+        if effects.isLidClosed(), !keepingAwakeForAgents, decide() == .keepAwake {
+            lidClosedDecision = .keepAwake
+            startKeepingAwake()
+        }
+        updateSleepPrevention()
+    }
+
     /// Hibernate if the deadline has passed while the Mac is in a dark wake with the lid closed.
     /// Called by the deadline timer and on clamshell messages; full wakes go through `systemDidWake`.
     public func deadlineCheck(trigger: String) {
@@ -464,6 +573,7 @@ public final class PowerController {
             endSession(reason: "app quit")
             if state.phase == .awaitingHibernation { endHibernationPlan() }
         }
+        lidClosedDecision = nil
         reevaluate(trigger: running ? "app started" : "app quit")
     }
 

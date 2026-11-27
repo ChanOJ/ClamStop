@@ -48,6 +48,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     public var onlyWhileCharging: Bool
     /// Longest time to stay awake with the lid closed, in hours (0 = no limit, spec E5).
     public var maxAwakeHours: Int
+    /// "When conditions are true, do this" (spec D1), in order of priority.
+    public var rules: [Rule]
 
     public static let defaultDelayMinutes = 60
     public static let delayChoices = [0, 5, 15, 30, 60, 120, 240, never]
@@ -67,7 +69,7 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
                 battery: PowerSourceProfile = PowerSourceProfile(),
                 lowBatteryHibernation: Bool = false, lowBatteryPercent: Int = 10,
                 batteryFloorPercent: Int = 20, heatGuard: Bool = true, onlyWhileCharging: Bool = true,
-                maxAwakeHours: Int = 0) {
+                maxAwakeHours: Int = 0, rules: [Rule] = []) {
         self.enabled = enabled
         self.hibernateDelayMinutes = ClamStopSettings.clampDelay(hibernateDelayMinutes)
         self.keepAwakeForAgents = keepAwakeForAgents
@@ -80,12 +82,13 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
         self.heatGuard = heatGuard
         self.onlyWhileCharging = onlyWhileCharging
         self.maxAwakeHours = max(0, maxAwakeHours)
+        self.rules = rules
     }
 
     private enum CodingKeys: String, CodingKey {
         case enabled, hibernateDelayMinutes, keepAwakeForAgents, separateBatterySettings,
              onPowerAdapterEnabled, battery, lowBatteryHibernation, lowBatteryPercent,
-             batteryFloorPercent, heatGuard, onlyWhileCharging, maxAwakeHours
+             batteryFloorPercent, heatGuard, onlyWhileCharging, maxAwakeHours, rules
     }
 
     public init(from decoder: Decoder) throws {
@@ -103,7 +106,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
             batteryFloorPercent: try c.decodeIfPresent(Int.self, forKey: .batteryFloorPercent) ?? d.batteryFloorPercent,
             heatGuard: try c.decodeIfPresent(Bool.self, forKey: .heatGuard) ?? d.heatGuard,
             onlyWhileCharging: try c.decodeIfPresent(Bool.self, forKey: .onlyWhileCharging) ?? d.onlyWhileCharging,
-            maxAwakeHours: try c.decodeIfPresent(Int.self, forKey: .maxAwakeHours) ?? d.maxAwakeHours)
+            maxAwakeHours: try c.decodeIfPresent(Int.self, forKey: .maxAwakeHours) ?? d.maxAwakeHours,
+            rules: try c.decodeIfPresent([Rule].self, forKey: .rules) ?? d.rules)
     }
 
     public static func clampDelay(_ minutes: Int) -> Int {
@@ -181,7 +185,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     public var sleepDisabledByClamStop: Bool?
     /// AI agent sessions currently counted as working.
     public var agents: [AgentSessionInfo]?
-    /// The lid is closed and the Mac stays awake because agents are working.
+    /// The lid is closed and the Mac stays awake (agents, session or rule).
     public var keepingAwakeForAgents: Bool?
     public var onPowerAdapter: Bool?
     public var batteryPercent: Int?
@@ -193,13 +197,16 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     public var notices: [Notice]?
     /// The daemon sees the app running (it is inactive otherwise).
     public var appRunning: Bool?
+    /// What closing the lid does now, sessions and agents aside, with the rule that applies
+    /// (spec D1). nil while ClamStop is off or inactive.
+    public var lidPlan: LidPlan?
 
     public init(version: String, settings: ClamStopSettings, phase: PowerPhase, pendingWake: Date?,
                 lidClosed: Bool, sleepDisabled: Bool, hibernateMode: Int?,
                 sleepDisabledByClamStop: Bool? = nil, agents: [AgentSessionInfo]? = nil,
                 keepingAwakeForAgents: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
                 lastLidDecision: String? = nil, appRunning: Bool? = nil, session: StayAwakeSession? = nil,
-                notices: [Notice]? = nil) {
+                notices: [Notice]? = nil, lidPlan: LidPlan? = nil) {
         self.version = version
         self.settings = settings
         self.phase = phase
@@ -216,6 +223,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.session = session
         self.notices = notices
         self.appRunning = appRunning
+        self.lidPlan = lidPlan
     }
 
     public func encoded() -> Data {

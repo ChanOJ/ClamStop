@@ -7,6 +7,8 @@
 // Other commands: --restore-defaults (hibernatemode 3, cancel ClamStop wakes), --status.
 
 import Foundation
+import IOKit.ps
+import notify
 import ClamStopShared
 
 /// Glue between the IOKit monitor, the state machine, persistence and XPC. Main queue only.
@@ -64,6 +66,13 @@ final class DaemonService {
         controller.setAppRunning(true)
     }
 
+    func externalDisplayChanged(_ connected: Bool) {
+        guard connected != power.externalDisplay else { return }
+        power.externalDisplay = connected
+        Log.info("external display \(connected ? "connected" : "disconnected")")
+        controller.conditionsChanged(trigger: "display changed")
+    }
+
     func record(_ kind: SleepEvent.Kind, _ detail: String?) {
         let battery = SystemPower.battery()
         sleepLog = SleepLog.appending(SleepEvent(date: Date(), kind: kind, batteryPercent: battery.percent,
@@ -99,7 +108,7 @@ final class DaemonService {
             agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
             lastLidDecision: controller.lastLidDecision, appRunning: controller.appRunning, session: controller.session,
-            notices: controller.notices)
+            notices: controller.notices, lidPlan: controller.currentPlan)
     }
 }
 
@@ -159,6 +168,13 @@ monitor.onDidWake = {
 guard monitor.start() else {
     Log.error("cannot register for power notifications")
     exit(1)
+}
+
+// Power adapter plugged in or unplugged (rules, battery profile, safety guards).
+var powerSourceToken: Int32 = 0
+notify_register_dispatch(kIOPSNotifyPowerSource, &powerSourceToken, .main) { _ in
+    Log.info("power source changed, on adapter=\(SystemPower.battery().onPowerAdapter)")
+    service.controller.conditionsChanged(trigger: "power source changed")
 }
 
 // Leave the system as it was on SIGTERM (unregister, shutdown) and Ctrl-C.

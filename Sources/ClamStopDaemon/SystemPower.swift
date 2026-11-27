@@ -18,6 +18,10 @@ private let kAutoWakeType = "wake"
 
 /// Real `PowerEffects`: IOKit and pmset. Must be used from the main queue.
 final class SystemPower: PowerEffects {
+    /// A screen other than the built-in one is connected, as the app reports it: a root daemon
+    /// has no window server connection to ask.
+    var externalDisplay = false
+
     func now() -> Date { Date() }
 
     func isLidClosed() -> Bool {
@@ -117,7 +121,8 @@ final class SystemPower: PowerEffects {
         let battery = Self.battery()
         let thermal = ProcessInfo.processInfo.thermalState
         return PowerContext(onPowerAdapter: battery.onPowerAdapter, batteryPercent: battery.percent,
-                            thermalPressure: thermal == .serious || thermal == .critical)
+                            thermalPressure: thermal == .serious || thermal == .critical,
+                            externalDisplay: externalDisplay)
     }
 
     func isSleepDisabled() -> Bool { sleepDisabled }

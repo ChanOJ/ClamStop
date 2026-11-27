@@ -17,12 +17,14 @@ struct SettingsMockupView: View {
                     summarySection
                     simpleSettings
                     if full { serviceSection }
-                case .sessions: sessionsSection
+                case .sessions:
+                    sessionsSection
+                    automationSection
                 case .rules: rulesSection
-                case .safety: safetySection
-                case .actions: actionsSection
-                case .automation: automationSection
-                case .journal: journalSection
+                case .safety:
+                    safetySection
+                    actionsSection
+                    journalSection
                 case .about: Section { AboutView(model: model) }
                 }
             }
