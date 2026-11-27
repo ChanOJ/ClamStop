@@ -31,11 +31,11 @@ Everything is free. The settings window has five tabs:
   sleep (with its own hibernation delay), stay awake, or do what macOS does. The first matching
   rule applies; the Safety guards and the low battery hibernation come first. Without a matching
   rule, the General tab applies. See [Rules](#rules).
-- **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
-  default), heat, power adapter unplugged (on by default), longest time (no limit by default).
-  Then hibernation at once when the lid closes on battery below a level, and the sleep journal
-  (when the Mac slept, for how long, whether it hibernated and how much battery it used, kept for
-  30 days on this Mac only).
+- **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
+  (on by default), longest time (no limit by default), battery below a level (20 % by default).
+  An option hibernates at once when the lid closes on battery below a level. Then the
+  sleep journal (when the Mac slept, for how long, whether it hibernated and how much battery it
+  used, kept for 30 days on this Mac only).
 - **About**: version, links and credits.
 
 ### Rules

@@ -71,14 +71,6 @@ struct SafetyTab: View {
     var body: some View {
         Form {
             Section {
-                OptionRow(title: "Sleep when the battery falls below",
-                          note: "Ends staying awake to keep enough battery.") {
-                    Picker("Sleep when the battery falls below", selection: setting(model, \.batteryFloorPercent)) {
-                        ForEach(ClamStopSettings.batteryFloorChoices, id: \.self) { Text(verbatim: "\($0) %").tag($0) }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                }
                 ToggleRow(title: "Sleep when the Mac gets hot",
                           note: "With the lid closed, a warm Mac goes to sleep to cool down.",
                           isOn: setting(model, \.heatGuard))
@@ -99,7 +91,7 @@ struct SafetyTab: View {
                 Footnote("These guards are on by default.")
             }
             .disabled(!model.serviceRunning)
-            LowBatterySection(model: model)
+            BatteryLevelSection(model: model)
             JournalSection(model: model)
         }
     }
@@ -113,12 +105,21 @@ struct SafetyTab: View {
     }
 }
 
-/// Hibernate when the battery is low (spec B3).
-private struct LowBatterySection: View {
+/// Battery levels: end staying awake (spec E1), hibernate when low (spec B3).
+private struct BatteryLevelSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Section {
+            OptionRow(title: "Sleep when the battery falls below",
+                      note: "Ends staying awake to keep enough battery.") {
+                Picker("Sleep when the battery falls below", selection: setting(model, \.batteryFloorPercent)) {
+                    ForEach(ClamStopSettings.batteryFloorChoices, id: \.self) { Text(verbatim: "\($0) %").tag($0) }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            .disabled(!model.serviceRunning)
             OptionRow(title: "Hibernate when the battery is low",
                       note: "On battery, at this level or below, your Mac stops using the battery completely when you close the lid.") {
                 HStack {
@@ -133,8 +134,8 @@ private struct LowBatterySection: View {
                         .toggleStyle(.switch)
                 }
             }
+            .disabled(!model.serviceRunning || !model.settings.enabled)
         }
-        .disabled(!model.serviceRunning || !model.settings.enabled)
     }
 }
 
