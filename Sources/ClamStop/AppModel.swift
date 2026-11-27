@@ -2,6 +2,9 @@ import AppKit
 import Foundation
 import ServiceManagement
 import ClamStopShared
+import os
+
+private let logger = Logger(subsystem: ClamStopID.appBundleID, category: "service")
 
 /// State of the background service as seen by the app.
 enum ServiceState: Equatable {
@@ -62,6 +65,9 @@ final class AppModel: ObservableObject {
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
     private var lastRegistrationRetry = Date.distantPast
+    /// Approved but not answering since then (see `repairIfStuck`).
+    private var notRespondingSince: Date?
+    private var repairAttempted = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -118,10 +124,12 @@ final class AppModel: ObservableObject {
                 do {
                     self.status = try await client.status()
                     self.serviceState = .running
+                    self.notRespondingSince = nil
                     self.applyPendingFirstRun()
                 } catch {
                     self.status = nil
                     self.serviceState = .notResponding
+                    self.repairIfStuck()
                 }
             }
         @unknown default:
@@ -209,6 +217,22 @@ final class AppModel: ObservableObject {
             try? await daemonService.unregister()
             installService()
         }
+    }
+
+    /// Approved in System Settings but the service never answers: with ad-hoc builds launchd
+    /// sometimes refuses the new daemon after an update (EX_CONFIG, "spawn scheduled") until it is
+    /// registered again, which then needs no new approval (seen twice on macOS 27.2, 2026-11-27).
+    /// Do what the "Reinstall Background Service" button does, once per launch, after 20 s.
+    private func repairIfStuck() {
+        let now = Date()
+        guard let since = notRespondingSince else {
+            notRespondingSince = now
+            return
+        }
+        guard !repairAttempted, now.timeIntervalSince(since) >= 20 else { return }
+        repairAttempted = true
+        logger.info("service approved but not answering for 20 s: registering it again")
+        reinstallService()
     }
 
     func openLoginItemsSettings() {
