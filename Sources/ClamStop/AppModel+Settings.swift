@@ -75,6 +75,20 @@ extension AppModel {
         return .active
     }
 
+    /// Grey menu line saying why the Mac stays awake when AI agents hold it: "Staying awake
+    /// while Claude Code works". nil otherwise (a session has its own line).
+    var awakeLine: String? {
+        guard iconState == .awake(.agents), let sessions = status?.agents, !sessions.isEmpty else { return nil }
+        let kinds = Set(sessions.map(\.agent.displayName)).sorted()
+        let names = kinds.formatted(.list(type: .and))
+        switch (kinds.count > 1, sessions.allSatisfy(\.finishing)) {
+        case (false, false): return String(localized: "Staying awake while \(names) works")
+        case (false, true): return String(localized: "Staying awake while \(names) finishes")
+        case (true, false): return String(localized: "Staying awake while \(names) work")
+        case (true, true): return String(localized: "Staying awake while \(names) finish")
+        }
+    }
+
     /// Short time left next to the icon: "25m", "1h 20m" (nil without an end time).
     var sessionTimeLeft: String? {
         guard serviceRunning, let until = status?.session?.until else { return nil }

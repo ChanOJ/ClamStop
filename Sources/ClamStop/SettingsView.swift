@@ -362,6 +362,9 @@ struct MenuContent: View {
         if let detail = model.menuDetail {
             Text(detail)
         }
+        if let awake = model.awakeLine {
+            Text(awake)
+        }
         Divider()
         // Always available, so a running session can be changed in two clicks.
         if let line = model.sessionLine {
