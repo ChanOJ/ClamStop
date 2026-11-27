@@ -1,8 +1,8 @@
 import SwiftUI
 import ClamStopShared
 
-/// Rules: "when conditions are true, do this when the lid closes" (spec D1), then the separate
-/// settings on battery (spec B4), used when no rule matches.
+/// Rules: "when conditions are true, do this when the lid closes" (spec D1). The General tab
+/// applies when no rule matches.
 struct RulesTab: View {
     @ObservedObject var model: AppModel
 
@@ -18,31 +18,11 @@ struct RulesTab: View {
                 ForEach(Array(settings.rules.enumerated()), id: \.element.id) { index, rule in
                     RuleRow(model: model, rule: rule, index: index, count: settings.rules.count)
                 }
-            }
-            .disabled(!model.serviceRunning || !settings.enabled)
-            Section {
-                ToggleRow(title: "Different settings on battery",
-                          note: "Choose another lid action and hibernation delay when unplugged.",
-                          isOn: setting(model, \.separateBatterySettings))
-                if settings.separateBatterySettings {
-                    Picker("On battery, when I close the lid", selection: setting(model, \.battery.enabled)) {
-                        Text("Sleep, even with a screen plugged in").tag(true)
-                        Text("Do what macOS does").tag(false)
-                    }
-                    Picker("Hibernate on battery", selection: setting(model, \.battery.hibernateDelayMinutes)) {
-                        ForEach(delayChoices(current: settings.battery.hibernateDelayMinutes), id: \.self) { minutes in
-                            Text(AppModel.delayTitle(minutes)).tag(minutes)
-                        }
-                    }
-                    .disabled(!settings.battery.enabled)
-                }
             } footer: {
                 if !settings.enabled {
-                    Footnote("The General tab is set to “Do what macOS does”: these settings are not used.")
-                } else if !settings.rules.isEmpty {
-                    Footnote("When no rule matches, these settings and those of the General tab apply.")
-                } else if settings.separateBatterySettings {
-                    Footnote("On power, the settings of the General tab apply.")
+                    Footnote("The General tab is set to “Do what macOS does”: rules are not used.")
+                } else {
+                    Footnote("When no rule matches, the settings of the General tab apply.")
                 }
             }
             .disabled(!model.serviceRunning || !settings.enabled)

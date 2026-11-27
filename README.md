@@ -21,15 +21,15 @@ Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 Everything is free. The settings window has eight tabs:
 
 - **General**: what happens when you close the lid (sleep, or do what macOS does), the
-  hibernation delay (immediately, after 5 minutes to 4 hours, or never), the menu bar icon,
+  hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
+  battery (sleep or not, and another delay), the menu bar icon,
   opening at login, and the background service.
 - **Stay Awake**: stay awake with the lid closed while AI agents work. See [AI agents](#ai-agents).
 - **Rules**: "when these conditions are true, do this when the lid closes". Conditions: power
   adapter or battery, external screen plugged in or not, time of day and days of the week. Action:
   sleep (with its own hibernation delay), stay awake, or do what macOS does. The first matching
   rule applies; the Safety guards and the low battery hibernation come first. Without a matching
-  rule, the General tab applies, or the separate settings on battery (sleep or not, and another
-  hibernation delay). See [Rules](#rules).
+  rule, the General tab applies. See [Rules](#rules).
 - **Safety**: guards that end staying awake with the lid closed: battery below a level (20 % by
   default), heat, power adapter unplugged (on by default), longest time (no limit by default).
 - **Actions**: hibernate at once when the lid closes on battery below a level.

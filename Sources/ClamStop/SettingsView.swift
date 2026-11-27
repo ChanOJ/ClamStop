@@ -10,20 +10,22 @@ struct SettingsRootView: View {
         VStack(spacing: 0) {
             SettingsTabBar(selection: $model.settingsTab)
             Divider()
-            Group {
-                switch model.settingsTab {
-                case .general: GeneralTab(model: model)
-                case .sessions: StayAwakeTab(model: model)
-                case .rules: RulesTab(model: model)
-                case .safety: SafetyTab(model: model)
-                case .actions: ActionsTab(model: model)
-                case .automation: AutomationTab(model: model)
-                case .journal: JournalTab(model: model)
-                case .about: AboutTab()
+            // A tab taller than the screen (General on a small one) scrolls.
+            HeightCap(maximum: Self.maximumTabHeight) {
+                Group {
+                    switch model.settingsTab {
+                    case .general: GeneralTab(model: model)
+                    case .sessions: StayAwakeTab(model: model)
+                    case .rules: RulesTab(model: model)
+                    case .safety: SafetyTab(model: model)
+                    case .actions: ActionsTab(model: model)
+                    case .automation: AutomationTab(model: model)
+                    case .journal: JournalTab(model: model)
+                    case .about: AboutTab()
+                    }
                 }
+                .formStyle(.grouped)
             }
-            .formStyle(.grouped)
-            .fixedSize(horizontal: false, vertical: true)
         }
         .frame(width: 640)
         .confirmationDialog("Uninstall ClamStop?", isPresented: $model.confirmUninstall) {
@@ -45,6 +47,33 @@ struct SettingsRootView: View {
             Text(model.errorMessage ?? "")
         }
         .onAppear { model.refresh() }
+    }
+
+    /// What is left of the screen below the title bar and the tab bar.
+    private static var maximumTabHeight: CGFloat {
+        let screen = NSScreen.main?.visibleFrame.height ?? 800
+        let chrome: CGFloat = 100
+        // Development aid (`--max-tab-height <points>`): check scrolling on a large screen.
+        let args = CommandLine.arguments
+        if let i = args.firstIndex(of: "--max-tab-height"), i + 1 < args.count, let value = Double(args[i + 1]) {
+            return value
+        }
+        return screen - chrome
+    }
+}
+
+/// Its content at its ideal height, up to `maximum`: beyond that, the content (a form) scrolls.
+private struct HeightCap: Layout {
+    let maximum: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else { return .zero }
+        let ideal = content.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        return CGSize(width: ideal.width, height: min(ideal.height, maximum))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
 }
 
@@ -184,6 +213,11 @@ struct GeneralTab: View {
                     Footnote("After this time asleep, your Mac saves its memory to disk and stops using the battery completely (hibernation).")
                 }
                 .disabled(!model.serviceRunning || !settings.enabled)
+            }
+
+            BatterySection(model: model)
+
+            Section {
                 Toggle("Show in the menu bar", isOn: $showMenuBarIcon)
                     .toggleStyle(.switch)
                 Picker("Menu bar icon", selection: $menuBarIconStyle) {
@@ -218,6 +252,34 @@ struct GeneralTab: View {
 
             ServiceSection(model: model)
         }
+    }
+}
+
+/// Separate settings on battery (spec B4); the ones above then apply on power adapter.
+private struct BatterySection: View {
+    @ObservedObject var model: AppModel
+
+    private var settings: ClamStopSettings { model.settings }
+
+    var body: some View {
+        Section {
+            ToggleRow(title: "Different settings on battery",
+                      note: "Choose another lid action and hibernation delay when unplugged.",
+                      isOn: setting(model, \.separateBatterySettings))
+            if settings.separateBatterySettings {
+                Picker("On battery, when I close the lid", selection: setting(model, \.battery.enabled)) {
+                    Text("Sleep, even with a screen plugged in").tag(true)
+                    Text("Do what macOS does").tag(false)
+                }
+                Picker("Hibernate on battery", selection: setting(model, \.battery.hibernateDelayMinutes)) {
+                    ForEach(delayChoices(current: settings.battery.hibernateDelayMinutes), id: \.self) { minutes in
+                        Text(AppModel.delayTitle(minutes)).tag(minutes)
+                    }
+                }
+                .disabled(!settings.battery.enabled)
+            }
+        }
+        .disabled(!model.serviceRunning || !settings.enabled)
     }
 }
 

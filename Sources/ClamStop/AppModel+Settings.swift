@@ -167,6 +167,12 @@ extension AppModel {
         }
     }
 
+    /// The separate battery settings apply now, not those for the power adapter.
+    var usesBatterySettings: Bool {
+        status?.settings.separateBatterySettings == true && status?.onPowerAdapter == false
+            && status?.lidPlan?.rule == nil
+    }
+
     /// The live sentence at the top of the General tab (spec section 5).
     var summary: String {
         guard serviceRunning, let status else { return statusLine }
@@ -180,7 +186,9 @@ extension AppModel {
         if plan?.rule != nil { parts.append(String(localized: "A rule applies now.")) }
         switch action {
         case .sleep:
-            parts.append(String(localized: "When you close the lid, your Mac goes to sleep, even with a screen plugged in."))
+            parts.append(usesBatterySettings
+                ? String(localized: "On battery, when you close the lid, your Mac goes to sleep, even with a screen plugged in.")
+                : String(localized: "When you close the lid, your Mac goes to sleep, even with a screen plugged in."))
             switch plan?.hibernateDelayMinutes ?? s.hibernateDelayMinutes {
             case ..<0: break
             case 0: parts.append(String(localized: "Right away, it stops using the battery completely (hibernation)."))
@@ -189,10 +197,9 @@ extension AppModel {
         case .stayAwake:
             parts.append(String(localized: "When you close the lid, your Mac stays awake."))
         case .macOS:
-            parts.append(String(localized: "When you close the lid, macOS decides, as if ClamStop were not installed."))
-        }
-        if plan?.rule == nil, !s.rules.isEmpty || s.separateBatterySettings {
-            parts.append(String(localized: "The Rules tab can change this."))
+            parts.append(usesBatterySettings
+                ? String(localized: "On battery, when you close the lid, macOS decides, as if ClamStop were not installed.")
+                : String(localized: "When you close the lid, macOS decides, as if ClamStop were not installed."))
         }
         if s.keepAwakeForAgents, agentHooksInstalled, action == .sleep {
             parts.append(String(localized: "While AI agents work, it stays awake."))
@@ -205,19 +212,28 @@ extension AppModel {
         guard serviceRunning, let s = status?.settings, s.enabled else { return nil }
         let plan = status?.lidPlan
         guard plan == nil || plan?.action == .sleep else { return nil }
+        let battery = usesBatterySettings
         switch plan?.hibernateDelayMinutes ?? s.hibernateDelayMinutes {
         case ..<0: return nil
-        case 0: return String(localized: "Stops using the battery right away")
-        case 60: return String(localized: "Stops using the battery after 1 hour asleep")
-        case let m where m % 60 == 0: return String(localized: "Stops using the battery after \(m / 60) hours asleep")
-        case let m: return String(localized: "Stops using the battery after \(m) minutes asleep")
+        case 0:
+            return battery ? String(localized: "On battery: stops using the battery right away")
+                : String(localized: "Stops using the battery right away")
+        case 60:
+            return battery ? String(localized: "On battery: stops using the battery after 1 hour asleep")
+                : String(localized: "Stops using the battery after 1 hour asleep")
+        case let m where m % 60 == 0:
+            return battery ? String(localized: "On battery: stops using the battery after \(m / 60) hours asleep")
+                : String(localized: "Stops using the battery after \(m / 60) hours asleep")
+        case let m:
+            return battery ? String(localized: "On battery: stops using the battery after \(m) minutes asleep")
+                : String(localized: "Stops using the battery after \(m) minutes asleep")
         }
     }
 
     // MARK: Preview
 
-    /// Development aid (`--preview-settings [--tab name]`, with `--snapshot`): the settings with
-    /// sample values and a working agent, without the background service.
+    /// Development aid (`--preview-settings [--tab name] [--on-battery]`, with `--snapshot`): the
+    /// settings with sample values and a working agent, without the background service.
     static let previewSettings = CommandLine.arguments.contains("--preview-settings")
 
     func startSettingsPreview() {
@@ -228,12 +244,13 @@ extension AppModel {
                                             Rule(time: TimeWindow(start: 23 * 60, end: 7 * 60), action: .sleep,
                                                  hibernateDelayMinutes: 0),
                                         ])
+        let onBattery = CommandLine.arguments.contains("--on-battery")
         let status = DaemonStatus(
             version: ClamStopVersion.current, settings: settings, phase: .idle, pendingWake: nil, lidClosed: false,
             sleepDisabled: true, hibernateMode: 3, sleepDisabledByClamStop: true,
             agents: [AgentSessionInfo(agent: .claude, since: Date(), finishing: false, subagents: 0)],
-            keepingAwakeForAgents: false, onPowerAdapter: true, batteryPercent: 76, lastLidDecision: nil,
-            lidPlan: settings.lidPlan(for: PowerContext(onPowerAdapter: true, externalDisplay: true)))
+            keepingAwakeForAgents: false, onPowerAdapter: !onBattery, batteryPercent: 76, lastLidDecision: nil,
+            lidPlan: settings.lidPlan(for: PowerContext(onPowerAdapter: !onBattery, externalDisplay: !onBattery)))
         setPreviewStatus(status)
         // Development aid: `--edit-rule` shows the rule editor.
         if CommandLine.arguments.contains("--edit-rule") {
