@@ -27,8 +27,8 @@
 
   "shot.settings.alt": "ClamStop settings window, General tab: on battery, closing the lid puts the Mac to sleep even with a screen plugged in, and it hibernates after 15 minutes; menu bar, login, update and background service settings below.",
   "shot.settings.caption": "The General tab: what happens when you close the lid.",
-  "shot.menu.alt": "ClamStop menu in the menu bar: current status, Sleep When the Lid Closes, Settings and Quit ClamStop.",
-  "shot.menu.caption": "Turn it on or off from the menu bar.",
+  "shot.menu.alt": "ClamStop menu in the menu bar: current status, Stay Awake, Sleep Now, Hibernate Now, What Keeps My Mac Awake…, Settings and Quit ClamStop.",
+  "shot.menu.caption": "Stay awake or sleep now from the menu bar.",
 
   "features.title": "Features",
   "features.clamshell.title": "Sleep in clamshell mode too",

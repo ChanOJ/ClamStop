@@ -146,15 +146,16 @@ branch from `origin/main`.
   (controls may be named by `titled by`). Seen 2026-11-28: a `List` blocked VoiceOver and section
   headers were read last; keyboard shortcuts on digits must use key codes (French layout).
 
-## Blockers for a sandboxed Mac App Store edition (not verified on a sandboxed build)
+## Blockers for a sandboxed Mac App Store edition (not built; spike results in point 5 above)
 
 - No privileged helper: a sandboxed App Store app cannot install a root LaunchDaemon
   (`SMAppService.daemon`). Without root: no `pmset -a hibernatemode`, no
   `IOPMSchedulePowerEvent`, so no delayed hibernation; sleep-on-lid-close only.
-- `pmset sleepnow` runs as a child process (inherits the sandbox, may be refused); a store
-  edition would try `IOPMSleepSystem` instead. Lid notifications on `IOPMrootDomain` probably
-  still work (IOKit registry reads), to verify.
-- `AudioPauser` uses the private MediaRemote framework (`dlopen`): App Review rejects private API.
+- Sleep on lid close works sandboxed (`IOPMSleepSystem`, lid notifications on `IOPMrootDomain`):
+  the app would do it itself.
+- Private APIs, which App Review rejects: `AudioPauser` (MediaRemote), `ScreenLocker`
+  (`SACLockScreenImmediate`) and `BuiltInScreen` (DisplayServices). The last two are already
+  left out with `-D APPSTORE`; `AudioPauser` is not.
 - Uninstall flow (restore power settings through the daemon) and the approval UI disappear.
 - Agent keep-awake needs `disablesleep` (root) to hold a display-less lid close, and its hook
   talks to the root daemon: in a Store build it could only work with an external display
