@@ -1,6 +1,6 @@
 #!/bin/bash
 # Writes dist/appcast.xml, the Sparkle feed announcing one release, with the EdDSA signature
-# of its DMG. The feed is published as an asset of each GitHub Release; the app reads it from
+# of its DMG, then signs the feed itself with the same key. The feed is published as an asset of each GitHub Release; the app reads it from
 # https://github.com/ChanOJ/ClamStop/releases/latest/download/appcast.xml (SUFeedURL), which
 # always points to the newest non-pre-release.
 #
@@ -76,5 +76,11 @@ cat >"$DIST/appcast.xml" <<EOF
   </channel>
 </rss>
 EOF
+# The app requires a signed feed (SURequireSignedFeed): sign_update writes the signature into
+# the file, so nothing may change it afterwards.
+printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | "$sign_update" --ed-key-file - "$DIST/appcast.xml" >/dev/null ||
+    die "could not sign appcast.xml"
+printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | "$sign_update" --verify --ed-key-file - "$DIST/appcast.xml" ||
+    die "the signature of appcast.xml does not verify"
 xmllint --noout "$DIST/appcast.xml"
 log "Wrote $DIST/appcast.xml ($short_version, build $build, public key ${public_key:0:8}…)"

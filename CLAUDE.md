@@ -125,6 +125,8 @@ branch from `origin/main`.
   (Sparkle cannot update ad-hoc builds: their requirement is a cdhash). Public key in
   `Resources/sparkle-public-ed-key.txt`; private key only in Proton Pass and the
   `SPARKLE_ED_PRIVATE_KEY` secret. See `docs/updates.md`.
+- Signed feed required (`SURequireSignedFeed`, `SUVerifyUpdateBeforeExtraction`):
+  `make-appcast.sh` signs `appcast.xml` after writing it; never edit a published or generated feed.
 
 ## Appearance and images
 
