@@ -89,6 +89,11 @@ struct WelcomeView: View {
                     .disabled(!model.serviceRunning)
             }
         }
+        // VoiceOver hears the wait end, as the screen shows it.
+        .onChange(of: model.serviceRunning) { _, running in
+            guard running else { return }
+            AccessibilityNotification.Announcement(String(localized: "Done: ClamStop is allowed.")).post()
+        }
     }
 
     // MARK: Screen 3

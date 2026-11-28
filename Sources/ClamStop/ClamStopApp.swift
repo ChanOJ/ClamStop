@@ -187,6 +187,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let path = Self.argument(after: "--snapshot") else { return }
         let args = CommandLine.arguments
         let url = URL(fileURLWithPath: path)
+        // SwiftUI only builds its accessibility tree for an assistive technology.
+        if args.contains("--dump-accessibility") {
+            NSApp.perform(NSSelectorFromString("accessibilitySetValue:forAttribute:"),
+                          with: NSNumber(value: true), with: "AXEnhancedUserInterface")
+        }
         if let step = Self.argument(after: "--welcome").flatMap(Int.init) {
             model.firstRunStep = step
             if args.contains("agents") { model.firstRunChoice = .agents }
@@ -218,6 +223,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     .appendingPathExtension("\(index)").appendingPathExtension("png")
                 try? rep.representation(using: .png, properties: [:])?.write(to: target)
             }
+            // Development aid (`--dump-accessibility`, with `--snapshot`): what VoiceOver is
+            // given, printed as a tree.
+            if args.contains("--dump-accessibility") {
+                windows.forEach { Self.dumpAccessibility($0, depth: 0) }
+                fflush(stdout)
+            }
+        }
+    }
+
+    private static func dumpAccessibility(_ element: NSObject, depth: Int) {
+        func read(_ name: String, of element: NSObject) -> Any? {
+            let selector = NSSelectorFromString(name)
+            guard element.responds(to: selector) else { return nil }
+            return element.perform(selector)?.takeUnretainedValue()
+        }
+        let texts = ["accessibilityRole", "accessibilityLabel", "accessibilityTitle", "accessibilityValue"]
+            .map { name in read(name, of: element).map { "\($0)" } ?? "" }
+        // Controls can take their name from a neighbouring text.
+        let titledBy = (read("accessibilityTitleUIElement", of: element) as? NSObject)
+            .flatMap { read("accessibilityValue", of: $0) }
+        print(String(repeating: "  ", count: depth)
+              + "\(texts[0]) label=\(texts[1]) title=\(texts[2]) value=\(texts[3])"
+              + (titledBy.map { " titled by=\($0)" } ?? ""))
+        guard depth < 20 else { return }
+        for child in read("accessibilityChildren", of: element) as? [NSObject] ?? [] {
+            dumpAccessibility(child, depth: depth + 1)
         }
     }
 
@@ -235,6 +266,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settingsWindow == nil {
             settingsWindow = FittedWindow(title: String(localized: "ClamStop Settings"), model: model,
                                           rootView: SettingsRootView(model: model))
+            settingsWindow?.onCommandDigit = { [model] digit in
+                guard SettingsTab.allCases.indices.contains(digit - 1) else { return false }
+                let tab = SettingsTab.allCases[digit - 1]
+                model.settingsTab = tab
+                VoiceOver.say(String(localized: "\(tab.spokenTitle) tab"))
+                return true
+            }
         }
         model.refresh()
         settingsWindow?.show()
@@ -361,6 +399,12 @@ final class FittedWindow {
 
     var isVisible: Bool { window.isVisible }
 
+    /// ⌘ and a key of the digit row (see `SettingsWindow`); true when it did something.
+    var onCommandDigit: ((Int) -> Bool)? {
+        get { window.onCommandDigit }
+        set { window.onCommandDigit = newValue }
+    }
+
     /// Resize the window to the SwiftUI content's ideal height, keeping its top edge in place.
     private func fit() {
         let size = measure(NSSize(width: 2000, height: 5000))
@@ -380,11 +424,22 @@ final class FittedWindow {
 /// The settings window of an agent app has no menu bar, hence no File > Close item:
 /// handle ⌘W here (HIG: every window closes with ⌘W).
 final class SettingsWindow: NSWindow {
+    var onCommandDigit: ((Int) -> Bool)?
+
+    /// Key codes of 1 to 9 on the digit row. The position, not the character: on a French
+    /// keyboard, among others, these keys type something else without Shift, and ⌘⇧ with a
+    /// digit takes screenshots.
+    private static let digitKeyCodes: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-           event.charactersIgnoringModifiers == "w" {
-            performClose(nil)
-            return true
+        if event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command {
+            if event.charactersIgnoringModifiers == "w" {
+                performClose(nil)
+                return true
+            }
+            if let index = Self.digitKeyCodes.firstIndex(of: event.keyCode), onCommandDigit?(index + 1) == true {
+                return true
+            }
         }
         return super.performKeyEquivalent(with: event)
     }

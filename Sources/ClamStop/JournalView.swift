@@ -16,14 +16,22 @@ struct JournalView: View {
             } else {
                 header
                 Divider()
-                List {
-                    ForEach(days) { day in
-                        Section(title(day.date)) {
-                            ForEach(day.entries) { JournalRow(entry: $0) }
+                // Not a `List`: VoiceOver stopped at the first day's name (reported 2026-11-28).
+                ScrollView {
+                    // Not `Section` headers: VoiceOver would read them after all the rows.
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(days) { day in
+                            dayHeader(day.date)
+                            ForEach(day.entries) { entry in
+                                JournalRow(entry: entry)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 4)
+                                Divider()
+                                    .padding(.horizontal, 16)
+                            }
                         }
                     }
                 }
-                .listStyle(.inset)
             }
             Divider()
             Text("Kept for 30 days, on this Mac only.")
@@ -48,9 +56,20 @@ struct JournalView: View {
             Text("Battery")
         }
         .font(.subheadline.weight(.semibold))
-        .padding(.horizontal, 16)  // the inset list's own margin
+        .padding(.horizontal, 16)  // as the rows
         .padding(.vertical, 8)
         .accessibilityHidden(true)  // each row reads on its own
+    }
+
+    private func dayHeader(_ day: Date) -> some View {
+        Text(title(day))
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 6)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private func title(_ day: Date) -> String {
@@ -89,7 +108,6 @@ private struct JournalRow: View {
                     .accessibilityLabel(Text("Battery \(percent) %"))
             }
         }
-        .padding(.vertical, 1)
         .accessibilityElement(children: .combine)
     }
 

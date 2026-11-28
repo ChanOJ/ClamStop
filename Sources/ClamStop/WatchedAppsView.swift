@@ -166,6 +166,7 @@ extension AppModel {
     func askForCommandToWatch() {
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.placeholderString = "rsync"
+        field.setAccessibilityLabel(String(localized: "Name of the program"))
         let alert = NSAlert()
         alert.messageText = String(localized: "Add a command")
         alert.informativeText = String(localized: "Type the name of the program, as in Terminal. Your Mac stays awake while it works.")

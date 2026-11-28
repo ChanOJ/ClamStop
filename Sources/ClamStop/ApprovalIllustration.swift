@@ -31,6 +31,7 @@ struct ApprovalIllustration: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.5)))
         }
         .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isImage)  // otherwise announced as "unknown"
         .accessibilityLabel("The ClamStop switch to turn on in System Settings")
     }
 }

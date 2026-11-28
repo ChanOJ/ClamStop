@@ -94,6 +94,17 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         }
     }
 
+    /// `title` as text, for VoiceOver announcements.
+    var spokenTitle: String {
+        switch self {
+        case .general: String(localized: "General")
+        case .sessions: String(localized: "Stay Awake")
+        case .rules: String(localized: "Rules")
+        case .safety: String(localized: "Safety")
+        case .about: String(localized: "About")
+        }
+    }
+
     var symbol: String {
         switch self {
         case .general: "gearshape"
@@ -143,6 +154,8 @@ private struct SettingsTabBar: View {
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Settings tabs")
     }
 }
 
@@ -331,7 +344,7 @@ struct DonationLink: View {
             // Wording approved by the user on their accountant's advice (2026-11-27); full terms
             // in the README and on the website. Full edition only, like the link.
             Text("A gift, with nothing in return: no feature, no priority support, no tax receipt.")
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -365,6 +378,20 @@ struct Footnote: View {
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Say something to VoiceOver about a change it does not describe by itself.
+@MainActor
+enum VoiceOver {
+    static func say(_ text: String) {
+        // A moment later, or what VoiceOver says about the key or the control cuts it off.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            guard let window = NSApp.keyWindow else { return }
+            NSAccessibility.post(element: window, notification: .announcementRequested, userInfo: [
+                .announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue,
+            ])
+        }
     }
 }
 

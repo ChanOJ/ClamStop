@@ -43,11 +43,17 @@ private struct RuleRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Toggle("Use this rule", isOn: Binding(get: { rule.enabled },
-                                                  set: { model.setRule(rule, enabled: $0) }))
+            Toggle("Use this rule", isOn: Binding(get: { rule.enabled }, set: { enabled in
+                model.setRule(rule, enabled: enabled)
+                // VoiceOver only says "on" or "off" after the change.
+                let conditions = RuleText.conditions(rule)
+                VoiceOver.say(enabled ? String(localized: "Rule on: \(conditions)")
+                    : String(localized: "Rule off: \(conditions)"))
+            }))
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .accessibilityLabel(Text("Use this rule: \(RuleText.conditions(rule))"))
             VStack(alignment: .leading, spacing: 2) {
                 Text(RuleText.conditions(rule))
                     .fixedSize(horizontal: false, vertical: true)
@@ -62,20 +68,29 @@ private struct RuleRow: View {
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: 8)
-            iconButton("Move up", "chevron.up") { model.moveRule(rule, by: -1) }
+            iconButton("Move up", "chevron.up", spoken: Text("Move up: \(RuleText.conditions(rule))")) {
+                model.moveRule(rule, by: -1)
+            }
                 .disabled(index == 0)
-            iconButton("Move down", "chevron.down") { model.moveRule(rule, by: 1) }
+            iconButton("Move down", "chevron.down", spoken: Text("Move down: \(RuleText.conditions(rule))")) {
+                model.moveRule(rule, by: 1)
+            }
                 .disabled(index == count - 1)
             Button("Edit…") { model.ruleDraft = rule }
-            iconButton("Delete rule", "trash") { model.deleteRule(rule) }
+                .accessibilityLabel(Text("Edit rule: \(RuleText.conditions(rule))"))
+            iconButton("Delete rule", "trash", spoken: Text("Delete rule: \(RuleText.conditions(rule))")) {
+                model.deleteRule(rule)
+            }
         }
     }
 
-    private func iconButton(_ title: LocalizedStringKey, _ symbol: String, action: @escaping () -> Void) -> some View {
+    /// - Parameter spoken: the VoiceOver label, which names the rule.
+    private func iconButton(_ title: LocalizedStringKey, _ symbol: String, spoken: Text,
+                            action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol) }
             .buttonStyle(.borderless)
             .help(title)
-            .accessibilityLabel(title)
+            .accessibilityLabel(spoken)
     }
 }
 
@@ -184,6 +199,7 @@ struct RuleEditor: View {
                 .accessibilityLabel("Warning")
             Footnote(text)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func timePicker(_ title: LocalizedStringKey, _ keyPath: WritableKeyPath<TimeWindow, Int>) -> some View {
