@@ -11,9 +11,10 @@ paragraphs of `README.md` carry the same text: change both together.
 
 - SwiftPM package, built with `swift build` (no Xcode project). Targets:
   `ClamStop` (menu bar app, SwiftUI), `ClamStopDaemon` (root LaunchDaemon),
-  `ClamStopShared` (XPC protocol, identifiers, settings model), `ClamStopDiagnostics` (health
-  check and problem reports, app only), `ClamStopTests`. The daemon does not link
-  `ClamStopDiagnostics`: changes there leave its code unchanged.
+  `ClamStopShared` (what the daemon needs: XPC protocol, identifiers, settings model, power
+  logic), `ClamStopAppCore` (app-only logic, testable without the UI: health check, reports,
+  journal, hooks, screen dimming), `ClamStopTests`. The daemon does not link `ClamStopAppCore`:
+  changes there leave its code unchanged, so put app-only code there, not in `ClamStopShared`.
 - Identifiers: `Sources/ClamStopShared/Identifiers.swift`.
   App bundle id `io.github.chanoj.clamstop`; daemon label `io.github.chanoj.clamstop.daemon`;
   XPC Mach service `io.github.chanoj.clamstop.daemon.xpc`.
@@ -67,7 +68,7 @@ tried). Signing local builds with `SIGN_IDENTITY` (`docs/signing.md`) has not be
 
 After `scripts/build-app.sh`, compare the daemons first:
 `cmp dist/ClamStop.app/Contents/MacOS/ClamStopDaemon /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon`.
-Any change in `ClamStopShared` changes the daemon, even app-only logic.
+Any change in `ClamStopShared` changes the daemon.
 
 - Identical: quit the app, `ditto dist/ClamStop.app /Applications/ClamStop.app`,
   `open /Applications/ClamStop.app`. No approval needed.
@@ -145,15 +146,16 @@ branch from `origin/main`.
   (controls may be named by `titled by`). Seen 2026-11-28: a `List` blocked VoiceOver and section
   headers were read last; keyboard shortcuts on digits must use key codes (French layout).
 
-## Blockers for a sandboxed Mac App Store edition (not verified on a sandboxed build)
+## Blockers for a sandboxed Mac App Store edition (not built; spike results in point 5 above)
 
 - No privileged helper: a sandboxed App Store app cannot install a root LaunchDaemon
   (`SMAppService.daemon`). Without root: no `pmset -a hibernatemode`, no
   `IOPMSchedulePowerEvent`, so no delayed hibernation; sleep-on-lid-close only.
-- `pmset sleepnow` runs as a child process (inherits the sandbox, may be refused); a store
-  edition would try `IOPMSleepSystem` instead. Lid notifications on `IOPMrootDomain` probably
-  still work (IOKit registry reads), to verify.
-- `AudioPauser` uses the private MediaRemote framework (`dlopen`): App Review rejects private API.
+- Sleep on lid close works sandboxed (`IOPMSleepSystem`, lid notifications on `IOPMrootDomain`):
+  the app would do it itself.
+- Private APIs, which App Review rejects: `AudioPauser` (MediaRemote), `ScreenLocker`
+  (`SACLockScreenImmediate`) and `BuiltInScreen` (DisplayServices). The last two are already
+  left out with `-D APPSTORE`; `AudioPauser` is not.
 - Uninstall flow (restore power settings through the daemon) and the approval UI disappear.
 - Agent keep-awake needs `disablesleep` (root) to hold a display-less lid close, and its hook
   talks to the root daemon: in a Store build it could only work with an external display
@@ -164,11 +166,11 @@ branch from `origin/main`.
 ## Features and settings (2026-11-26)
 
 - Everything is free (no Pro tier, no license). Full edition: "Buy me a coffee" (`Links.donation`)
-  in the About tab and at the bottom of General, "Donate…" in the menu; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
+  in the About tab and at the bottom of General, "Donate…" in the menu; `Edition.current` (`Sources/ClamStop/Edition.swift`)
   turns it off for a future Store build.
 - Settings window: six tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
-  tabs in `SettingsTabs.swift` and `DiagnosticsTab.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with
-  `scripts/mockups.sh`). Only settings with real behavior are shown; others arrive with their feature.
+  tabs in `SettingsTabs.swift` and `DiagnosticsTab.swift`; rows and cards in `Components.swift`).
+  Only settings with real behavior are shown; others arrive with their feature.
   Preview with `--preview-settings --tab general|sessions|rules|safety|diagnostics|about`
   (+ `--snapshot`, `--show-help agent|history`, `--welcome 1|2|3 [agents]`, `--until`).
 - "Stay Awake" sessions from the menu (spec C1, C2): `PowerController.startSession(until:)`; an
@@ -191,7 +193,7 @@ branch from `origin/main`.
   assertions (they can hold titles or file names). Preview: `--preview-settings --awake
   --snapshot <png>`. Not verified in a sandboxed build.
 - Session end (spec C4) and lock on lid close (F2), 2026-11-28: app only (`SessionEnd`,
-  `LidLock` in `ClamStopDiagnostics`, which holds the app-only logic). The reminder is posted from
+  `LidLock` in `ClamStopAppCore`). The reminder is posted from
   the status poll; "+30 min" starts a new session through XPC. `ScreenLocker` calls the private
   `SACLockScreenImmediate` (`login.framework`, full edition only; falls back to
   `pmset displaysleepnow`). macOS asks the app to reopen when a notification is clicked: ignored

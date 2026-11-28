@@ -1,6 +1,7 @@
+@testable import ClamStopAppCore
+@testable import ClamStopShared
 import Foundation
 import Testing
-@testable import ClamStopShared
 
 private final class FakeScreen: ScreenBrightness {
     var value: Float? = 0.6

@@ -1,8 +1,8 @@
 import SwiftUI
 import ClamStopShared
 
-// The settings tabs after General (spec section 5, mockup `SettingsMockupView`). Each tab only
-// shows settings that already work; the others arrive with their features.
+// The settings tabs after General (spec section 5). Each tab only shows settings that already
+// work; the others arrive with their features.
 
 /// Binding to one setting, sent to the daemon on change.
 @MainActor
@@ -85,7 +85,7 @@ struct StayAwakeTab: View {
     private var agentActivityLine: String? {
         guard let sessions = model.status?.agents, !sessions.isEmpty else { return nil }
         let names = Set(sessions.map(\.agent.displayName)).sorted().formatted(.list(type: .and))
-        if model.status?.keepingAwakeForAgents == true {
+        if model.status?.keepingAwake == true {
             return String(localized: "Lid closed, staying awake for \(names)")
         }
         return String(localized: "Working now: \(names)")

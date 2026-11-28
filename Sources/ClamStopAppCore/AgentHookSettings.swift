@@ -1,3 +1,4 @@
+import ClamStopShared
 import Foundation
 
 /// The JSON side of installing ClamStop's hook in an agent's settings. Pure functions, tested;

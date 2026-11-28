@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import UserNotifications
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 
 /// Health check, "Copy Diagnostics" and "Report a Problem" (spec H4).

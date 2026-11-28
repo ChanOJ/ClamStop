@@ -1,5 +1,9 @@
 # Mac App Store edition: feasibility
 
+Status (2026-11-28): not built. `CLAMSTOP_EDITION=appstore swift build` (checked by CI) only leaves
+out Sparkle and the private screen lock and brightness calls; `Edition.current` is still `.full`,
+and there is no sandboxed bundle, power backend or Store packaging yet.
+
 Tested 2026-11-26 on a MacBook Pro M5 Pro, macOS 27.2.1, with the spike in
 `spike/store-sandbox/` (`build.sh`, then `StoreSpike --probe` or `StoreSpike --lid iokit|pmset`).
 The test app was ad-hoc signed with **only** `com.apple.security.app-sandbox` and ran sandboxed

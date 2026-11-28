@@ -1,5 +1,5 @@
 import Foundation
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 import os
 

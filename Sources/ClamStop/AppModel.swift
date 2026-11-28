@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import ServiceManagement
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 import os
 
@@ -88,7 +88,7 @@ final class AppModel: ObservableObject {
     @Published var revealedChecks: Int?
     @Published var preparingReport = false
     @Published var reportMessage: String?
-    // First run (see FirstRunView.swift)
+    // First run (see WelcomeView.swift)
     @Published var firstRunStep = 1
     @Published var firstRunChoice = FirstRunChoice.sleep
     @Published var firstRunDelay = ClamStopSettings.defaultDelayMinutes
@@ -177,7 +177,7 @@ final class AppModel: ObservableObject {
         client.heartbeat()
         // While ClamStop holds sleep off, macOS must not slow the app down (App Nap).
         let holding = status.map {
-            $0.sleepDisabledByClamStop == true || $0.keepingAwakeForAgents == true || $0.session != nil
+            $0.sleepDisabledByClamStop == true || $0.keepingAwake == true || $0.session != nil
         } ?? false
         if holding, awakeActivity == nil {
             awakeActivity = ProcessInfo.processInfo.beginActivity(
@@ -448,45 +448,5 @@ final class AppModel: ObservableObject {
             NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
             NSApp.terminate(nil)
         }
-    }
-
-    // MARK: Text
-
-    /// Duration label: "10 min", "2 h" (positive minutes only).
-    static func delayLabel(_ minutes: Int) -> String {
-        if minutes % 60 == 0 { return String(localized: "\(minutes / 60) h") }
-        return String(localized: "\(minutes) min")
-    }
-
-    /// One-line status for the menu and the settings window.
-    var statusLine: String {
-        switch serviceState {
-        case .checking:
-            return String(localized: "Checking…")
-        case .requiresApproval:
-            return String(localized: "Waiting for approval in System Settings")
-        case .notRegistered:
-            return String(localized: "Background service not installed")
-        case .notFound:
-            return String(localized: "Background service missing: run ClamStop from the Applications folder")
-        case .notResponding:
-            return String(localized: "Background service not responding")
-        case .running:
-            guard let status else { return String(localized: "Checking…") }
-            if !status.settings.enabled { return String(localized: "Off: macOS decides when you close the lid") }
-            if status.sleepDisabled && status.sleepDisabledByClamStop != true {
-                return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
-            }
-            switch status.lidPlan?.action {
-            case .stayAwake: return String(localized: "Rule: stays awake when you close the lid")
-            case .macOS: return String(localized: "macOS decides when you close the lid, for now")
-            case .sleep, nil: return String(localized: "Sleeps when you close the lid")
-            }
-        }
-    }
-
-    var statusIsOK: Bool {
-        serviceState == .running && enabled
-            && (status?.sleepDisabled == false || status?.sleepDisabledByClamStop == true)
     }
 }

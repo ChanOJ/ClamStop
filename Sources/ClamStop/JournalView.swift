@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ClamStopAppCore
 import ClamStopShared
 
 /// The sleep journal (spec H3): what the Mac did, by day, newest first.
@@ -120,8 +121,8 @@ private struct JournalRow: View {
         case .wake:
             entry.event.detail == SleepLog.wakeLidOpen ? String(localized: "Woke up")
                 : String(localized: "Woke up with the lid closed")
-        case .keptAwakeForAgents: String(localized: "Staying awake with the lid closed")
-        case .agentsDone: String(localized: "Stopped staying awake")
+        case .keptAwake: String(localized: "Staying awake with the lid closed")
+        case .keepAwakeEnded: String(localized: "Stopped staying awake")
         case .thermalChanged:
             switch thermalLevel {
             case .nominal: String(localized: "Temperature back to normal")
@@ -140,7 +141,7 @@ private struct JournalRow: View {
     /// How warm the Mac was, only when warmer than normal and not already said by the line.
     private var heat: String? {
         guard entry.event.kind != .thermalChanged,
-              !(entry.event.kind == .agentsDone && entry.event.detail == KeepAwakeEnd.heat.rawValue) else { return nil }
+              !(entry.event.kind == .keepAwakeEnded && entry.event.detail == KeepAwakeEnd.heat.rawValue) else { return nil }
         switch thermalLevel {
         case .moderate: return String(localized: "Mac warm")
         case .heavy: return String(localized: "Mac hot")
@@ -156,9 +157,9 @@ private struct JournalRow: View {
         switch entry.event.kind {
         case .wake:
             if let reason = entry.event.wakeReason.flatMap(WakeReason.init) { parts.append(text(reason)) }
-        case .keptAwakeForAgents:
+        case .keptAwake:
             if let reason = KeepAwakeReason(rawValue: detail) { parts.append(text(reason)) }
-        case .agentsDone:
+        case .keepAwakeEnded:
             if let reason = KeepAwakeEnd(rawValue: detail) { parts.append(text(reason)) }
         default:
             break

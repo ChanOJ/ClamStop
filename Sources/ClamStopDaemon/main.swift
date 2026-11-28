@@ -4,7 +4,8 @@
 // For manual testing, run it as root in a terminal:
 //   sudo ClamStopDaemon --foreground [--delay-seconds N] [--simulate-agent SECONDS]
 // (--simulate-agent: pretend an AI agent works for that long, to test keep-awake without hooks.)
-// Other commands: --restore-defaults (hibernatemode 3, cancel ClamStop wakes), --status.
+// Other commands: --restore-defaults (hibernatemode 3, cancel ClamStop wakes, delete its files),
+// --status.
 
 import Foundation
 import IOKit.ps
@@ -132,7 +133,7 @@ final class DaemonService {
             pendingWake: controller.state.pendingWake, lidClosed: power.isLidClosed(),
             sleepDisabled: power.sleepDisabled, hibernateMode: power.currentHibernateMode(),
             sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
-            agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
+            agents: agents.tracker.sessions, keepingAwake: controller.keepingAwake,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
             lastLidDecision: controller.lastLidDecision, appRunning: controller.appRunning, session: controller.session,
             notices: controller.notices, lidPlan: controller.currentPlan, apps: apps.tracker.activity)

@@ -67,7 +67,7 @@ public final class PowerController {
     /// A watched app works (see `AppTracker`).
     public private(set) var appsWorking = false
     /// The lid is closed and the Mac stays awake (agents, apps, session or rule).
-    public private(set) var keepingAwakeForAgents = false
+    public private(set) var keepingAwake = false
     public private(set) var lastLidDecision: String?
     /// "Stay awake" session from the menu (spec C1, C2), nil when none runs.
     public private(set) var session: StayAwakeSession?
@@ -259,7 +259,7 @@ public final class PowerController {
         thermalLevel = level
         log("thermal level \(level.rawValue)")
         guard !first else { return }
-        if awake, keepingAwakeForAgents, effects.isLidClosed() { record(.thermalChanged, level.rawValue) }
+        if awake, keepingAwake, effects.isLidClosed() { record(.thermalChanged, level.rawValue) }
         conditionsChanged(trigger: "thermal level changed")
     }
 
@@ -267,7 +267,7 @@ public final class PowerController {
     /// ClamStop had left running with the lid closed.
     private func evaluateConditions(trigger: String) {
         reevaluate(trigger: trigger)
-        guard effects.isLidClosed(), awake, state.phase == .idle, !keepingAwakeForAgents,
+        guard effects.isLidClosed(), awake, state.phase == .idle, !keepingAwake,
               case .leaveAlone = lidClosedDecision else { return }
         let decision = decide()
         if case .leaveAlone = decision { return }
@@ -301,8 +301,8 @@ public final class PowerController {
         if !closed {
             if lastLidClosed { record(.lidOpened, nil) }
             keepAwakeReleased = false
-            if keepingAwakeForAgents {
-                log("lid opened: no longer keeping awake for agents")
+            if keepingAwake {
+                log("lid opened: no longer keeping awake")
                 stopKeepingAwake()
             }
             plannedDelay = nil
@@ -349,7 +349,7 @@ public final class PowerController {
             }
         }
         updateSleepPrevention()
-        guard keepingAwakeForAgents else { return }
+        guard keepingAwake else { return }
         guard effects.isLidClosed() else {
             stopKeepingAwake()
             return
@@ -371,7 +371,7 @@ public final class PowerController {
             }
         }
         stopKeepingAwake()
-        record(.agentsDone, keepAwakeEnd(decision, trigger: trigger).rawValue)
+        record(.keepAwakeEnded, keepAwakeEnd(decision, trigger: trigger).rawValue)
         act(on: decision)
     }
 
@@ -380,7 +380,7 @@ public final class PowerController {
     public func sleepNow() {
         log("sleep now requested")
         endSession(reason: "sleep now")
-        if keepingAwakeForAgents {
+        if keepingAwake {
             keepAwakeReleased = true
             stopKeepingAwake()
         }
@@ -392,7 +392,7 @@ public final class PowerController {
     public func hibernateNow() {
         log("hibernate now requested")
         endSession(reason: "hibernate now")
-        if keepingAwakeForAgents {
+        if keepingAwake {
             keepAwakeReleased = true
             stopKeepingAwake()
         }
@@ -442,13 +442,13 @@ public final class PowerController {
     }
 
     private func startKeepingAwake() {
-        guard !keepingAwakeForAgents else { return }
-        keepingAwakeForAgents = true
+        guard !keepingAwake else { return }
+        keepingAwake = true
         keepAwakeSince = effects.now()
         keepAwakeGeneration += 1
         updateSleepPrevention()
         armWatchdog()
-        record(.keptAwakeForAgents, keepAwakeReason.rawValue)
+        record(.keptAwake, keepAwakeReason.rawValue)
         let hours = settings.maxAwakeHours
         guard hours > 0 else { return }
         let generation = keepAwakeGeneration
@@ -459,7 +459,7 @@ public final class PowerController {
     }
 
     private func stopKeepingAwake() {
-        keepingAwakeForAgents = false
+        keepingAwake = false
         keepAwakeSince = nil
         keepAwakeGeneration += 1
     }
@@ -518,8 +518,8 @@ public final class PowerController {
         plannedDelay = nil
         lidClosedDecision = nil
         endSession(reason: "Mac going to sleep")
-        if keepingAwakeForAgents {
-            log("will sleep while keeping awake for agents")
+        if keepingAwake {
+            log("will sleep while keeping awake")
             stopKeepingAwake()
         }
         guard settings.enabled, appRunning else { return }
@@ -610,7 +610,7 @@ public final class PowerController {
     /// lid still closed (external keyboard), a "stay awake" decision applies again.
     private func resumeAfterWake() {
         guard awake, state.phase == .idle else { return }
-        if effects.isLidClosed(), !keepingAwakeForAgents, decide() == .keepAwake {
+        if effects.isLidClosed(), !keepingAwake, decide() == .keepAwake {
             lidClosedDecision = .keepAwake
             startKeepingAwake()
         }
@@ -647,7 +647,7 @@ public final class PowerController {
         if !running {
             let context = effects.powerContext()
             mustSleep = awake && effects.isLidClosed()
-                && (state.sleepDisabledByClamStop == true || keepingAwakeForAgents)
+                && (state.sleepDisabledByClamStop == true || keepingAwake)
                 && !(context.externalDisplay && context.onPowerAdapter)
             endSession(reason: unresponsive ? "app not responding" : "app quit")
             if state.phase == .awaitingHibernation { endHibernationPlan() }
@@ -677,7 +677,7 @@ public final class PowerController {
 
     /// Something an app that stopped responding could not turn off.
     private var holdsSleepOff: Bool {
-        state.sleepDisabledByClamStop == true || keepingAwakeForAgents || session != nil
+        state.sleepDisabledByClamStop == true || keepingAwake || session != nil
     }
 
     private func armWatchdog() {
@@ -730,7 +730,7 @@ public final class PowerController {
         scheduleSessionCheck(generation: generation)
         armWatchdog()
         // Awake with the lid closed (external display and keyboard): hold it from now on.
-        if effects.isLidClosed(), !keepingAwakeForAgents, decide() == .keepAwake {
+        if effects.isLidClosed(), !keepingAwake, decide() == .keepAwake {
             keepAwakeReleased = false
             startKeepingAwake()
         }

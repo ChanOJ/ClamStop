@@ -1,4 +1,5 @@
 import Foundation
+import ClamStopAppCore
 import ClamStopShared
 
 /// Adds ClamStop's hook to the AI agents' settings, and removes it. Approach adapted from

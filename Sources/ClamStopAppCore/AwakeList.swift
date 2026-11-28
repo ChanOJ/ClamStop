@@ -165,7 +165,7 @@ public struct AwakeList: Equatable, Sendable {
         if let session = status.session {
             reasons.append(.session(since: session.started, until: session.until))
         }
-        guard status.sleepDisabledByClamStop == true || status.keepingAwakeForAgents == true else { return reasons }
+        guard status.sleepDisabledByClamStop == true || status.keepingAwake == true else { return reasons }
         let agents = status.settings.keepAwakeForAgents ? status.agents ?? [] : []
         if let since = agents.map(\.since).min() {
             var names: [String] = []

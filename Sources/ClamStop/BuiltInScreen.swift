@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import IOKit
 import os
+import ClamStopAppCore
 import ClamStopShared
 
 private let logger = Logger(subsystem: ClamStopID.appBundleID, category: "screen")

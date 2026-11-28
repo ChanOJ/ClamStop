@@ -1,4 +1,4 @@
-import ClamStopDiagnostics
+import ClamStopAppCore
 import Foundation
 import Testing
 @testable import ClamStopShared
@@ -61,13 +61,13 @@ import Testing
     @Test func aHotMacSleepsOnceTheLevelHasSettled() {
         let (controller, effects, journal) = setUp()
         keepAwakeWithTheLidClosed(controller, effects)
-        #expect(controller.keepingAwakeForAgents)
+        #expect(controller.keepingAwake)
         effects.context.thermalPressure = true
         controller.thermalChanged(.trapping)
         settle(effects)
-        #expect(!controller.keepingAwakeForAgents)
+        #expect(!controller.keepingAwake)
         #expect(effects.sleepRequests == 1)
-        #expect(journal.events.suffix(2).map(\.0) == [.thermalChanged, .agentsDone])
+        #expect(journal.events.suffix(2).map(\.0) == [.thermalChanged, .keepAwakeEnded])
         #expect(journal.events.last?.1 == KeepAwakeEnd.heat.rawValue)
     }
 

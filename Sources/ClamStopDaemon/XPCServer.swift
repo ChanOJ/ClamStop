@@ -153,7 +153,7 @@ final class XPCServer: NSObject, NSXPCListenerDelegate, ClamStopDaemonXPC {
     ///
     /// - Developer ID builds (the daemon has a Team ID): Apple-anchored signature, the app's
     ///   bundle identifier and the same Team ID.
-    /// - Ad-hoc builds (no Team ID, before the developer account exists): an ad-hoc signature
+    /// - Ad-hoc builds (no Team ID: local builds and CI artifacts): an ad-hoc signature
     ///   proves nothing about its author, so the requirement pins the exact code: the app's
     ///   bundle identifier plus the cdhash of the `ClamStop.app` that contains this daemon.
     ///   Rebuilding the app changes the cdhash, and the daemon (started from the same bundle)
