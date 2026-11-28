@@ -162,22 +162,16 @@ private struct BatteryLevelSection: View {
     }
 }
 
-/// Sleep journal: recent sleeps (spec H3).
+/// Sleep journal, in its own window (spec H3).
 private struct JournalSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Section {
             OptionRow(title: "Sleep journal",
-                      note: "When your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
-                Button("Show…") {
-                    model.loadSleepLog()
-                    model.showSleepLog = true
-                }
-                .disabled(!model.serviceRunning)
-                .popover(isPresented: $model.showSleepLog, arrowEdge: .bottom) {
-                    SleepHistoryView(sessions: SleepLog.sessions(from: model.sleepLog))
-                }
+                      note: "When the lid closed and opened, when your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
+                Button("Show…") { model.onShowJournal() }
+                    .disabled(!model.serviceRunning)
             }
         }
     }
@@ -201,55 +195,6 @@ struct AgentHelpView: View {
         .fixedSize(horizontal: false, vertical: true)
         .frame(width: 320, alignment: .leading)
         .padding(16)
-    }
-}
-
-/// Recent sleeps: when, how long, battery used, hibernation.
-struct SleepHistoryView: View {
-    let sessions: [SleepSession]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Sleep journal")
-                .font(.headline)
-            if sessions.isEmpty {
-                Text("No sleep recorded yet.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
-                    GridRow {
-                        Text("Start")
-                        Text("Duration")
-                        Text("Battery")
-                        Text("")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    ForEach(sessions.prefix(15)) { session in
-                        GridRow {
-                            Text(session.start.formatted(date: .abbreviated, time: .shortened))
-                            Text(duration(session))
-                                .monospacedDigit()
-                            Text(session.batteryUsed.map { String(localized: "−\($0) %") } ?? "–")
-                                .monospacedDigit()
-                            Text(session.hibernated ? String(localized: "Hibernated") : "")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-        }
-        .fixedSize()
-        .padding(16)
-    }
-
-    private func duration(_ session: SleepSession) -> String {
-        guard let end = session.end else { return String(localized: "Asleep") }
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.day, .hour, .minute]
-        formatter.unitsStyle = .abbreviated
-        formatter.maximumUnitCount = 2
-        return formatter.string(from: end.timeIntervalSince(session.start)) ?? "–"
     }
 }
 

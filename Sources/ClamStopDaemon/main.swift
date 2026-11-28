@@ -89,7 +89,9 @@ final class DaemonService {
     func record(_ kind: SleepEvent.Kind, _ detail: String?) {
         let battery = SystemPower.battery()
         sleepLog = SleepLog.appending(SleepEvent(date: Date(), kind: kind, batteryPercent: battery.percent,
-                                                 onPowerAdapter: battery.onPowerAdapter, detail: detail), to: sleepLog)
+                                                 onPowerAdapter: battery.onPowerAdapter, detail: detail,
+                                                 wakeReason: kind == .wake ? power.wakeReason.rawValue : nil),
+                                      to: sleepLog)
         store.saveSleepLog(sleepLog)
     }
 

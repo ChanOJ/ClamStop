@@ -35,8 +35,7 @@ Everything is free. The settings window has five tabs:
 - **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
   (on by default), longest time (no limit by default), battery below a level (20 % by default).
   An option hibernates at once when the lid closes on battery below a level. Then the
-  sleep journal (when the Mac slept, for how long, whether it hibernated and how much battery it
-  used, kept for 30 days on this Mac only).
+  [sleep journal](#sleep-journal).
 - **About**: version, links and credits.
 
 ### Screens
@@ -85,6 +84,15 @@ approval; turn them off in System Settings > Notifications. The menu
 also has **Sleep Now** and **Hibernate Now**. While the Mac sleeps with
 hibernation planned, ClamStop pauses audio and video and resumes them on wake, so the short
 wake before hibernation stays silent.
+
+### Sleep journal
+
+**Show…** in the Safety tab opens a window listing, day by day and newest first, when the lid
+closed and opened, when the Mac went to sleep, hibernated and woke (lid, keyboard, trackpad, power
+adapter...), and when it stayed awake with the lid closed, why, and why it stopped. Each line
+shows the battery level; the line that ends a sleep also shows how long it lasted, the battery
+used and whether the Mac hibernated. Brief wakes with the screen off are not listed. The journal
+covers the last 30 days and stays on this Mac.
 
 ### AI agents
 

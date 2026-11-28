@@ -212,7 +212,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         c.systemWillSleep()
         e.lidClosed = false
         c.systemDidWake()
-        #expect(kinds == [.lidClosed, .keptAwakeForAgents, .agentsDone, .sleep, .wake])
+        #expect(kinds == [.lidClosed, .keptAwakeForAgents, .agentsDone, .sleep, .lidOpened, .wake])
     }
 }
 

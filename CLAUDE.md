@@ -199,6 +199,10 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   apps are not process anchors (always busy). Cursor `subagentStart` is not hooked (a wrong reply
   blocks the subagent). Aider: watched command (matched by script name). OpenCode: not yet, its
   plugin event names were not found. A scheduled task checks the agents' documentation monthly.
+- Sleep journal (spec H3, 2026-11-28): the daemon's events (full wakes only), shown by day in
+  `JournalView`, a resizable window (`--preview-settings --journal --snapshot <png>`). Wake reasons
+  come from `IOPMrootDomain` "Wake Reason" / "Wake Type" (`WakeReason`, matched on strings seen on
+  this Mac). Entries written by earlier versions show without a reason.
 - External display names, if a rule needs them: IOKit `IOMobileFramebufferShim` >
   `DisplayAttributes` > `ProductAttributes` > `ProductName` (Apple Silicon; "DELL S2719DM" here,
   same name as in System Settings). Wi-Fi condition dropped: the SSID is `<redacted>` without Location Services
