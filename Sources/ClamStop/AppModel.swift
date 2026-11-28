@@ -31,15 +31,23 @@ enum DefaultsKey {
     static let skipQuitConfirmation = "skipQuitConfirmation"
     static let showTimeLeft = "showTimeLeftInMenuBar"
     static let animateBadge = "animateMenuBarBadge"
+    /// Brightness of the built-in screen to put back, while ClamStop has it off.
+    static let savedScreenBrightness = "savedScreenBrightness"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
-                      skipQuitConfirmation, showTimeLeft, animateBadge]
+                      skipQuitConfirmation, showTimeLeft, animateBadge, savedScreenBrightness]
 }
 
 @MainActor
 final class AppModel: ObservableObject {
-    @Published private(set) var serviceState: ServiceState = .checking
+    @Published private(set) var serviceState: ServiceState = .checking {
+        didSet {
+            // Kept in the log (`notice`), to trace approvals and repairs after the fact.
+            guard serviceState != oldValue else { return }
+            logger.notice("service \(String(describing: self.serviceState), privacy: .public) (registration \(self.daemonService.status.rawValue), refused \(self.registrationDenied))")
+        }
+    }
     @Published private(set) var status: DaemonStatus?
     @Published private(set) var launchAtLogin = false
     @Published var errorMessage: String?
@@ -68,14 +76,23 @@ final class AppModel: ObservableObject {
     var pendingFirstRun: FirstRunResult?
 
     let client = DaemonClient()
+    /// Switches the built-in screen off while the Mac stays awake with the lid closed (spec G2).
+    let screenDimmer = ScreenDimmer(screen: BuiltInScreen(), store: DefaultsLevelStore()) { message in
+        logger.info("\(message, privacy: .public)")
+    }
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
     private var lastRegistrationRetry = Date.distantPast
-    /// Approved but not answering since then (see `repairIfStuck`).
-    private var notRespondingSince: Date?
-    private var repairAttempted = false
+    /// The approval was awaited and the service has not answered since.
+    private var awaitingFirstAnswer = false
+    private var lastRefresh = Date.distantPast
+    private var lastRegistration: SMAppService.Status?
+    private var statusRequestRunning = false
+    private var serviceWait = ServiceWait()
+    /// The switch has been off for a while (see `ServiceWait`): post the approval notification again.
+    var onApprovalReminder: () -> Void = {}
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -101,9 +118,10 @@ final class AppModel: ObservableObject {
         }
         updateOutdatedAgentHooks()
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+        timer = Timer.scheduledTimer(withTimeInterval: ServiceWait.eagerInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
         }
+        timer?.tolerance = 0.2
         // A screen plugged in or unplugged: tell the daemon at once (rules, spec D1).
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
@@ -111,17 +129,46 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Look at the service as often as `serviceWait` says: every second just after it stopped
+    /// answering, so that the switch turned on in System Settings shows at once.
+    private func tick() {
+        let now = Date()
+        if serviceWait.reminderIsDue(switchOff: serviceState == .requiresApproval, now: now) {
+            logger.notice("switch still off after \(Int(ServiceWait.reminderDelay)) s: reminding")
+            onApprovalReminder()
+        }
+        // Half a second of slack, for the timer's tolerance.
+        guard now.timeIntervalSince(lastRefresh) >= serviceWait.interval(now: now) - 0.5 else { return }
+        refresh()
+    }
+
+    /// Only an answer ends a wait: passing states (checking, not registered during a repair)
+    /// keep what is known.
+    private func updateServiceWait() {
+        if serviceState == .running {
+            serviceWait.update(waiting: false, now: Date())
+        } else if serviceState == .requiresApproval || serviceState == .notResponding || awaitingFirstAnswer {
+            serviceWait.update(waiting: true, now: Date())
+        }
+    }
+
     func refresh() {
         guard !Self.previewApproval, !Self.previewSettings else { return }
+        lastRefresh = Date()
         refreshAgentHooks()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         // Turned on in System Settings while the app kept running (macOS does not always quit
         // it): nothing registers the daemon again, so retry while waiting (seen 2026-11-26).
-        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 10 {
+        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 1 {
             lastRegistrationRetry = Date()
             retryRegistration()
         }
-        switch daemonService.status {
+        let registration = daemonService.status
+        if registration != lastRegistration {
+            lastRegistration = registration
+            logger.notice("registration \(registration.rawValue), refused \(self.registrationDenied)")
+        }
+        switch registration {
         case .notRegistered:
             serviceState = registrationDenied ? .requiresApproval : .notRegistered
             status = nil
@@ -133,20 +180,44 @@ final class AppModel: ObservableObject {
             serviceState = Self.daemonPlistInBundle ? (registrationDenied ? .requiresApproval : .notRegistered) : .notFound
             status = nil
         case .enabled:
-            Task {
-                do {
-                    self.status = try await client.status()
-                    self.serviceState = .running
-                    self.notRespondingSince = nil
-                    self.applyPendingFirstRun()
-                } catch {
-                    self.status = nil
-                    self.serviceState = .notResponding
-                    self.repairIfStuck()
-                }
-            }
+            askStatus()
         @unknown default:
             serviceState = .notResponding
+        }
+        // What macOS says now, not `serviceState`: that one waits for the service's answer.
+        if registration == .enabled {
+            serviceWait.switchIsOn(now: Date())
+        } else if serviceState == .requiresApproval {
+            awaitingFirstAnswer = true
+            serviceWait.switchIsOff(now: Date())
+        }
+        updateServiceWait()
+    }
+
+    /// One request at a time. A service that was not answering gets less time, to notice sooner
+    /// that it does (or that it needs `repairIfStuck`).
+    private func askStatus() {
+        guard !statusRequestRunning else { return }
+        statusRequestRunning = true
+        let timeout = serviceState == .running ? DaemonClient.timeout : DaemonClient.startingTimeout
+        Task {
+            defer { statusRequestRunning = false }
+            do {
+                let answer = try await client.status(timeout: timeout)
+                // Switched off or unregistered meanwhile: this reply says nothing any more.
+                guard daemonService.status == .enabled else { return }
+                self.status = answer
+                self.serviceState = .running
+                self.awaitingFirstAnswer = false
+                self.updateServiceWait()
+                self.applyPendingFirstRun()
+            } catch {
+                guard daemonService.status == .enabled else { return }
+                self.status = nil
+                self.serviceState = .notResponding
+                self.updateServiceWait()
+                self.repairIfStuck()
+            }
         }
     }
 
@@ -228,23 +299,16 @@ final class AppModel: ObservableObject {
     func reinstallService() {
         Task {
             try? await daemonService.unregister()
+            client.invalidate()  // a connection to the old registration would hang
             installService()
         }
     }
 
-    /// Approved in System Settings but the service never answers: with ad-hoc builds launchd
-    /// sometimes refuses the new daemon after an update (EX_CONFIG, "spawn scheduled") until it is
-    /// registered again, which then needs no new approval (seen twice on macOS 27.2, 2026-11-27).
-    /// Do what the "Reinstall Background Service" button does, once per launch, after 20 s.
+    /// Switched on but silent: do what the "Reinstall Background Service" button does when
+    /// `serviceWait` says so. That needs no new approval.
     private func repairIfStuck() {
-        let now = Date()
-        guard let since = notRespondingSince else {
-            notRespondingSince = now
-            return
-        }
-        guard !repairAttempted, now.timeIntervalSince(since) >= 20 else { return }
-        repairAttempted = true
-        logger.info("service approved but not answering for 20 s: registering it again")
+        guard serviceWait.repairIsDue(now: Date()) else { return }
+        logger.notice("service switched on but not answering: registering it again")
         reinstallService()
     }
 
@@ -274,6 +338,7 @@ final class AppModel: ObservableObject {
     }
 
     func openLoginItemsSettings() {
+        serviceWait.userIsActing(now: Date())
         SMAppService.openSystemSettingsLoginItems()
     }
 
@@ -295,6 +360,7 @@ final class AppModel: ObservableObject {
     /// Restore the default power settings, remove the daemon and the login item, reveal the app, quit.
     func uninstall() {
         Task {
+            screenDimmer.restore()  // before its saved level is removed below
             if serviceState == .running {
                 _ = try? await client.restoreDefaults()
             }

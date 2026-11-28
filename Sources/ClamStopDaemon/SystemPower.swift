@@ -128,23 +128,31 @@ final class SystemPower: PowerEffects {
     func isSleepDisabled() -> Bool { sleepDisabled }
 
     private var idleAssertion: IOPMAssertionID?
+    private var displayAssertion: IOPMAssertionID?
 
     func setIdleSleepPrevented(_ prevented: Bool) {
-        if prevented, idleAssertion == nil {
+        Self.hold(&idleAssertion, prevented, type: kIOPMAssertPreventUserIdleSystemSleep, name: "idle sleep")
+    }
+
+    func setDisplaySleepPrevented(_ prevented: Bool) {
+        Self.hold(&displayAssertion, prevented, type: kIOPMAssertPreventUserIdleDisplaySleep, name: "display sleep")
+    }
+
+    private static func hold(_ assertion: inout IOPMAssertionID?, _ prevented: Bool, type: String, name: String) {
+        if prevented, assertion == nil {
             var id = IOPMAssertionID(0)
-            let result = IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleSystemSleep as CFString,
-                                                     IOPMAssertionLevel(kIOPMAssertionLevelOn),
+            let result = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
                                                      "ClamStop: Stay awake session" as CFString, &id)
             if result == kIOReturnSuccess {
-                idleAssertion = id
-                Log.info("idle sleep assertion created")
+                assertion = id
+                Log.info("\(name) assertion created")
             } else {
-                Log.error("cannot create the idle sleep assertion: \(result)")
+                Log.error("cannot create the \(name) assertion: \(result)")
             }
-        } else if !prevented, let id = idleAssertion {
+        } else if !prevented, let id = assertion {
             IOPMAssertionRelease(id)
-            idleAssertion = nil
-            Log.info("idle sleep assertion released")
+            assertion = nil
+            Log.info("\(name) assertion released")
         }
     }
 

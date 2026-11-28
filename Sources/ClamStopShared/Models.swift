@@ -52,6 +52,9 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     public var rules: [Rule]
     /// Stay awake while these apps or commands work (spec C5).
     public var watchedApps: [WatchedApp]
+    /// During a "Stay awake" session from the menu, keep the screens on instead of letting them
+    /// sleep (spec C3).
+    public var keepScreensOn: Bool
 
     public static let defaultDelayMinutes = 60
     public static let delayChoices = [0, 5, 15, 30, 60, 120, 240, never]
@@ -72,7 +75,7 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
                 lowBatteryHibernation: Bool = false, lowBatteryPercent: Int = 10,
                 batteryFloorPercent: Int = 20, heatGuard: Bool = true, onlyWhileCharging: Bool = true,
                 maxAwakeHours: Int = 0, rules: [Rule] = [],
-                watchedApps: [WatchedApp] = []) {
+                watchedApps: [WatchedApp] = [], keepScreensOn: Bool = false) {
         self.enabled = enabled
         self.hibernateDelayMinutes = ClamStopSettings.clampDelay(hibernateDelayMinutes)
         self.keepAwakeForAgents = keepAwakeForAgents
@@ -87,12 +90,14 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
         self.maxAwakeHours = max(0, maxAwakeHours)
         self.rules = rules
         self.watchedApps = watchedApps
+        self.keepScreensOn = keepScreensOn
     }
 
     private enum CodingKeys: String, CodingKey {
         case enabled, hibernateDelayMinutes, keepAwakeForAgents, separateBatterySettings,
              onPowerAdapterEnabled, battery, lowBatteryHibernation, lowBatteryPercent,
-             batteryFloorPercent, heatGuard, onlyWhileCharging, maxAwakeHours, rules, watchedApps
+             batteryFloorPercent, heatGuard, onlyWhileCharging, maxAwakeHours, rules, watchedApps,
+             keepScreensOn
     }
 
     public init(from decoder: Decoder) throws {
@@ -112,7 +117,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
             onlyWhileCharging: try c.decodeIfPresent(Bool.self, forKey: .onlyWhileCharging) ?? d.onlyWhileCharging,
             maxAwakeHours: try c.decodeIfPresent(Int.self, forKey: .maxAwakeHours) ?? d.maxAwakeHours,
             rules: try c.decodeIfPresent([Rule].self, forKey: .rules) ?? d.rules,
-            watchedApps: try c.decodeIfPresent([WatchedApp].self, forKey: .watchedApps) ?? d.watchedApps)
+            watchedApps: try c.decodeIfPresent([WatchedApp].self, forKey: .watchedApps) ?? d.watchedApps,
+            keepScreensOn: try c.decodeIfPresent(Bool.self, forKey: .keepScreensOn) ?? d.keepScreensOn)
     }
 
     public static func clampDelay(_ minutes: Int) -> Int {

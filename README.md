@@ -24,7 +24,7 @@ Everything is free. The settings window has five tabs:
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
   battery (sleep or not, and another delay), the menu bar icon,
   opening at login, and the background service.
-- **Stay Awake**: stay awake with the lid closed while AI agents work (install or remove the AI
+- **Stay Awake**: whether the screens sleep during Stay Awake; stay awake with the lid closed while AI agents work (install or remove the AI
   agent hooks, see [AI agents](#ai-agents)), or while chosen apps and commands work, see
   [Apps that work](#apps-that-work).
 - **Rules**: "when these conditions are true, do this when the lid closes". Conditions: power
@@ -38,6 +38,13 @@ Everything is free. The settings window has five tabs:
   sleep journal (when the Mac slept, for how long, whether it hibernated and how much battery it
   used, kept for 30 days on this Mac only).
 - **About**: version, links and credits.
+
+### Screens
+
+During **Stay Awake** from the menu, the screens sleep as usual (default) or stay on. Whatever
+keeps the Mac awake with the lid closed (session, agents, apps, rule), the built-in screen is
+switched off (zero brightness; macOS would leave it lit) and comes back to its level when you open
+the lid. This uses a private macOS function, so it exists only in this edition.
 
 ### Rules
 

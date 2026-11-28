@@ -150,6 +150,16 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   or over 5 % of a core for the app's process tree; probed every 15 s only while the list is not
   empty, 90 s grace. Same keep-awake path and guards as agents. Checked 2026-11-27 on real
   processes (Transmission, VLC, a busy command), about 5 ms per probe.
+- Screens (spec C3, G2): `keepScreensOn` adds a display-sleep assertion during menu sessions.
+  With the lid closed macOS leaves the built-in panel lit under `disablesleep` (verified
+  2026-11-28), so the app (`ScreenDimmer`, `BuiltInScreen.swift`: private DisplayServices, user
+  session only) sets it to 0 when the daemon says it keeps the Mac awake, saves the level in the
+  app's defaults and restores it on lid open, quit, uninstall or next launch.
+- Waiting for the service (`ServiceWait.reminderDelay`, 5 min): the app looks every second, posts
+  the approval notification again after the delay if the switch is still off, and after twice the
+  delay looks every 5 s (every second again after "Open Login Items Settings…"). Measured
+  2026-11-28: waiting at 1 s costs about 2 % of a core more than running, mostly in macOS's
+  `backgroundtaskmanagementd`.
 - Windows are sized with `NSHostingController.sizeThatFits` (`FittedWindow`): `view.fittingSize`
   stays zero for them on macOS 27.2.
 - Agent keep-awake, adapted from `IshaanChamoli/clamshut` (MIT, notice in

@@ -155,7 +155,9 @@ if arguments.contains("--status") {
     exit(0)
 }
 
-Log.info("ClamStopDaemon \(ClamStopVersion.current) starting (pid \(getpid()), foreground=\(foreground))")
+// The build of the enclosing app, to tell which one launchd runs after an update.
+let build = XPCServer.containingAppURL().flatMap { Bundle(url: $0)?.infoDictionary?["CFBundleVersion"] as? String }
+Log.info("ClamStopDaemon \(ClamStopVersion.current) (build \(build ?? "?")) starting (pid \(getpid()), foreground=\(foreground))")
 Log.info("settings: enabled=\(service.settings.enabled) delay=\(service.settings.hibernateDelayMinutes) min"
          + " agents=\(service.controller.settings.keepAwakeForAgents)"
          + (delayOverride.map { ", delay override \(Int($0)) s" } ?? ""))
