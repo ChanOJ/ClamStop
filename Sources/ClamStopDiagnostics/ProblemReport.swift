@@ -44,20 +44,30 @@ public struct ProblemReport: Sendable {
     /// Diagnostics kept in the body of a `mailto:` link: mail apps get it as one long address.
     public static let mailBodyLimit = 30_000
 
-    /// `diagnostics` nil when they are attached.
-    public func mailBody(diagnostics: String?) -> String {
-        (["What happened?", "", "", "What did you expect?", "", ""]
-            + summary
-            + ["", diagnostics.map { "--- Diagnostics ---\n\($0)" } ?? "The diagnostics are attached.", ""])
+    /// Where the diagnostics of an e-mail are.
+    public enum MailDiagnostics: Equatable, Sendable {
+        case attached
+        case inBody(String)
+        /// Webmail in a browser refuses a long address (Gmail answers "400" to the whole report,
+        /// seen 2026-11-28): the user pastes them.
+        case toPaste
+    }
+
+    public func mailBody(_ diagnostics: MailDiagnostics) -> String {
+        let end = switch diagnostics {
+        case .attached: "The diagnostics are attached."
+        case .inBody(let text): "--- Diagnostics ---\n\(text)"
+        case .toPaste: "Paste the diagnostics below this line (⌘V):\n"
+        }
+        return (["What happened?", "", "", "What did you expect?", "", ""] + summary + ["", end, ""])
             .joined(separator: "\n")
     }
 
-    /// For mail apps that cannot take an attachment from another app: the diagnostics are in the
-    /// body.
-    public func mailtoURL(address: String, diagnostics: String) -> URL? {
+    /// For mail apps that cannot take an attachment from another app.
+    public func mailtoURL(address: String, diagnostics: MailDiagnostics) -> URL? {
         guard let base = URL(string: "mailto:\(address)") else { return nil }
         // Line breaks in a `mailto:` body are CR LF (RFC 6068).
-        let body = mailBody(diagnostics: diagnostics).replacingOccurrences(of: "\n", with: "\r\n")
+        let body = mailBody(diagnostics).replacingOccurrences(of: "\n", with: "\r\n")
         return Self.url(base, query: [("subject", subject), ("body", body)])
     }
 

@@ -137,13 +137,14 @@ extension AppModel {
 
     /// Apple Mail takes the diagnostics as an attachment. Other mail apps get a `mailto:` link,
     /// which cannot carry a file: they are in the body, and copied too in case the app cuts it.
+    /// A browser (webmail) gets a short body, and the diagnostics to paste.
     func reportByEmail() {
         withDiagnostics { [self] diagnostics in
             let report = problemReport
             let full = text(of: diagnostics)
             if Self.defaultMailAppIsAppleMail, let file = Self.writeAttachment(full),
                let service = NSSharingService(named: .composeEmail) {
-                let items: [Any] = [report.mailBody(diagnostics: nil), file]
+                let items: [Any] = [report.mailBody(.attached), file]
                 if service.canPerform(withItems: items) {
                     service.recipients = [Links.reportEmail]
                     service.subject = report.subject
@@ -152,19 +153,32 @@ extension AppModel {
                 }
             }
             copy(full)
-            let body = text(of: diagnostics, limit: ProblemReport.mailBodyLimit)
+            let webmail = Self.defaultMailAppIsBrowser
+            let body: ProblemReport.MailDiagnostics = webmail
+                ? .toPaste : .inBody(text(of: diagnostics, limit: ProblemReport.mailBodyLimit))
             guard let url = report.mailtoURL(address: Links.reportEmail, diagnostics: body),
                   NSWorkspace.shared.open(url) else {
                 return String(localized: "Diagnostics copied. No mail app opened: paste them into an e-mail to \(Links.reportEmail).")
             }
-            return String(localized: "Your e-mail is ready. Read it, then send it. Diagnostics missing? Paste them with ⌘V.")
+            return webmail
+                ? String(localized: "Diagnostics copied. Paste them into the e-mail with ⌘V.")
+                : String(localized: "Your e-mail is ready. Read it, then send it. Diagnostics missing? Paste them with ⌘V.")
         }
     }
 
-    private static var defaultMailAppIsAppleMail: Bool {
+    private static var defaultMailApp: String? {
         guard let mailto = URL(string: "mailto:"),
-              let app = NSWorkspace.shared.urlForApplication(toOpen: mailto) else { return false }
-        return Bundle(url: app)?.bundleIdentifier == "com.apple.mail"
+              let app = NSWorkspace.shared.urlForApplication(toOpen: mailto) else { return nil }
+        return Bundle(url: app)?.bundleIdentifier
+    }
+
+    private static var defaultMailAppIsAppleMail: Bool { defaultMailApp == "com.apple.mail" }
+
+    /// Mail links go to an app that also opens web pages.
+    private static var defaultMailAppIsBrowser: Bool {
+        guard let mail = defaultMailApp, let web = URL(string: "https://example.com") else { return false }
+        return NSWorkspace.shared.urlsForApplications(toOpen: web)
+            .contains { Bundle(url: $0)?.bundleIdentifier == mail }
     }
 
     private static func writeAttachment(_ text: String) -> URL? {
