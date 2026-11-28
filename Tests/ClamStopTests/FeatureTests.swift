@@ -336,6 +336,15 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(try JSONDecoder().decode(ClamStopSettings.self, from: JSONEncoder().encode(s)) == s)
     }
 
+    @Test func batteryFloorCanBeTurnedOff() throws {
+        let off = ClamStopSettings(batteryFloorPercent: ClamStopSettings.noBatteryFloor, onlyWhileCharging: false)
+        #expect(off.batteryFloorPercent == 0)
+        let saved = try JSONDecoder().decode(ClamStopSettings.self, from: JSONEncoder().encode(off))
+        #expect(saved.batteryFloorPercent == 0)
+        let empty = PowerContext(onPowerAdapter: false, batteryPercent: 1)
+        #expect(SleepPolicy.decide(settings: off, context: empty, agentsWorking: true) == .keepAwake)
+    }
+
     @Test func batteryFloorHasAMinimum() {
         #expect(ClamStopSettings(batteryFloorPercent: 1).batteryFloorPercent == 5)
     }

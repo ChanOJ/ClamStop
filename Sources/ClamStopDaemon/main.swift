@@ -99,7 +99,8 @@ final class DaemonService {
         let battery = SystemPower.battery()
         sleepLog = SleepLog.appending(SleepEvent(date: Date(), kind: kind, batteryPercent: battery.percent,
                                                  onPowerAdapter: battery.onPowerAdapter, detail: detail,
-                                                 wakeReason: kind == .wake ? power.wakeReason.rawValue : nil),
+                                                 wakeReason: kind == .wake ? power.wakeReason.rawValue : nil,
+                                                 thermal: ThermalLevel.current.rawValue),
                                       to: sleepLog)
         store.saveSleepLog(sleepLog)
     }
@@ -207,6 +208,18 @@ var powerSourceToken: Int32 = 0
 notify_register_dispatch(kIOPSNotifyPowerSource, &powerSourceToken, .main) { _ in
     Log.info("power source changed, on adapter=\(SystemPower.battery().onPowerAdapter)")
     service.controller.conditionsChanged(trigger: "power source changed")
+}
+
+// Thermal level (heat guard, journal). The first reading also turns on `ProcessInfo`'s
+// notification.
+service.controller.thermalChanged(ThermalLevel.current)
+var thermalToken: Int32 = 0
+notify_register_dispatch(ThermalLevel.pressureNotification, &thermalToken, .main) { _ in
+    service.controller.thermalChanged(ThermalLevel.current)
+}
+let thermalObserver = NotificationCenter.default.addObserver(
+    forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { _ in
+    service.controller.thermalChanged(ThermalLevel.current)
 }
 
 // Leave the system as it was on SIGTERM (unregister, shutdown) and Ctrl-C.

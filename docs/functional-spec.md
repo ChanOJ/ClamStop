@@ -116,8 +116,8 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 
 | ID | Feature | Ed. | Prio | Tech | Seen in |
 |---|---|---|---|---|---|
-| E1 | Battery floor: end any session and sleep below a level on battery (default 20 %, minimum 5 %) | F+S | M | | nearly all keep-awake tools |
-| E2 | Heat guard: end a lid-closed session when the Mac gets hot (first warm level when the lid is closed) | F+S | M | `ProcessInfo.thermalState` | clamshut, double-shot, ClamDown, Lidless, Lidwork |
+| E1 | Battery floor: end any session and sleep below a level on battery (default 20 %, minimum 5 %, can be disabled) | F+S | M | | nearly all keep-awake tools |
+| E2 | Heat guard: end a lid-closed session when the Mac gets very hot (a hot Mac is normal under a large load, decided 2026-11-28) | F+S | M | Thermal pressure level, `ProcessInfo.thermalState` | clamshut, double-shot, ClamDown, Lidless, Lidwork |
 | E3 | Only while charging: end a lid-closed session when the power adapter is disconnected (option, default on) | F+S | M | | MacMiniMode, Lidless, turnintoserver, Insomnio |
 | E4 | Crash recovery: a watchdog in the daemon restores normal sleep within seconds if the app quits, crashes or hangs; the next launch undoes leftovers | F | M | Daemon heartbeat | Lidless, double-shot, Insomnia (krishhgg), ClamshellToggle, StayAwake, PeachPocket, Lidwork |
 | E5 | Maximum session length (option, off by default) | F+S | 1 | | ClamshellToggle |
@@ -146,7 +146,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 |---|---|---|---|---|---|
 | H1 | Menu bar icon with clear states (normal, staying awake, lid hold, paused), optional remaining time; can be hidden | F+S | M (exists) | | all |
 | H2 | "What keeps my Mac awake?": apps and processes holding sleep off now, and since when | F+S | 1 | `IOPMCopyAssertionsByProcess` | Sleep Expert (Sleep Inspector), LidSleepToggle (Awake Radar) |
-| H3 | Sleep journal: lid opened and closed, slept, woke (with reason), hibernated, battery used | F+S | M | Unified log + own records | Latch, LidSleepToggle, LidAwake (Vladimir-Podgornyi) |
+| H3 | Sleep journal: lid opened and closed, slept, woke (with reason), hibernated, battery used, thermal level | F+S | M | Unified log + own records | Latch, LidSleepToggle, LidAwake (Vladimir-Podgornyi) |
 | H4 | Health check, "Copy diagnostics" and "Report a problem" (prefilled GitHub issue or e-mail, sent by the user) for support (service state, settings, recent events) | F+S | 1 | | MacMiniMode |
 | H5 | Notifications: session ended, safety stop and why, background service needs approval | F+S | M | | double-shot, Insomnio, clamshut |
 | H6 | Phone notifications through ntfy, Pushover or a webhook | F+S | L | Network | Lockpaw, LidSleepToggle, continuity-control, turnintoserver |

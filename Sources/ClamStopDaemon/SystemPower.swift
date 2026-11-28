@@ -124,9 +124,8 @@ final class SystemPower: PowerEffects {
 
     func powerContext() -> PowerContext {
         let battery = Self.battery()
-        let thermal = ProcessInfo.processInfo.thermalState
         return PowerContext(onPowerAdapter: battery.onPowerAdapter, batteryPercent: battery.percent,
-                            thermalPressure: thermal == .serious || thermal == .critical,
+                            thermalPressure: ThermalLevel.current.isTooHot,
                             externalDisplay: externalDisplay)
     }
 

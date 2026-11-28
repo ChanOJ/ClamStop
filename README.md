@@ -33,7 +33,7 @@ Everything is free. The settings window has six tabs (⌘ with the keys 1 to 6 o
   rule applies; the Safety guards and the low battery hibernation come first. Without a matching
   rule, the General tab applies. See [Rules](#rules).
 - **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
-  (on by default), longest time (no limit by default), battery below a level (20 % by default).
+  (on by default), longest time (no limit by default), battery below a level (20 % by default, can be disabled).
   An option hibernates at once when the lid closes on battery below a level.
 - **Diagnostics**: the [health check](#health-check-and-problem-reports), the
   [sleep journal](#sleep-journal) and problem reports.
@@ -96,7 +96,10 @@ wake before hibernation stays silent.
 closed and opened, when the Mac went to sleep, hibernated and woke (lid, keyboard, trackpad, power
 adapter...), and when it stayed awake with the lid closed, why, and why it stopped. Each line
 shows the battery level; the line that ends a sleep also shows how long it lasted, the battery
-used and whether the Mac hibernated. Brief wakes with the screen off are not listed. The journal
+used and whether the Mac hibernated. A line also says when the Mac was warm, hot or very hot,
+and changes of level are listed while it stays awake with the lid closed (macOS gives apps
+levels, not degrees; a hot Mac is normal under a large load, and only a very hot one is put to
+sleep). Brief wakes with the screen off are not listed. The journal
 covers the last 30 days and stays on this Mac.
 
 ### Health check and problem reports

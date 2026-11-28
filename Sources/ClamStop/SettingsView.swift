@@ -224,8 +224,10 @@ struct GeneralTab: View {
             BatterySection(model: model)
 
             Section {
-                Toggle("Show in the menu bar", isOn: $showMenuBarIcon)
-                    .toggleStyle(.switch)
+                Toggle(isOn: $showMenuBarIcon) {
+                    RecommendedTitle(title: "Show in the menu bar")
+                }
+                .toggleStyle(.switch)
                 Picker("Menu bar icon", selection: $menuBarIconStyle) {
                     ForEach(MenuBarIconStyle.allCases) { style in
                         Label {
@@ -243,10 +245,12 @@ struct GeneralTab: View {
                 Toggle("Animate the icon while staying awake", isOn: $animateBadge)
                     .toggleStyle(.switch)
                     .disabled(!showMenuBarIcon)
-                Toggle("Open at login", isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { model.launchAtLogin },
                     set: { model.setLaunchAtLogin($0) }
-                ))
+                )) {
+                    RecommendedTitle(title: "Open at login")
+                }
                 .toggleStyle(.switch)
             } footer: {
                 if !showMenuBarIcon {

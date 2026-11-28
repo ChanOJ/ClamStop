@@ -10,6 +10,8 @@ public struct SleepEvent: Codable, Equatable, Sendable {
         case hibernate
         case keptAwakeForAgents
         case agentsDone
+        /// The thermal level changed while the Mac stayed awake with the lid closed.
+        case thermalChanged
     }
 
     public var date: Date
@@ -21,15 +23,18 @@ public struct SleepEvent: Codable, Equatable, Sendable {
     public var detail: String?
     /// Why the Mac woke (a `WakeReason`).
     public var wakeReason: String?
+    /// How warm the Mac was (a `ThermalLevel`). nil in entries recorded by earlier versions.
+    public var thermal: String?
 
     public init(date: Date, kind: Kind, batteryPercent: Int? = nil, onPowerAdapter: Bool? = nil, detail: String? = nil,
-                wakeReason: String? = nil) {
+                wakeReason: String? = nil, thermal: String? = nil) {
         self.date = date
         self.kind = kind
         self.batteryPercent = batteryPercent
         self.onPowerAdapter = onPowerAdapter
         self.detail = detail
         self.wakeReason = wakeReason
+        self.thermal = thermal
     }
 }
 
