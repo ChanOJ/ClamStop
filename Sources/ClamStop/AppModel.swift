@@ -88,6 +88,7 @@ final class AppModel: ObservableObject {
     /// The approval was awaited and the service has not answered since.
     private var awaitingFirstAnswer = false
     private var lastRefresh = Date.distantPast
+    private var lastRegistration: SMAppService.Status?
     private var statusRequestRunning = false
     private var serviceWait = ServiceWait()
     /// The switch has been off for a while (see `ServiceWait`): post the approval notification again.
@@ -163,6 +164,10 @@ final class AppModel: ObservableObject {
             retryRegistration()
         }
         let registration = daemonService.status
+        if registration != lastRegistration {
+            lastRegistration = registration
+            logger.notice("registration \(registration.rawValue), refused \(self.registrationDenied)")
+        }
         switch registration {
         case .notRegistered:
             serviceState = registrationDenied ? .requiresApproval : .notRegistered
