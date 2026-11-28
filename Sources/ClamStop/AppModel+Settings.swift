@@ -292,12 +292,24 @@ extension AppModel {
         }
         agentHookStates = [.claude: .installed, .cursor: .notInstalled]
         let now = Date()
+        func event(_ ago: TimeInterval, _ kind: SleepEvent.Kind, _ battery: Int, _ detail: String? = nil,
+                   _ wake: WakeReason? = nil) -> SleepEvent {
+            SleepEvent(date: now - ago, kind: kind, batteryPercent: battery, detail: detail, wakeReason: wake?.rawValue)
+        }
         sleepLog = [
-            SleepEvent(date: now - 86_400 * 2, kind: .sleep, batteryPercent: 91),
-            SleepEvent(date: now - 86_400 * 2 + 3600, kind: .hibernate, batteryPercent: 90),
-            SleepEvent(date: now - 86_400 - 30_000, kind: .wake, batteryPercent: 89, detail: SleepLog.wakeLidOpen),
-            SleepEvent(date: now - 7200, kind: .sleep, batteryPercent: 80),
-            SleepEvent(date: now - 3000, kind: .wake, batteryPercent: 79, detail: SleepLog.wakeLidOpen),
+            event(136_000, .lidClosed, 64),
+            event(135_990, .keptAwakeForAgents, 64, KeepAwakeReason.agents.rawValue),
+            event(130_000, .agentsDone, 19, KeepAwakeEnd.batteryFloor.rawValue),
+            event(129_990, .sleep, 19),
+            event(100_000, .lidOpened, 18),
+            event(99_999, .wake, 18, SleepLog.wakeLidOpen, .lid),
+            event(41_000, .lidClosed, 79),
+            event(40_990, .sleep, 79),
+            event(37_390, .hibernate, 79),
+            event(6_660, .lidOpened, 76),
+            event(6_659, .wake, 76, SleepLog.wakeLidOpen, .lid),
+            event(1_800, .sleep, 75),
+            event(600, .wake, 75, SleepLog.wakeLidOpen, .keyboard),
         ]
     }
 

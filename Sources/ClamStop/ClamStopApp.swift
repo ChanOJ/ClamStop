@@ -36,10 +36,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: FittedWindow?
     private var welcomeWindow: FittedWindow?
     private var untilWindow: FittedWindow?
+    private var journalWindow: NSWindow?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
         UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000])
+        model.onShowJournal = { [weak self] in self?.showJournal() }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -179,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Development aid: `ClamStop --snapshot /path/to/file.png [--tab name]
-    /// [--show-help [agent|history]] [--welcome step] [--until]` renders the visible windows to
+    /// [--show-help [agent]] [--welcome step] [--until] [--journal]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         guard let path = Self.argument(after: "--snapshot") else { return }
@@ -191,6 +193,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showWelcome()
         } else if args.contains("--until") {
             showSessionUntil()
+        } else if args.contains("--journal") {
+            showJournal()
         } else {
             showSettings()
         }
@@ -198,8 +202,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 if args.contains("agent") {
                     self.model.showAgentHelp = true
-                } else if args.contains("history") {
-                    self.model.showSleepLog = true
                 } else {
                     self.model.showLidHelp = true
                 }
@@ -283,6 +285,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         model.sessionUntil = AppModel.nextFullHour()
         untilWindow?.show()
+    }
+
+    /// The sleep journal (spec H3): resizable, unlike the other windows.
+    func showJournal() {
+        if journalWindow == nil {
+            let controller = NSHostingController(rootView: JournalView(model: model))
+            controller.sizingOptions = []
+            let window = SettingsWindow(contentViewController: controller)
+            window.title = String(localized: "Sleep Journal")
+            window.styleMask = [.titled, .closable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 520, height: 560))
+            window.contentMinSize = NSSize(width: 420, height: 300)
+            window.center()
+            journalWindow = window
+        }
+        model.loadSleepLog()
+        NSApp.activate()
+        journalWindow?.makeKeyAndOrderFront(nil)
     }
 
     private func launchedAsLoginItem(_ notification: Notification) -> Bool {

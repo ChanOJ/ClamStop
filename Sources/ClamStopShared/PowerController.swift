@@ -343,7 +343,7 @@ public final class PowerController {
             }
         }
         stopKeepingAwake()
-        record(.agentsDone, trigger)
+        record(.agentsDone, keepAwakeEnd(decision, trigger: trigger).rawValue)
         act(on: decision)
     }
 
@@ -371,6 +371,22 @@ public final class PowerController {
         cancelPendingWake()
         update(phase: .idle, pendingWake: nil)
         act(on: .sleep(hibernateAfter: 0, reason: "hibernate now"))
+    }
+
+    private func keepAwakeEnd(_ decision: LidDecision, trigger: String) -> KeepAwakeEnd {
+        guard case .sleep(_, let reason) = decision else { return .changed }
+        if let guardReason = Notice.Reason(decisionReason: reason),
+           let end = KeepAwakeEnd(rawValue: guardReason.rawValue) {
+            return end
+        }
+        if trigger == "agents done" || trigger == "apps done" { return .finished }
+        return trigger.hasPrefix("session") ? .sessionEnded : .changed
+    }
+
+    private var keepAwakeReason: KeepAwakeReason {
+        if session != nil { return .session }
+        if settings.keepAwakeForAgents && agentsWorking { return .agents }
+        return appsWorking ? .apps : .rule
     }
 
     private func act(on decision: LidDecision) {
@@ -402,7 +418,7 @@ public final class PowerController {
         keepAwakeSince = effects.now()
         keepAwakeGeneration += 1
         updateSleepPrevention()
-        record(.keptAwakeForAgents, nil)
+        record(.keptAwakeForAgents, keepAwakeReason.rawValue)
         let hours = settings.maxAwakeHours
         guard hours > 0 else { return }
         let generation = keepAwakeGeneration
@@ -512,6 +528,8 @@ public final class PowerController {
         defer { if fullWake { resumeAfterWake() } }
         if fullWake { awake = true }
         let lidClosed = effects.isLidClosed()
+        // The wake can be reported before the lid message, which then finds the lid known open.
+        if lastLidClosed && !lidClosed { record(.lidOpened, nil) }
         if fullWake {
             record(.wake, lidClosed ? "lid closed" : SleepLog.wakeLidOpen)
         }

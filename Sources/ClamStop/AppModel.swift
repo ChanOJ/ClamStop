@@ -58,7 +58,6 @@ final class AppModel: ObservableObject {
     // Settings tabs, agents, journal (see AppModel+Settings.swift)
     @Published var settingsTab = SettingsTab.initial
     @Published var showAgentHelp = false
-    @Published var showSleepLog = false
     @Published var confirmAgentHooks = false
     @Published var agentHookStates: [AgentKind: AgentHookSettings.State] = [:]
     @Published var sleepLog: [SleepEvent] = []
@@ -93,6 +92,8 @@ final class AppModel: ObservableObject {
     private var serviceWait = ServiceWait()
     /// The switch has been off for a while (see `ServiceWait`): post the approval notification again.
     var onApprovalReminder: () -> Void = {}
+    /// Opens the sleep journal window (set by the app delegate).
+    var onShowJournal: () -> Void = {}
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }

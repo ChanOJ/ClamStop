@@ -38,6 +38,11 @@ final class SystemPower: PowerEffects {
         return caps & 0x2 != 0
     }
 
+    var wakeReason: WakeReason {
+        WakeReason(reason: Self.rootDomainProperty("Wake Reason") as? String ?? "",
+                   type: Self.rootDomainProperty("Wake Type") as? String ?? "")
+    }
+
     /// Diagnostics: why and how the Mac last woke. "System Capabilities" bit 1 = graphics (full wake).
     var wakeDescription: String {
         let reason = Self.rootDomainProperty("Wake Reason") as? String ?? "?"
