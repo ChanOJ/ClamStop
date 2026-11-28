@@ -77,7 +77,13 @@ now", and you can remove it.
 
 The menu bar menu has **Stay Awake**: keep the Mac awake until you turn it off, for 5 minutes to
 8 hours, or until a time of day. It does not sleep when idle, and with the lid closed it stays
-awake within the Safety guards (on power adapter only by default); any sleep ends it.
+awake within the Safety guards (on power adapter only by default); any sleep ends it. Five
+minutes before a session longer than 10 minutes ends, a notification offers **+30 min** (also
+**Add 30 Minutes** in the menu). With the lid closed, the Mac goes to sleep at the end.
+
+**Lock the screen when the lid closes**, in the Stay Awake tab (off by default): while ClamStop
+keeps the Mac awake with the lid closed, the screen locks, unless an external screen is plugged
+in.
 
 If the app stops responding while ClamStop keeps the Mac awake, the background service lets go
 after 30 seconds, and puts a Mac with its lid closed to sleep unless macOS would keep it awake on
