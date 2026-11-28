@@ -92,8 +92,9 @@ install ends a running "Stay Awake" session and releases `disablesleep`.
 
 ## Pull requests
 
-The repository has auto-merge disabled and no required check, and desktop sessions must not poll
-CI: after opening a pull request, read its status once, then merge (squash) when the user asks
+`main` takes pull requests only, with the check "Build, test, package" required (ruleset without
+bypass); `v*` tags cannot be moved or deleted, and published releases are immutable. Auto-merge is
+disabled and desktop sessions must not poll CI: after opening a pull request, read its status once, then merge (squash) when the user asks
 again and the check is green; sync `~/Code/ClamStop` (`git pull --ff-only`) and start the next
 branch from `origin/main`.
 
@@ -103,8 +104,12 @@ branch from `origin/main`.
   account). `release.yml` signs, notarizes and writes the Sparkle appcast on `v*` tags; "Run
   workflow" is a dry run (version 0.0.0) that publishes nothing. Ask the user before pushing a tag.
 - `ci.yml` still builds ad-hoc artifacts, and so do local builds without `SIGN_IDENTITY`.
-- Six secrets in GitHub Actions, copies in Proton Pass (`docs/signing.md`, `docs/updates.md`):
-  never print or commit them; the user enters them. The certificate expires on 2027-12-28.
+- Six secrets in the GitHub environment `release` (none at repository level), copies in Proton
+  Pass (`docs/signing.md`, `docs/updates.md`): never print or commit them; the user enters them.
+  A release run (tag or dry run, from `main` or a `v*` tag) waits for the user's approval:
+  never approve it for them.
+- GitHub (2026-11-28): Actions limited to GitHub's own, pinned by SHA; Dependabot alerts (version
+  updates for actions only, not Swift), CodeQL default setup, private vulnerability reporting. The certificate expires on 2027-12-28.
 - First release: `v0.1.0` (2026-11-28). Versions stay `0.x`, without release candidates, while
   basic features are still being added (user's choice).
 - Verified on 2026-11-28: `spctl` and `stapler` accept the downloaded DMG and app, hardened
