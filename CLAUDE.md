@@ -164,11 +164,11 @@ branch from `origin/main`.
 ## Features and settings (2026-11-26)
 
 - Everything is free (no Pro tier, no license). Full edition: "Buy me a coffee" (`Links.donation`)
-  in the About tab and at the bottom of General, "Donate…" in the menu; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
+  in the About tab and at the bottom of General, "Donate…" in the menu; `Edition.current` (`Sources/ClamStop/Edition.swift`)
   turns it off for a future Store build.
 - Settings window: six tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
-  tabs in `SettingsTabs.swift` and `DiagnosticsTab.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with
-  `scripts/mockups.sh`). Only settings with real behavior are shown; others arrive with their feature.
+  tabs in `SettingsTabs.swift` and `DiagnosticsTab.swift`; rows and cards in `Components.swift`).
+  Only settings with real behavior are shown; others arrive with their feature.
   Preview with `--preview-settings --tab general|sessions|rules|safety|diagnostics|about`
   (+ `--snapshot`, `--show-help agent|history`, `--welcome 1|2|3 [agents]`, `--until`).
 - "Stay Awake" sessions from the menu (spec C1, C2): `PowerController.startSession(until:)`; an

@@ -148,6 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Development aids, for docs and reviews (no Screen Recording permission needed):
     /// - `--appearance light|dark`: force the appearance;
+    /// - `--export-icons dir`: write the menu bar icons in every state to PNG files and quit;
     /// - `--export-illustration file.png`: write `ApprovalIllustration` to a PNG and quit
     ///   (README images); returns true then;
     /// - `--export-diagnostics file.txt`: write what "Copy Diagnostics" copies and quit; returns
@@ -157,13 +158,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "light": NSApp.appearance = NSAppearance(named: .aqua)
         case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
         default: break
-        }
-        if let directory = Self.argument(after: "--mockups") {
-            if let icon = Self.argument(after: "--icon"), let image = NSImage(contentsOfFile: icon) {
-                NSApp.applicationIconImage = image  // when run outside the app bundle
-            }
-            MockupRenderer.run(outputDirectory: URL(fileURLWithPath: directory))
-            return true
         }
         if let directory = Self.argument(after: "--export-icons") {
             // Menu bar icons in every state, 4x, black on clear (review aid).

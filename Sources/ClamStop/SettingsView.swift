@@ -1,8 +1,7 @@
 import SwiftUI
 import ClamStopShared
 
-/// Content of the settings window: a tab bar over six tabs (spec section 5, mockup
-/// `SettingsMockupView`). Only settings with real behavior behind them are shown.
+/// Content of the settings window: a tab bar over six tabs (spec section 5). Only settings with real behavior behind them are shown.
 struct SettingsRootView: View {
     @ObservedObject var model: AppModel
 
@@ -75,7 +74,7 @@ private struct HeightCap: Layout {
     }
 }
 
-/// Tabs of the settings window (also used by the mockups).
+/// Tabs of the settings window.
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general
     case sessions

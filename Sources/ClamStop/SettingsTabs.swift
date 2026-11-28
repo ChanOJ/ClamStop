@@ -1,8 +1,8 @@
 import SwiftUI
 import ClamStopShared
 
-// The settings tabs after General (spec section 5, mockup `SettingsMockupView`). Each tab only
-// shows settings that already work; the others arrive with their features.
+// The settings tabs after General (spec section 5). Each tab only shows settings that already
+// work; the others arrive with their features.
 
 /// Binding to one setting, sent to the daemon on change.
 @MainActor

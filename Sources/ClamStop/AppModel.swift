@@ -88,7 +88,7 @@ final class AppModel: ObservableObject {
     @Published var revealedChecks: Int?
     @Published var preparingReport = false
     @Published var reportMessage: String?
-    // First run (see FirstRunView.swift)
+    // First run (see WelcomeView.swift)
     @Published var firstRunStep = 1
     @Published var firstRunChoice = FirstRunChoice.sleep
     @Published var firstRunDelay = ClamStopSettings.defaultDelayMinutes
@@ -451,12 +451,6 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: Text
-
-    /// Duration label: "10 min", "2 h" (positive minutes only).
-    static func delayLabel(_ minutes: Int) -> String {
-        if minutes % 60 == 0 { return String(localized: "\(minutes / 60) h") }
-        return String(localized: "\(minutes) min")
-    }
 
     /// One-line status for the menu and the settings window.
     var statusLine: String {

@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Rows, cards and badges shared by the settings window and the first-run assistant.
+
 /// Small gray tag such as "Recommended".
 struct TagBadge: View {
     let text: LocalizedStringKey

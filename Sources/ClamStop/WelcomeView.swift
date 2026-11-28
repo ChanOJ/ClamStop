@@ -1,8 +1,8 @@
 import SwiftUI
 import ClamStopShared
 
-/// First-run assistant (spec section 5, mockup `FirstRunView`): what the lid does, the
-/// background service approval, then hibernation. Only choices that already work are offered.
+/// First-run assistant (spec section 5): what the lid does, the background service approval,
+/// then hibernation. Only choices that already work are offered.
 struct WelcomeView: View {
     @ObservedObject var model: AppModel
     let close: () -> Void
@@ -146,7 +146,7 @@ struct WelcomeView: View {
     }
 }
 
-/// About tab of the settings window (spec J6, mockup `AboutView`). Full edition: website, source code and a
+/// About tab of the settings window (spec J6). Full edition: website, source code and a
 /// discreet "Buy me a coffee" link; Store edition: only a neutral Help link.
 struct AboutTab: View {
     private var version: String {
