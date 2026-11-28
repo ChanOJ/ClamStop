@@ -60,6 +60,9 @@ on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelay
 
 ## Installing a new build on this Mac (ad-hoc signed)
 
+First `codesign -dv --verbose=2 /Applications/ClamStop.app`: when a Developer ID release is there
+(the case on 2026-11-28), ask the user before replacing it, whatever the daemon comparison says.
+
 After `scripts/build-app.sh`, compare the daemons first:
 `cmp dist/ClamStop.app/Contents/MacOS/ClamStopDaemon /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon`.
 Any change in `ClamStopShared` changes the daemon, even app-only logic.
