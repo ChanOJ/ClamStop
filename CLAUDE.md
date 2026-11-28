@@ -172,6 +172,10 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   bundle, follows "on behalf of" and sets macOS services apart. Reports name the apps, never the
   assertions (they can hold titles or file names). Preview: `--preview-settings --awake
   --snapshot <png>`. Not verified in a sandboxed build.
+- Sleep report (spec B5, 2026-11-28): app only. On `didWakeNotification` and on lid open, 5 s
+  and 30 s later, `SleepReport.latest` reads the journal (newest sleep of 4 h or more, ended less
+  than 1 h ago, once). Try it with
+  `defaults write io.github.chanoj.clamstop sleepReportMinimumMinutes -int 2` (delete it after).
 - Notifications (spec H5): the root daemon cannot post them, so `PowerController.notify` keeps the
   last `Notice`s in `DaemonStatus.notices` and the app's `Notifier` posts the new ones
   (`DefaultsKey.lastNoticeDate`); the approval notice comes from the app's service state.

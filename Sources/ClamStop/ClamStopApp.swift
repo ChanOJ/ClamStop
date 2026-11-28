@@ -116,7 +116,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 guard let model else { return }
                 model.screenDimmer.lidChanged(closed: closed)
-                guard closed else { return }
+                guard closed else {
+                    model.checkSleepReport()
+                    return
+                }
                 // Ask the service once it has decided, without waiting for the next poll.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.refresh() }
             }
@@ -315,6 +318,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !AppModel.previewSettings, !AppModel.previewApproval,
               !CommandLine.arguments.contains("--snapshot") else { return }
         notifier.onOpen = { [weak self] in self?.showSettings() }
+        notifier.onOpenJournal = { [weak self] in self?.showJournal() }
+        model.onSleepReport = { [notifier] in notifier.sleepEnded($0) }
         notifier.start()
         model.onApprovalReminder = { [notifier] in notifier.serviceStillNeedsApproval() }
         notifierObservers.append(model.$status.sink { [notifier] status in

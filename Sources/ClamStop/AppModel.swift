@@ -34,10 +34,17 @@ enum DefaultsKey {
     static let animateBadge = "animateMenuBarBadge"
     /// Brightness of the built-in screen to put back, while ClamStop has it off.
     static let savedScreenBrightness = "savedScreenBrightness"
+    /// "Sleep report" is on (off by default).
+    static let sleepReport = "sleepReport"
+    /// End of the sleep reported last, so that it is reported once.
+    static let lastSleepReport = "lastSleepReport"
+    /// Development aid: report sleeps from this many minutes instead of 4 hours.
+    static let sleepReportMinimumMinutes = "sleepReportMinimumMinutes"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
-                      skipQuitConfirmation, showTimeLeft, animateBadge, savedScreenBrightness]
+                      skipQuitConfirmation, showTimeLeft, animateBadge, savedScreenBrightness, sleepReport,
+                      lastSleepReport, sleepReportMinimumMinutes]
 }
 
 @MainActor
@@ -109,6 +116,7 @@ final class AppModel: ObservableObject {
     /// Opens the sleep journal window (set by the app delegate).
     var onShowJournal: () -> Void = {}
     var onShowAwake: () -> Void = {}
+    var onSleepReport: (SleepReport) -> Void = { _ in }
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -134,6 +142,10 @@ final class AppModel: ObservableObject {
         }
         updateOutdatedAgentHooks()
         refresh()
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.checkSleepReport() }
+        }
         timer = Timer.scheduledTimer(withTimeInterval: ServiceWait.eagerInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
