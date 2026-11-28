@@ -374,6 +374,14 @@ With the Apple credentials configured, the same workflow signs and notarizes it:
 Signed releases also publish the feed that installed copies check for updates (Sparkle), see
 [docs/updates.md](docs/updates.md).
 
+## Vote for features
+
+Help choose what comes next: upvote the features you would use in
+[Ideas](https://github.com/ChanOJ/ClamStop/discussions/categories/ideas?discussions_q=is%3Aopen+sort%3Atop)
+with the arrow next to each one (a GitHub account is needed). Something missing? Start a new idea
+there. Problems and bugs go to [Issues](https://github.com/ChanOJ/ClamStop/issues). The app links
+to the same page: **About > Vote for features**.
+
 ## Support
 
 ClamStop is free, with every feature, and stays free. If it is useful to you, you can
