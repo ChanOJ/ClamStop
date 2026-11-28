@@ -8,6 +8,9 @@ name: Release
 # "Run workflow" (workflow_dispatch) is a dry run, version 0.0.0: same build, signature,
 # notarization and appcast, kept as a workflow artifact. Nothing is published, and the run
 # fails when a secret is missing.
+#
+# The secrets live in the "release" environment: a run starts only from main or a v* tag, and
+# waits for an approval (Actions > the run > Review deployments).
 on:
   push:
     tags: ["v*"]
@@ -24,6 +27,7 @@ jobs:
     name: Build and publish
     runs-on: macos-26
     timeout-minutes: 90
+    environment: release # holds the signing secrets
     permissions:
       contents: write # create the GitHub Release
     steps:
@@ -39,6 +43,19 @@ jobs:
           else
             echo "VERSION=0.0.0" >> "$GITHUB_ENV"
           fi
+
+      # A tag can point to any commit: only publish what went through main.
+      - name: Check that the tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "::error::$GITHUB_REF_NAME is not a commit of main: not released."
+            exit 1
+          }
+
+      # Fails instead of silently resolving something else than Package.resolved.
+      - name: Resolve the pinned dependencies
+        run: swift package --force-resolved-versions resolve
 
       - name: Test
         run: scripts/test.sh

@@ -1,0 +1,16 @@
+# Weekly update pull requests. Actions are pinned by commit SHA: Dependabot moves the SHA and
+# the version comment together. Sparkle is pinned to an exact release (Package.swift): read its
+# release notes before merging an update.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: swift
+    directory: /
+    schedule:
+      interval: weekly

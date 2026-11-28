@@ -26,6 +26,10 @@ jobs:
       - name: Toolchain
         run: swift --version
 
+      # Fails instead of silently resolving something else than Package.resolved.
+      - name: Resolve the pinned dependencies
+        run: swift package --force-resolved-versions resolve
+
       - name: Build
         run: swift build
 
