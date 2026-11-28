@@ -449,38 +449,4 @@ final class AppModel: ObservableObject {
             NSApp.terminate(nil)
         }
     }
-
-    // MARK: Text
-
-    /// One-line status for the menu and the settings window.
-    var statusLine: String {
-        switch serviceState {
-        case .checking:
-            return String(localized: "Checking…")
-        case .requiresApproval:
-            return String(localized: "Waiting for approval in System Settings")
-        case .notRegistered:
-            return String(localized: "Background service not installed")
-        case .notFound:
-            return String(localized: "Background service missing: run ClamStop from the Applications folder")
-        case .notResponding:
-            return String(localized: "Background service not responding")
-        case .running:
-            guard let status else { return String(localized: "Checking…") }
-            if !status.settings.enabled { return String(localized: "Off: macOS decides when you close the lid") }
-            if status.sleepDisabled && status.sleepDisabledByClamStop != true {
-                return String(localized: "Sleep is disabled on this Mac (pmset disablesleep)")
-            }
-            switch status.lidPlan?.action {
-            case .stayAwake: return String(localized: "Rule: stays awake when you close the lid")
-            case .macOS: return String(localized: "macOS decides when you close the lid, for now")
-            case .sleep, nil: return String(localized: "Sleeps when you close the lid")
-            }
-        }
-    }
-
-    var statusIsOK: Bool {
-        serviceState == .running && enabled
-            && (status?.sleepDisabled == false || status?.sleepDisabledByClamStop == true)
-    }
 }
