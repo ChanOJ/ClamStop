@@ -41,7 +41,13 @@ enum DefaultsKey {
 
 @MainActor
 final class AppModel: ObservableObject {
-    @Published private(set) var serviceState: ServiceState = .checking
+    @Published private(set) var serviceState: ServiceState = .checking {
+        didSet {
+            // Kept in the log (`notice`), to trace approvals and repairs after the fact.
+            guard serviceState != oldValue else { return }
+            logger.notice("service \(String(describing: self.serviceState), privacy: .public) (registration \(self.daemonService.status.rawValue), refused \(self.registrationDenied))")
+        }
+    }
     @Published private(set) var status: DaemonStatus?
     @Published private(set) var launchAtLogin = false
     @Published var errorMessage: String?
@@ -127,7 +133,7 @@ final class AppModel: ObservableObject {
     private func tick() {
         let now = Date()
         if serviceWait.reminderIsDue(switchOff: serviceState == .requiresApproval, now: now) {
-            logger.info("switch still off after \(Int(ServiceWait.reminderDelay)) s: reminding")
+            logger.notice("switch still off after \(Int(ServiceWait.reminderDelay)) s: reminding")
             onApprovalReminder()
         }
         // Half a second of slack, for the timer's tolerance.
@@ -291,7 +297,7 @@ final class AppModel: ObservableObject {
     /// `serviceWait` says so. That needs no new approval.
     private func repairIfStuck() {
         guard serviceWait.repairIsDue(now: Date()) else { return }
-        logger.info("service switched on but not answering: registering it again")
+        logger.notice("service switched on but not answering: registering it again")
         reinstallService()
     }
 
