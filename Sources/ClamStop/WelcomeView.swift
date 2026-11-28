@@ -174,6 +174,7 @@ struct AboutTab: View {
                 if Edition.current == .full {
                     Link("Website", destination: Links.website)
                     Link("Source code", destination: Links.sourceCode)
+                    Link("Vote for features", destination: Links.featureVote)
                 } else {
                     Link("Help", destination: Links.help)
                 }
