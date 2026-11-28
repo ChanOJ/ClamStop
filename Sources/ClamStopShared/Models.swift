@@ -264,7 +264,17 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
 }
 
 public enum ClamStopVersion {
-    public static let current = "0.1.0"
+    /// Marketing version of the running build (`VERSION` in scripts/build-app.sh), read from
+    /// the app bundle that holds this executable: the app and the daemon both run from
+    /// `ClamStop.app/Contents/MacOS`. "0.0.0" outside a bundle (development runs, tests).
+    public static let current = version(ofExecutable: Bundle.main.executableURL) ?? "0.0.0"
+
+    static func version(ofExecutable executable: URL?) -> String? {
+        guard let executable else { return nil }
+        let contents = executable.resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent()
+        let info = NSDictionary(contentsOf: contents.appendingPathComponent("Info.plist"))
+        return info?["CFBundleShortVersionString"] as? String
+    }
 }
 
 /// macOS `hibernatemode` values used by ClamStop.

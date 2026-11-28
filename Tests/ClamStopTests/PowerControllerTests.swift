@@ -400,6 +400,18 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
         #expect(DaemonStatus.decode(status.encoded()) == status)
     }
 
+    /// The daemon has no bundle of its own: its version is the app's, not a constant.
+    @Test func versionComesFromTheAppBundle() throws {
+        let app = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)/ClamStop.app")
+        let macOS = app.appendingPathComponent("Contents/MacOS")
+        try FileManager.default.createDirectory(at: macOS, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: app.deletingLastPathComponent()) }
+        let info: NSDictionary = ["CFBundleShortVersionString": "0.2.0"]
+        try info.write(to: app.appendingPathComponent("Contents/Info.plist"))
+        #expect(ClamStopVersion.version(ofExecutable: macOS.appendingPathComponent("ClamStopDaemon")) == "0.2.0")
+        #expect(ClamStopVersion.version(ofExecutable: URL(fileURLWithPath: "/usr/bin/true")) == nil)
+    }
+
     /// Apps and daemons of other versions talk to each other, and the journal file outlives them:
     /// renamed Swift names keep their first JSON names.
     @Test func storedNamesDoNotChange() throws {
