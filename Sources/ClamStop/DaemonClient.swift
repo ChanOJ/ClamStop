@@ -11,6 +11,8 @@ enum DaemonClientError: Error {
 /// XPC client of the privileged daemon.
 final class DaemonClient {
     static let timeout: TimeInterval = 8
+    /// For the status of a service that is starting or not answering.
+    static let startingTimeout: TimeInterval = 2
     private var connection: NSXPCConnection?
 
     private func proxy(onError: @escaping (Error) -> Void) -> ClamStopDaemonXPC? {
@@ -26,7 +28,8 @@ final class DaemonClient {
         return connection?.remoteObjectProxyWithErrorHandler(onError) as? ClamStopDaemonXPC
     }
 
-    private func call(_ body: @escaping (ClamStopDaemonXPC, @escaping (Data) -> Void) -> Void) async throws -> DaemonStatus {
+    private func call(timeout: TimeInterval = DaemonClient.timeout,
+                      _ body: @escaping (ClamStopDaemonXPC, @escaping (Data) -> Void) -> Void) async throws -> DaemonStatus {
         try await withCheckedThrowingContinuation { continuation in
             let once = Once()
             let fail: (Error) -> Void = { error in
@@ -38,7 +41,7 @@ final class DaemonClient {
             }
             // A daemon launchd cannot start ("spawn scheduled", EX_CONFIG after an ad-hoc update)
             // never answers and no error comes back (seen on macOS 27.2): give up after a while.
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.timeout) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
                 once.run { continuation.resume(throwing: DaemonClientError.timeout) }
             }
             body(proxy) { data in
@@ -54,9 +57,9 @@ final class DaemonClient {
     }
 
     /// The app's poll: also tells the daemon that the app runs (see `appStatus`).
-    func status() async throws -> DaemonStatus {
+    func status(timeout: TimeInterval = DaemonClient.timeout) async throws -> DaemonStatus {
         let externalDisplay = Self.externalDisplayConnected
-        return try await call { $0.appStatus(externalDisplay: externalDisplay, reply: $1) }
+        return try await call(timeout: timeout) { $0.appStatus(externalDisplay: externalDisplay, reply: $1) }
     }
 
     /// A screen other than the built-in one is connected (including one that sleeps).

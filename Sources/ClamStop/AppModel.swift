@@ -81,7 +81,11 @@ final class AppModel: ObservableObject {
     private var lastRegistrationRetry = Date.distantPast
     /// Approved but not answering since then (see `repairIfStuck`).
     private var notRespondingSince: Date?
-    private var repairAttempted = false
+    private var repairAttempts = 0
+    /// The approval was awaited and the service has not answered since.
+    private var awaitingFirstAnswer = false
+    private var lastRefresh = Date.distantPast
+    private var statusRequestRunning = false
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -107,8 +111,8 @@ final class AppModel: ObservableObject {
         }
         updateOutdatedAgentHooks()
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
         }
         // A screen plugged in or unplugged: tell the daemon at once (rules, spec D1).
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
@@ -117,17 +121,28 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Every second while waiting for the service, so that the switch turned on in System
+    /// Settings shows at once; every 5 seconds otherwise.
+    private func tick() {
+        let waiting = serviceState == .requiresApproval || serviceState == .notResponding || awaitingFirstAnswer
+        guard waiting || Date().timeIntervalSince(lastRefresh) >= 5 else { return }
+        refresh()
+    }
+
     func refresh() {
         guard !Self.previewApproval, !Self.previewSettings else { return }
+        lastRefresh = Date()
         refreshAgentHooks()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         // Turned on in System Settings while the app kept running (macOS does not always quit
         // it): nothing registers the daemon again, so retry while waiting (seen 2026-11-26).
-        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 10 {
+        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 2 {
             lastRegistrationRetry = Date()
             retryRegistration()
         }
-        switch daemonService.status {
+        let registration = daemonService.status
+        if registration != .enabled { notRespondingSince = nil }
+        switch registration {
         case .notRegistered:
             serviceState = registrationDenied ? .requiresApproval : .notRegistered
             status = nil
@@ -139,20 +154,32 @@ final class AppModel: ObservableObject {
             serviceState = Self.daemonPlistInBundle ? (registrationDenied ? .requiresApproval : .notRegistered) : .notFound
             status = nil
         case .enabled:
-            Task {
-                do {
-                    self.status = try await client.status()
-                    self.serviceState = .running
-                    self.notRespondingSince = nil
-                    self.applyPendingFirstRun()
-                } catch {
-                    self.status = nil
-                    self.serviceState = .notResponding
-                    self.repairIfStuck()
-                }
-            }
+            askStatus()
         @unknown default:
             serviceState = .notResponding
+        }
+        if serviceState == .requiresApproval { awaitingFirstAnswer = true }
+    }
+
+    /// One request at a time. A service that was not answering gets less time, to notice sooner
+    /// that it does (or that it needs `repairIfStuck`).
+    private func askStatus() {
+        guard !statusRequestRunning else { return }
+        statusRequestRunning = true
+        let timeout = serviceState == .running ? DaemonClient.timeout : DaemonClient.startingTimeout
+        Task {
+            defer { statusRequestRunning = false }
+            do {
+                self.status = try await client.status(timeout: timeout)
+                self.serviceState = .running
+                self.notRespondingSince = nil
+                self.awaitingFirstAnswer = false
+                self.applyPendingFirstRun()
+            } catch {
+                self.status = nil
+                self.serviceState = .notResponding
+                self.repairIfStuck()
+            }
         }
     }
 
@@ -234,23 +261,27 @@ final class AppModel: ObservableObject {
     func reinstallService() {
         Task {
             try? await daemonService.unregister()
+            client.invalidate()  // a connection to the old registration would hang
             installService()
         }
     }
 
     /// Approved in System Settings but the service never answers: with ad-hoc builds launchd
     /// sometimes refuses the new daemon after an update (EX_CONFIG, "spawn scheduled") until it is
-    /// registered again, which then needs no new approval (seen twice on macOS 27.2, 2026-11-27).
-    /// Do what the "Reinstall Background Service" button does, once per launch, after 20 s.
+    /// registered again, which then needs no new approval (seen on macOS 27.2). Do what the
+    /// "Reinstall Background Service" button does: after 3 s when the approval was just given (a
+    /// healthy service answers within a second), after 20 s otherwise; at most twice per launch.
     private func repairIfStuck() {
         let now = Date()
         guard let since = notRespondingSince else {
             notRespondingSince = now
             return
         }
-        guard !repairAttempted, now.timeIntervalSince(since) >= 20 else { return }
-        repairAttempted = true
-        logger.info("service approved but not answering for 20 s: registering it again")
+        let patience: TimeInterval = awaitingFirstAnswer ? 3 : 20
+        guard repairAttempts < 2, now.timeIntervalSince(since) >= patience else { return }
+        repairAttempts += 1
+        notRespondingSince = nil
+        logger.info("service approved but not answering for \(Int(patience)) s: registering it again")
         reinstallService()
     }
 
