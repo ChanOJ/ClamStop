@@ -71,6 +71,10 @@ final class AppModel: ObservableObject {
     // Diagnostics tab (see AppModel+Diagnostics.swift)
     @Published var systemState: SystemSleepState?
     @Published var notificationAccess = NotificationAccess.unknown
+    /// "What keeps my Mac awake?" (see AwakeView.swift): nil until read, and whether macOS's own
+    /// services are unfolded.
+    @Published var awakeList: AwakeList?
+    @Published var showSystemHolders = false
     /// While "Check Again" runs: how many checks show their result again. nil otherwise.
     @Published var revealedChecks: Int?
     @Published var preparingReport = false
@@ -104,6 +108,7 @@ final class AppModel: ObservableObject {
     var onApprovalReminder: () -> Void = {}
     /// Opens the sleep journal window (set by the app delegate).
     var onShowJournal: () -> Void = {}
+    var onShowAwake: () -> Void = {}
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }

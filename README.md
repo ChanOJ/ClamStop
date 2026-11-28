@@ -35,8 +35,9 @@ Everything is free. The settings window has six tabs (⌘ with the keys 1 to 6 o
 - **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
   (on by default), longest time (no limit by default), battery below a level (20 % by default, can be disabled).
   An option hibernates at once when the lid closes on battery below a level.
-- **Diagnostics**: the [health check](#health-check-and-problem-reports), the
-  [sleep journal](#sleep-journal) and problem reports.
+- **Diagnostics**: the [health check](#health-check-and-problem-reports),
+  [what keeps the Mac awake](#what-keeps-my-mac-awake), the [sleep journal](#sleep-journal) and
+  problem reports.
 - **About**: version, links and credits.
 
 ### Screens
@@ -102,6 +103,13 @@ levels, not degrees; a hot Mac is normal under a large load, and only a very hot
 sleep). Brief wakes with the screen off are not listed. The journal
 covers the last 30 days and stays on this Mac.
 
+### What keeps my Mac awake?
+
+**What Keeps My Mac Awake…** in the menu, or **Show…** in the Diagnostics tab, lists what stops
+the Mac, or its screen, from sleeping on its own, and since when: ClamStop's reasons (Stay Awake,
+AI agents, watched apps, rule), one line per app with its helpers, and macOS's own services folded
+away. Closing the lid still follows the ClamStop settings.
+
 ### Health check and problem reports
 
 The Diagnostics tab checks what could stop ClamStop from working: where the app is, the
@@ -119,7 +127,7 @@ To report a problem:
 - **Copy Diagnostics** only copies them.
 
 The diagnostics are plain text: versions, the Mac model, the checks, the settings (with the names
-of watched apps and commands), the last 50 journal events and ClamStop's log of the last hour
+of watched apps and commands), the apps keeping the Mac awake, the last 50 journal events and ClamStop's log of the last hour
 (readable by administrator accounts only). The home folder is written `~`. ClamStop sends nothing
 by itself: you read the report and send it.
 

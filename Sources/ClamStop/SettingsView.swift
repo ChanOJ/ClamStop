@@ -494,6 +494,7 @@ struct MenuContent: View {
                 .disabled(!model.serviceRunning)
         }
         Divider()
+        Button { model.onShowAwake() } label: { Label("What Keeps My Mac Awake…", systemImage: "eye") }
         Button { openSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             .keyboardShortcut(",")
         if Edition.current == .full {

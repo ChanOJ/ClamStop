@@ -167,6 +167,11 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   app gets a short `mailto:` (Gmail answers "400" to a long one, seen 2026-11-28). `--export-diagnostics
   <file>` writes the real report without telling the daemon that the app runs (installed copy
   only: another build gets no XPC answer).
+- What keeps my Mac awake (spec H2, 2026-11-28): the app alone reads
+  `IOPMCopyAssertionsByProcess` (`AssertionReader`; no root), `AwakeList` groups by outermost app
+  bundle, follows "on behalf of" and sets macOS services apart. Reports name the apps, never the
+  assertions (they can hold titles or file names). Preview: `--preview-settings --awake
+  --snapshot <png>`. Not verified in a sandboxed build.
 - Notifications (spec H5): the root daemon cannot post them, so `PowerController.notify` keeps the
   last `Notice`s in `DaemonStatus.notices` and the app's `Notifier` posts the new ones
   (`DefaultsKey.lastNoticeDate`); the approval notice comes from the app's service state.
