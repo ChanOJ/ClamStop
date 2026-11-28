@@ -71,6 +71,8 @@ final class AppModel: ObservableObject {
     // Diagnostics tab (see AppModel+Diagnostics.swift)
     @Published var systemState: SystemSleepState?
     @Published var notificationAccess = NotificationAccess.unknown
+    /// While "Check Again" runs: how many checks show their result again. nil otherwise.
+    @Published var revealedChecks: Int?
     @Published var preparingReport = false
     @Published var reportMessage: String?
     // First run (see FirstRunView.swift)

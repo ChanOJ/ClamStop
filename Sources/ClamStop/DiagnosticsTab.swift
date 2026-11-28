@@ -12,9 +12,11 @@ struct DiagnosticsTab: View {
                 OptionRow(title: "Health check",
                           note: "What could stop ClamStop from working on this Mac.") {
                     Button("Check Again") { model.checkAgain() }
+                        .disabled(model.revealedChecks != nil)
                 }
-                ForEach(model.healthChecks) { check in
-                    HealthRow(model: model, check: check)
+                ForEach(Array(model.healthChecks.enumerated()), id: \.element.id) { index, check in
+                    HealthRow(model: model, check: check,
+                              pending: index >= model.revealedChecks ?? .max)
                 }
             }
             JournalSection(model: model)
@@ -85,15 +87,18 @@ private struct ReportSection: View {
 private struct HealthRow: View {
     @ObservedObject var model: AppModel
     let check: HealthCheck
+    /// Unticked for a moment by "Check Again". What follows the title keeps its room, so that the
+    /// window does not change size.
+    let pending: Bool
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             // One element for VoiceOver: the level, then what was found.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: symbol)
-                    .foregroundStyle(color)
+                Image(systemName: pending ? "circle" : symbol)
+                    .foregroundStyle(pending ? Color.secondary : color)
                     .frame(width: 18)
-                    .accessibilityLabel(spokenLevel)
+                    .accessibilityLabel(pending ? Text("Checking") : spokenLevel)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                     if check.level != .ok, let detail {
@@ -101,6 +106,7 @@ private struct HealthRow: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                            .opacity(pending ? 0 : 1)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,6 +114,8 @@ private struct HealthRow: View {
             .accessibilityElement(children: .combine)
             if check.level != .ok {
                 fix
+                    .opacity(pending ? 0 : 1)
+                    .disabled(pending)
             }
         }
     }

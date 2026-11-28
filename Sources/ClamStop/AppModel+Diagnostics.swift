@@ -51,10 +51,19 @@ extension AppModel {
         }
     }
 
+    /// The checks take no visible time: untick them all, then tick them again one at a time, so
+    /// that the click is seen to do something.
     func checkAgain() {
+        guard revealedChecks == nil else { return }
+        revealedChecks = 0
         refresh()
         Task {
             await readHealthFacts()
+            for count in 1...max(1, healthChecks.count) {
+                try? await Task.sleep(for: .milliseconds(100))
+                revealedChecks = count
+            }
+            revealedChecks = nil
             let failed = healthChecks.filter(\.failed).count
             VoiceOver.say(failed == 0 ? String(localized: "No problem found")
                 : String(localized: "Checks with a problem: \(failed)"))
