@@ -40,6 +40,19 @@ jobs:
             echo "VERSION=0.0.0" >> "$GITHUB_ENV"
           fi
 
+      # A tag can point to any commit: only publish what went through main.
+      - name: Check that the tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "::error::$GITHUB_REF_NAME is not a commit of main: not released."
+            exit 1
+          }
+
+      # Fails instead of silently resolving something else than Package.resolved.
+      - name: Resolve the pinned dependencies
+        run: swift package --force-resolved-versions resolve
+
       - name: Test
         run: scripts/test.sh
 
