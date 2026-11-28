@@ -201,12 +201,16 @@ final class AppModel: ObservableObject {
         Task {
             defer { statusRequestRunning = false }
             do {
-                self.status = try await client.status(timeout: timeout)
+                let answer = try await client.status(timeout: timeout)
+                // Switched off or unregistered meanwhile: this reply says nothing any more.
+                guard daemonService.status == .enabled else { return }
+                self.status = answer
                 self.serviceState = .running
                 self.awaitingFirstAnswer = false
                 self.updateServiceWait()
                 self.applyPendingFirstRun()
             } catch {
+                guard daemonService.status == .enabled else { return }
                 self.status = nil
                 self.serviceState = .notResponding
                 self.updateServiceWait()
