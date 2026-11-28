@@ -4,7 +4,8 @@
 // For manual testing, run it as root in a terminal:
 //   sudo ClamStopDaemon --foreground [--delay-seconds N] [--simulate-agent SECONDS]
 // (--simulate-agent: pretend an AI agent works for that long, to test keep-awake without hooks.)
-// Other commands: --restore-defaults (hibernatemode 3, cancel ClamStop wakes), --status.
+// Other commands: --restore-defaults (hibernatemode 3, cancel ClamStop wakes, delete its files),
+// --status.
 
 import Foundation
 import IOKit.ps

@@ -65,6 +65,12 @@ edition (sandbox), F+S = both. **Prio** M = first public release, 1 = next relea
 L = later or to be validated. **Tech** notes requirements: root (daemon), private API, hardware.
 "Seen in" names tools from the appendix that offer the feature.
 
+**Status on 2026-11-28** (`main` after v0.1.0): built, except A3, A6, A7, B6, C6, C8, C9, D3,
+D4, D5, F3, F4, G1, H6, I1 to I4 and J4 (not built), and A2 (screens off only), A4 (no re-sleep
+guard: a wake with the lid closed keeps the hibernation plan only), C1 (no custom or default
+duration, no left-click toggle) and C7 (no OpenCode), which are partly built. Struck-through
+items were dropped. Features to come are put to a vote in the repository's Discussions.
+
 ### A. Lid close (core)
 
 | ID | Feature | Ed. | Prio | Tech | Seen in |

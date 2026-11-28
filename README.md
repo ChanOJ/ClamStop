@@ -182,8 +182,7 @@ same hooks as the Cursor app is not documented.
 ## Install
 
 1. Download `ClamStop-<version>.dmg` from the
-   [latest release](https://github.com/ChanOJ/ClamStop/releases/latest). Pre-releases are
-   listed on the [releases page](https://github.com/ChanOJ/ClamStop/releases).
+   [latest release](https://github.com/ChanOJ/ClamStop/releases/latest).
 2. Optional: download the `.sha256` file next to it and check the download:
 
    ```bash
@@ -191,14 +190,14 @@ same hooks as the Cursor app is not documented.
    ```
 
 3. Open the DMG and drag **ClamStop** onto **Applications**. Eject the DMG.
-4. Open ClamStop from the Applications folder. If macOS blocks it, see
-   [Opening an unsigned build](#opening-an-unsigned-build).
+4. Open ClamStop from the Applications folder. Releases are signed and notarized, so macOS opens
+   them normally; for a build of your own, see [Opening an unsigned build](#opening-an-unsigned-build).
 5. [Allow the background service](#allow-the-background-service).
 
 ### Opening an unsigned build
 
-Release notes say whether a build is notarized. Releases signed with a Developer ID and
-notarized open normally. Builds that are not (your own builds, those of a fork) are blocked by
+Releases are signed with a Developer ID and notarized, and open normally. Builds that are not
+(your own builds, those of a fork) are blocked by
 Gatekeeper at first launch. Only bypass this for a DMG downloaded from this repository, or for a
 build of your own.
 
@@ -408,5 +407,5 @@ the app's menu).
 MIT, see [LICENSE](LICENSE).
 
 The AI agent keep-awake feature adapts ideas and rules from
-[clamshut](https://github.com/IshaanChamoli/clamshut) by Ishaan Chamoli (MIT): see
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[clamshut](https://github.com/IshaanChamoli/clamshut) by Ishaan Chamoli (MIT), and updates use
+[Sparkle](https://sparkle-project.org) (MIT): see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
