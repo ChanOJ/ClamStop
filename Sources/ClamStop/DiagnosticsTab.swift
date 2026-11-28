@@ -1,5 +1,5 @@
 import SwiftUI
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 
 /// Diagnostics: the health check (spec H4), what keeps the Mac awake (H2), the sleep journal (H3)

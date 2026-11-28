@@ -1,6 +1,7 @@
+@testable import ClamStopAppCore
+@testable import ClamStopShared
 import Foundation
 import Testing
-@testable import ClamStopShared
 
 private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 

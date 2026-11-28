@@ -11,9 +11,10 @@ paragraphs of `README.md` carry the same text: change both together.
 
 - SwiftPM package, built with `swift build` (no Xcode project). Targets:
   `ClamStop` (menu bar app, SwiftUI), `ClamStopDaemon` (root LaunchDaemon),
-  `ClamStopShared` (XPC protocol, identifiers, settings model), `ClamStopDiagnostics` (health
-  check and problem reports, app only), `ClamStopTests`. The daemon does not link
-  `ClamStopDiagnostics`: changes there leave its code unchanged.
+  `ClamStopShared` (what the daemon needs: XPC protocol, identifiers, settings model, power
+  logic), `ClamStopAppCore` (app-only logic, testable without the UI: health check, reports,
+  journal, hooks, screen dimming), `ClamStopTests`. The daemon does not link `ClamStopAppCore`:
+  changes there leave its code unchanged, so put app-only code there, not in `ClamStopShared`.
 - Identifiers: `Sources/ClamStopShared/Identifiers.swift`.
   App bundle id `io.github.chanoj.clamstop`; daemon label `io.github.chanoj.clamstop.daemon`;
   XPC Mach service `io.github.chanoj.clamstop.daemon.xpc`.
@@ -67,7 +68,7 @@ tried). Signing local builds with `SIGN_IDENTITY` (`docs/signing.md`) has not be
 
 After `scripts/build-app.sh`, compare the daemons first:
 `cmp dist/ClamStop.app/Contents/MacOS/ClamStopDaemon /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon`.
-Any change in `ClamStopShared` changes the daemon, even app-only logic.
+Any change in `ClamStopShared` changes the daemon.
 
 - Identical: quit the app, `ditto dist/ClamStop.app /Applications/ClamStop.app`,
   `open /Applications/ClamStop.app`. No approval needed.
@@ -191,7 +192,7 @@ branch from `origin/main`.
   assertions (they can hold titles or file names). Preview: `--preview-settings --awake
   --snapshot <png>`. Not verified in a sandboxed build.
 - Session end (spec C4) and lock on lid close (F2), 2026-11-28: app only (`SessionEnd`,
-  `LidLock` in `ClamStopDiagnostics`, which holds the app-only logic). The reminder is posted from
+  `LidLock` in `ClamStopAppCore`). The reminder is posted from
   the status poll; "+30 min" starts a new session through XPC. `ScreenLocker` calls the private
   `SACLockScreenImmediate` (`login.framework`, full edition only; falls back to
   `pmset displaysleepnow`). macOS asks the app to reopen when a notification is clicked: ignored

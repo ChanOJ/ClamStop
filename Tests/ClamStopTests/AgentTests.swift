@@ -1,6 +1,7 @@
+@testable import ClamStopAppCore
+@testable import ClamStopShared
 import Foundation
 import Testing
-@testable import ClamStopShared
 
 /// The agents beyond Claude Code and Codex. Hook inputs follow each agent's documentation
 /// (read 2026-11-28); none of these agents has been tried for real yet.

@@ -1,5 +1,5 @@
 import Foundation
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 
 /// Settings sent to the daemon as a whole `ClamStopSettings`, agent hooks, journal, menu actions

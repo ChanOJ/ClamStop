@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import ServiceManagement
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 import os
 

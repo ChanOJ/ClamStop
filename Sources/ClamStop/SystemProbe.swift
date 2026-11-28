@@ -1,6 +1,6 @@
 import Foundation
 import IOKit.pwr_mgt
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 
 /// What the health check and the diagnostics read from macOS, without root (spec H4).

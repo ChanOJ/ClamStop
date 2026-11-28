@@ -1,6 +1,6 @@
 import Foundation
 import IOKit.pwr_mgt
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 
 /// macOS's power assertions and the processes behind them (spec H2). No root needed.

@@ -2,7 +2,7 @@ import AppKit
 import Combine
 import SwiftUI
 import os
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 
 private let iconLogger = Logger(subsystem: ClamStopID.appBundleID, category: "icon")

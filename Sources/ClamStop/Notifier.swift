@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import UserNotifications
-import ClamStopDiagnostics
+import ClamStopAppCore
 import ClamStopShared
 import os
 

@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import ClamStopDiagnostics
+import ClamStopAppCore
 
 /// "What keeps my Mac awake?" (spec H2): ClamStop's reasons, the apps that hold sleep off, and
 /// macOS's own services folded away.

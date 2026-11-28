@@ -1,4 +1,4 @@
-import ClamStopDiagnostics
+import ClamStopAppCore
 import Foundation
 import Testing
 @testable import ClamStopShared

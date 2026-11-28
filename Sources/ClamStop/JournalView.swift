@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ClamStopAppCore
 import ClamStopShared
 
 /// The sleep journal (spec H3): what the Mac did, by day, newest first.
