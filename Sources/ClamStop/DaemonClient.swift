@@ -67,6 +67,11 @@ final class DaemonClient {
         proxy { _ in }?.appHeartbeat()
     }
 
+    /// The status without saying that the app runs (development aids).
+    func peekStatus() async throws -> DaemonStatus {
+        try await call(timeout: Self.startingTimeout) { $0.getStatus(reply: $1) }
+    }
+
     /// A screen other than the built-in one is connected (including one that sleeps).
     static var externalDisplayConnected: Bool {
         var count: UInt32 = 0

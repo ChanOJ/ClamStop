@@ -8,7 +8,7 @@ import PackageDescription
 //   without Sparkle (App Review rejects self-updating apps).
 let appStore = ProcessInfo.processInfo.environment["CLAMSTOP_EDITION"] == "appstore"
 
-var appDependencies: [Target.Dependency] = ["ClamStopShared"]
+var appDependencies: [Target.Dependency] = ["ClamStopShared", "ClamStopDiagnostics"]
 var packageDependencies: [Package.Dependency] = []
 var appSettings: [SwiftSetting] = []
 if appStore {
@@ -27,6 +27,8 @@ let package = Package(
     dependencies: packageDependencies,
     targets: [
         .target(name: "ClamStopShared"),
+        // Health check and problem reports (app only: the daemon does not link it).
+        .target(name: "ClamStopDiagnostics", dependencies: ["ClamStopShared"]),
         .executableTarget(
             name: "ClamStop",
             dependencies: appDependencies,
@@ -36,6 +38,6 @@ let package = Package(
             swiftSettings: appSettings
         ),
         .executableTarget(name: "ClamStopDaemon", dependencies: ["ClamStopShared"]),
-        .testTarget(name: "ClamStopTests", dependencies: ["ClamStopShared"]),
+        .testTarget(name: "ClamStopTests", dependencies: ["ClamStopShared", "ClamStopDiagnostics"]),
     ]
 )

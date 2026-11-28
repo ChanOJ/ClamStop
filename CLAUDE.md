@@ -11,7 +11,9 @@ paragraphs of `README.md` carry the same text: change both together.
 
 - SwiftPM package, built with `swift build` (no Xcode project). Targets:
   `ClamStop` (menu bar app, SwiftUI), `ClamStopDaemon` (root LaunchDaemon),
-  `ClamStopShared` (XPC protocol, identifiers, settings model), `ClamStopTests`.
+  `ClamStopShared` (XPC protocol, identifiers, settings model), `ClamStopDiagnostics` (health
+  check and problem reports, app only), `ClamStopTests`. The daemon does not link
+  `ClamStopDiagnostics`: changes there leave its code unchanged.
 - Identifiers: `Sources/ClamStopShared/Identifiers.swift`.
   App bundle id `io.github.chanoj.clamstop`; daemon label `io.github.chanoj.clamstop.daemon`;
   XPC Mach service `io.github.chanoj.clamstop.daemon.xpc`.
@@ -64,6 +66,11 @@ Any change in `ClamStopShared` changes the daemon, even app-only logic.
 
 - Identical: quit the app, `ditto dist/ClamStop.app /Applications/ClamStop.app`,
   `open /Applications/ClamStop.app`. No approval needed.
+- Same code, other bytes: a build from another folder changes the debug paths in the daemon.
+  When `otool -arch <arch> -tv` and the `uuid` load command match for both architectures, copy the
+  installed daemon into `dist/ClamStop.app/Contents/MacOS/`, sign the bundle again
+  (`codesign --force --sign - --identifier io.github.chanoj.clamstop dist/ClamStop.app`) and
+  install as for an identical daemon.
 - Different: same, with `open /Applications/ClamStop.app --args --reinstall-service` (always quit
   first: `open --args` passes nothing to a running app), then the user turns the switch on once
   (README "Updating an unsigned build"). The app registers a silent service again by itself
@@ -141,10 +148,10 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - Everything is free (no Pro tier, no license). Full edition: "Buy me a coffee" (`Links.donation`)
   in the About tab and at the bottom of General, "Donate…" in the menu; `Edition.current` (`Sources/ClamStop/Edition+Current.swift`)
   turns it off for a future Store build.
-- Settings window: five tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
-  tabs in `SettingsTabs.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with
+- Settings window: six tabs (`SettingsTab`, `SettingsRootView` in `SettingsView.swift`, the other
+  tabs in `SettingsTabs.swift` and `DiagnosticsTab.swift`), following the mockups (`Sources/ClamStop/Mockups`, render with
   `scripts/mockups.sh`). Only settings with real behavior are shown; others arrive with their feature.
-  Preview with `--preview-settings --tab general|sessions|rules|safety|about`
+  Preview with `--preview-settings --tab general|sessions|rules|safety|diagnostics|about`
   (+ `--snapshot`, `--show-help agent|history`, `--welcome 1|2|3 [agents]`, `--until`).
 - "Stay Awake" sessions from the menu (spec C1, C2): `PowerController.startSession(until:)`; an
   idle-sleep assertion while it runs, `disablesleep` with the lid closed within the agent guards
@@ -153,6 +160,12 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   that process (`DaemonService.appConnected`, `DispatchSource` exit) and `PowerController.appRunning`
   makes `decide` return `leaveAlone` while no app runs (also after a daemon start, until the app
   connects; not in `--foreground`). The agent hook never calls `appStatus`.
+- Diagnostics (spec H4, 2026-11-28): checks in `HealthCheck`, report text in `DiagnosticsReport`
+  (home folder as `~`, 60 000 characters at most for a GitHub issue), prefilled issue and e-mail in
+  `ProblemReport`; the app sends nothing itself and holds no secret (no SMTP, no GitHub token).
+  Reports by e-mail go to `Links.reportEmail`, an alias for ClamStop alone. `--export-diagnostics
+  <file>` writes the real report without telling the daemon that the app runs (installed copy
+  only: another build gets no XPC answer).
 - Notifications (spec H5): the root daemon cannot post them, so `PowerController.notify` keeps the
   last `Notice`s in `DaemonStatus.notices` and the app's `Notifier` posts the new ones
   (`DefaultsKey.lastNoticeDate`); the approval notice comes from the app's service state.

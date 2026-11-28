@@ -128,7 +128,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Development aids, for docs and reviews (no Screen Recording permission needed):
     /// - `--appearance light|dark`: force the appearance;
     /// - `--export-illustration file.png`: write `ApprovalIllustration` to a PNG and quit
-    ///   (README images); returns true then.
+    ///   (README images); returns true then;
+    /// - `--export-diagnostics file.txt`: write what "Copy Diagnostics" copies and quit; returns
+    ///   true then.
     private func runDevelopmentCommands() -> Bool {
         switch Self.argument(after: "--appearance") {
         case "light": NSApp.appearance = NSAppearance(named: .aqua)
@@ -162,6 +164,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             NSApp.terminate(nil)
+            return true
+        }
+        if let path = Self.argument(after: "--export-diagnostics") {
+            Task {
+                await model.readServiceOnce()
+                let text = await model.diagnosticsText()
+                do {
+                    try text.write(toFile: path, atomically: true, encoding: .utf8)
+                } catch {
+                    FileHandle.standardError.write(Data("cannot write \(path): \(error)\n".utf8))
+                }
+                NSApp.terminate(nil)
+            }
             return true
         }
         guard let path = Self.argument(after: "--export-illustration") else { return false }

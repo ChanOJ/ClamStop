@@ -24,7 +24,7 @@ struct SettingsMockupView: View {
                 case .safety:
                     safetySection
                     actionsSection
-                    journalSection
+                case .diagnostics: journalSection
                 case .about: Section { AboutView(model: model) }
                 }
             }
@@ -242,6 +242,13 @@ struct SettingsMockupView: View {
             OptionRow(title: "Diagnostics",
                       note: "Copies the service state and recent events, for support.") {
                 Button("Copy Diagnostics") {}
+            }
+            OptionRow(title: "Report a problem",
+                      note: "A GitHub issue or an e-mail that you read and send.") {
+                HStack {
+                    Button("Report on GitHub…") {}
+                    Button("Report by Email…") {}
+                }
             }
         }
     }

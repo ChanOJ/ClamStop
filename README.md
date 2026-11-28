@@ -18,7 +18,7 @@ Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
 ## Settings
 
-Everything is free. The settings window has five tabs (⌘ with the keys 1 to 5 of the top row, on any keyboard layout):
+Everything is free. The settings window has six tabs (⌘ with the keys 1 to 6 of the top row, on any keyboard layout):
 
 - **General**: what happens when you close the lid (sleep, or do what macOS does), the
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
@@ -34,8 +34,9 @@ Everything is free. The settings window has five tabs (⌘ with the keys 1 to 5 
   rule, the General tab applies. See [Rules](#rules).
 - **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
   (on by default), longest time (no limit by default), battery below a level (20 % by default).
-  An option hibernates at once when the lid closes on battery below a level. Then the
-  [sleep journal](#sleep-journal).
+  An option hibernates at once when the lid closes on battery below a level.
+- **Diagnostics**: the [health check](#health-check-and-problem-reports), the
+  [sleep journal](#sleep-journal) and problem reports.
 - **About**: version, links and credits.
 
 ### Screens
@@ -91,12 +92,32 @@ wake before hibernation stays silent.
 
 ### Sleep journal
 
-**Show…** in the Safety tab opens a window listing, day by day and newest first, when the lid
+**Show…** in the Diagnostics tab opens a window listing, day by day and newest first, when the lid
 closed and opened, when the Mac went to sleep, hibernated and woke (lid, keyboard, trackpad, power
 adapter...), and when it stayed awake with the lid closed, why, and why it stopped. Each line
 shows the battery level; the line that ends a sleep also shows how long it lasted, the battery
 used and whether the Mac hibernated. Brief wakes with the screen off are not listed. The journal
 covers the last 30 days and stays on this Mac.
+
+### Health check and problem reports
+
+The Diagnostics tab checks what could stop ClamStop from working: where the app is, the
+background service, a leftover macOS sleep setting or wake-up, notifications, AI agent hooks,
+opening at login and the menu bar icon. A check that fails says what to do.
+
+To report a problem:
+
+- **Report on GitHub…** copies the diagnostics and opens a new
+  [issue](https://github.com/ChanOJ/ClamStop/issues) to paste them into. It needs a GitHub
+  account, and issues are public.
+- **Report by Email…** prepares an e-mail, with the diagnostics attached in Mail, or copied to
+  paste in another mail app.
+- **Copy Diagnostics** only copies them.
+
+The diagnostics are plain text: versions, the Mac model, the checks, the settings (with the names
+of watched apps and commands), the last 50 journal events and ClamStop's log of the last hour
+(readable by administrator accounts only). The home folder is written `~`. ClamStop sends nothing
+by itself: you read the report and send it.
 
 ### AI agents
 

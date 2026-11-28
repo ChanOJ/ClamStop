@@ -147,7 +147,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | H1 | Menu bar icon with clear states (normal, staying awake, lid hold, paused), optional remaining time; can be hidden | F+S | M (exists) | | all |
 | H2 | "What keeps my Mac awake?": apps and processes holding sleep off now, and since when | F+S | 1 | `IOPMCopyAssertionsByProcess` | Sleep Expert (Sleep Inspector), LidSleepToggle (Awake Radar) |
 | H3 | Sleep journal: lid opened and closed, slept, woke (with reason), hibernated, battery used | F+S | M | Unified log + own records | Latch, LidSleepToggle, LidAwake (Vladimir-Podgornyi) |
-| H4 | Health check and "Copy diagnostics" for support (service state, settings, recent events) | F+S | 1 | | MacMiniMode |
+| H4 | Health check, "Copy diagnostics" and "Report a problem" (prefilled GitHub issue or e-mail, sent by the user) for support (service state, settings, recent events) | F+S | 1 | | MacMiniMode |
 | H5 | Notifications: session ended, safety stop and why, background service needs approval | F+S | M | | double-shot, Insomnio, clamshut |
 | H6 | Phone notifications through ntfy, Pushover or a webhook | F+S | L | Network | Lockpaw, LidSleepToggle, continuity-control, turnintoserver |
 
@@ -204,7 +204,8 @@ screen offers both directions instead of assuming one.
 - **Simple settings** (always visible): *When I close the lid* (picker), *Hibernate*
   (picker), *Show in the menu bar*, *Open at login*.
 - **More options** (tabs): Sessions (with the agent hooks, shortcuts and automation), Rules and
-  presets, Safety (with the low battery action and the journal). Full edition: a discreet "Buy me a coffee" link at the bottom of
+  presets, Safety (with the low battery action), Diagnostics (health check, sleep journal, problem
+  reports). Full edition: a discreet "Buy me a coffee" link at the bottom of
   the first tab, never a pop-up interrupting the user.
 - Every option has a one-line footnote in plain words and an ⓘ help popover with an example.
 
