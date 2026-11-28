@@ -110,8 +110,8 @@ To report a problem:
 - **Report on GitHub…** copies the diagnostics and opens a new
   [issue](https://github.com/ChanOJ/ClamStop/issues) to paste them into. It needs a GitHub
   account, and issues are public.
-- **Report by Email…** prepares an e-mail, with the diagnostics attached in Mail, or copied to
-  paste in another mail app.
+- **Report by Email…** prepares an e-mail, with the diagnostics attached when Apple Mail is the
+  default mail app, and written in the message otherwise (also copied, in case that app cuts it).
 - **Copy Diagnostics** only copies them.
 
 The diagnostics are plain text: versions, the Mac model, the checks, the settings (with the names

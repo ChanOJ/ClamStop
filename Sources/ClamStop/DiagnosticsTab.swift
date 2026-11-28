@@ -73,10 +73,13 @@ private struct ReportSection: View {
                 }
                 .disabled(model.preparingReport)
                 if let message = model.reportMessage {
+                    // Under "Copy Diagnostics", where the eye is.
                     Text(message)
                         .font(.footnote)
+                        .multilineTextAlignment(.trailing)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
         }

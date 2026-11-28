@@ -38,7 +38,7 @@ public struct DiagnosticsReport: Sendable {
 
     /// The whole report, with the home folder written `~`. Beyond the limits, the oldest log lines
     /// go first.
-    public func text(home: String) -> String {
+    public func text(home: String, characterLimit: Int = Self.characterLimit) -> String {
         var head = ["ClamStop diagnostics",
                     "Date: \(Self.format(date))",
                     "ClamStop: \(appVersion)",
@@ -96,14 +96,14 @@ public struct DiagnosticsReport: Sendable {
 
         let start = Self.redact(head.joined(separator: "\n"), home: home)
         var kept: [String] = []
-        var room = Self.characterLimit - start.count
+        var room = characterLimit - start.count
         for line in lines.reversed() {
             let clean = Self.redact(line, home: home)
             room -= clean.count + 1
             if room < 0 { break }
             kept.append(clean)
         }
-        return String(([start] + kept.reversed()).joined(separator: "\n").prefix(Self.characterLimit))
+        return String(([start] + kept.reversed()).joined(separator: "\n").prefix(characterLimit))
     }
 
     /// The home folder as `~`, and no user name in any other path under /Users.

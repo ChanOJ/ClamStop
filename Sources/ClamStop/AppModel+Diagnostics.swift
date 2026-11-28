@@ -83,22 +83,29 @@ extension AppModel {
     }
 
     func diagnosticsText() async -> String {
+        text(of: await diagnosticsReport())
+    }
+
+    private func text(of report: DiagnosticsReport, limit: Int = DiagnosticsReport.characterLimit) -> String {
+        report.text(home: FileManager.default.homeDirectoryForCurrentUser.path, characterLimit: limit)
+    }
+
+    private func diagnosticsReport() async -> DiagnosticsReport {
         await readHealthFacts()
         let events = serviceRunning ? try? await client.sleepLog() : nil
         let log = await SystemProbe.recentLog()
         return DiagnosticsReport(date: Date(), appVersion: appVersionAndBuild,
                                  macOSVersion: SystemProbe.macOSVersion, model: SystemProbe.hardwareModel,
                                  facts: healthFacts, events: events, log: log)
-            .text(home: FileManager.default.homeDirectoryForCurrentUser.path)
     }
 
     /// Collect the diagnostics (a few seconds, mostly the log), hand them over, say what happened.
-    private func withDiagnostics(_ use: @escaping (String) -> String) {
+    private func withDiagnostics(_ use: @escaping (DiagnosticsReport) -> String) {
         guard !preparingReport else { return }
         preparingReport = true
         reportMessage = nil
         Task {
-            let message = use(await diagnosticsText())
+            let message = use(await diagnosticsReport())
             preparingReport = false
             reportMessage = message
             VoiceOver.say(message)
@@ -111,15 +118,15 @@ extension AppModel {
     }
 
     func copyDiagnostics() {
-        withDiagnostics { [self] text in
-            copy(text)
+        withDiagnostics { [self] diagnostics in
+            copy(text(of: diagnostics))
             return String(localized: "Diagnostics copied.")
         }
     }
 
     func reportOnGitHub() {
-        withDiagnostics { [self] text in
-            copy(ProblemReport.gitHubBlock(text))
+        withDiagnostics { [self] diagnostics in
+            copy(ProblemReport.gitHubBlock(text(of: diagnostics)))
             guard let url = problemReport.gitHubIssue(repository: Links.sourceCode), NSWorkspace.shared.open(url) else {
                 return String(localized: "Diagnostics copied. The browser could not be opened: go to \(Links.sourceCode.absoluteString)/issues.")
             }
@@ -127,14 +134,15 @@ extension AppModel {
         }
     }
 
-    /// Mail takes the diagnostics as an attachment. Other mail apps get a `mailto:` link, which
-    /// cannot carry a file: the diagnostics are copied, to paste.
+    /// Apple Mail takes the diagnostics as an attachment. Other mail apps get a `mailto:` link,
+    /// which cannot carry a file: they are in the body, and copied too in case the app cuts it.
     func reportByEmail() {
-        withDiagnostics { [self] text in
+        withDiagnostics { [self] diagnostics in
             let report = problemReport
-            if Self.defaultMailAppIsAppleMail, let file = Self.writeAttachment(text),
+            let full = text(of: diagnostics)
+            if Self.defaultMailAppIsAppleMail, let file = Self.writeAttachment(full),
                let service = NSSharingService(named: .composeEmail) {
-                let items: [Any] = [report.mailBody(diagnosticsAttached: true), file]
+                let items: [Any] = [report.mailBody(diagnostics: nil), file]
                 if service.canPerform(withItems: items) {
                     service.recipients = [Links.reportEmail]
                     service.subject = report.subject
@@ -142,11 +150,13 @@ extension AppModel {
                     return String(localized: "Your e-mail is ready in Mail. Read it, then send it.")
                 }
             }
-            copy(text)
-            guard let url = report.mailtoURL(address: Links.reportEmail), NSWorkspace.shared.open(url) else {
+            copy(full)
+            let body = text(of: diagnostics, limit: ProblemReport.mailBodyLimit)
+            guard let url = report.mailtoURL(address: Links.reportEmail, diagnostics: body),
+                  NSWorkspace.shared.open(url) else {
                 return String(localized: "Diagnostics copied. No mail app opened: paste them into an e-mail to \(Links.reportEmail).")
             }
-            return String(localized: "Diagnostics copied. Paste them into the e-mail to \(Links.reportEmail) with ⌘V.")
+            return String(localized: "Your e-mail is ready. Read it, then send it. Diagnostics missing? Paste them with ⌘V.")
         }
     }
 

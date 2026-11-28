@@ -25,11 +25,13 @@ public struct ProblemReport: Sendable {
     }
 
     /// A new issue in `repository`, with the description to write and where to paste the
-    /// diagnostics (too long for an address). No label: setting one needs rights on the repository.
+    /// diagnostics (too long for an address). The instructions are a comment: shown while writing,
+    /// not in the published issue. No label: setting one needs rights on the repository.
     public func gitHubIssue(repository: URL) -> URL? {
         let body = (["### What happened?", "", "", "### What did you expect?", "", "", "### Environment"]
             + summary
-            + ["", "### Diagnostics", "Paste them here (⌘V). Read them first: this issue is public.", ""])
+            + ["", "### Diagnostics",
+               "<!-- Paste them below this line (⌘V). Read them first: this issue is public. -->", "", ""])
             .joined(separator: "\n")
         return Self.url(repository.appendingPathComponent("issues/new"), query: [("body", body)])
     }
@@ -39,17 +41,24 @@ public struct ProblemReport: Sendable {
         "<details><summary>Diagnostics</summary>\n\n~~~~text\n\(diagnostics)\n~~~~\n\n</details>\n"
     }
 
-    public func mailBody(diagnosticsAttached: Bool) -> String {
+    /// Diagnostics kept in the body of a `mailto:` link: mail apps get it as one long address.
+    public static let mailBodyLimit = 30_000
+
+    /// `diagnostics` nil when they are attached.
+    public func mailBody(diagnostics: String?) -> String {
         (["What happened?", "", "", "What did you expect?", "", ""]
             + summary
-            + ["", diagnosticsAttached ? "The diagnostics are attached." : "Paste the diagnostics here (⌘V):", ""])
+            + ["", diagnostics.map { "--- Diagnostics ---\n\($0)" } ?? "The diagnostics are attached.", ""])
             .joined(separator: "\n")
     }
 
-    /// For mail apps that cannot take an attachment from another app.
-    public func mailtoURL(address: String) -> URL? {
+    /// For mail apps that cannot take an attachment from another app: the diagnostics are in the
+    /// body.
+    public func mailtoURL(address: String, diagnostics: String) -> URL? {
         guard let base = URL(string: "mailto:\(address)") else { return nil }
-        return Self.url(base, query: [("subject", subject), ("body", mailBody(diagnosticsAttached: false))])
+        // Line breaks in a `mailto:` body are CR LF (RFC 6068).
+        let body = mailBody(diagnostics: diagnostics).replacingOccurrences(of: "\n", with: "\r\n")
+        return Self.url(base, query: [("subject", subject), ("body", body)])
     }
 
     /// Everything but unreserved characters percent-encoded: `+` and `&` would change meaning.

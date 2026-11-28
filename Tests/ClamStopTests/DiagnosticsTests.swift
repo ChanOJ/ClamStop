@@ -134,6 +134,10 @@ private func level(_ kind: HealthCheck.Kind, _ facts: HealthFacts) -> HealthChec
         #expect(text.count <= DiagnosticsReport.characterLimit)
         #expect(text.contains("line 300 "))
         #expect(!text.contains("line 1 x"))
+        let mail = report(log: .success(long)).text(home: "/Users/someone",
+                                                    characterLimit: ProblemReport.mailBodyLimit)
+        #expect(mail.count <= ProblemReport.mailBodyLimit)
+        #expect(mail.contains("line 300 "))
     }
 }
 
@@ -150,23 +154,24 @@ private func level(_ kind: HealthCheck.Kind, _ facts: HealthFacts) -> HealthChec
         #expect(url.absoluteString.hasPrefix("https://github.com/owner/name/issues/new?body="))
         let body = try #require(query(url, "body"))
         #expect(body.contains("Failed checks: service (problem)\n"))
-        #expect(body.contains("this issue is public"))
+        // Instructions only while writing: a comment is not shown in the published issue.
+        #expect(body.contains("<!-- Paste them below this line (⌘V). Read them first: this issue is public. -->"))
         #expect(query(url, "labels") == nil)
         // GitHub turns away addresses of about 8 000 characters.
         #expect(url.absoluteString.count < 2000)
     }
 
     @Test func mail() throws {
-        let url = try #require(report.mailtoURL(address: "bugs@example.org"))
+        let url = try #require(report.mailtoURL(address: "bugs@example.org", diagnostics: "one\ntwo"))
         #expect(url.absoluteString.hasPrefix("mailto:bugs@example.org?subject="))
         #expect(query(url, "subject") == "ClamStop 1.2.3: problem report")
-        #expect(query(url, "body")?.contains("Paste the diagnostics here") == true)
-        #expect(report.mailBody(diagnosticsAttached: true).contains("are attached"))
+        #expect(query(url, "body")?.contains("--- Diagnostics ---\r\none\r\ntwo\r\n") == true)
+        #expect(report.mailBody(diagnostics: nil).contains("are attached"))
     }
 
     @Test func reservedCharacters() throws {
         let odd = ProblemReport(appVersion: "1+2&3=4#5", macOSVersion: "27.2", model: "Mac", checks: [])
-        let url = try #require(odd.mailtoURL(address: "bugs@example.org"))
+        let url = try #require(odd.mailtoURL(address: "bugs@example.org", diagnostics: ""))
         #expect(!url.absoluteString.contains("1+2"))
         #expect(query(url, "subject") == "ClamStop 1+2&3=4#5: problem report")
     }
