@@ -31,7 +31,7 @@ struct StayAwakeTab: View {
             }
             Section {
                 OptionRow(title: "Stay awake while AI agents work",
-                          note: "Claude Code and Codex. Your Mac sleeps when they are all done.") {
+                          note: "Claude Code, Codex, Cursor and others. Your Mac sleeps when they are all done.") {
                     HStack(spacing: 6) {
                         HelpButton("About AI agents", isPresented: $model.showAgentHelp) { AgentHelpView() }
                         Toggle("Stay awake while AI agents work", isOn: setting(model, \.keepAwakeForAgents))
@@ -42,11 +42,21 @@ struct StayAwakeTab: View {
                 .disabled(!model.serviceRunning)
                 // Always there, so the hooks can be removed with the switch off too (spec I5).
                 OptionRow(title: "AI agent hooks", note: hooksNote) {
-                    if model.agentHooksInstalled {
-                        Button("Remove Hooks") { model.setAgentHooks(installed: false) }
-                    } else {
-                        Button("Install Hooks…") { model.confirmAgentHooks = true }
-                            .disabled(model.agentsFound.isEmpty)
+                    HStack {
+                        if model.agentHooksInstalled {
+                            Button("Remove Hooks") { model.setAgentHooks(installed: false) }
+                        }
+                        if !model.agentHooksInstalled || !model.agentsMissingHooks.isEmpty {
+                            Button("Install Hooks…") { model.confirmAgentHooks = true }
+                                .disabled(model.agentsFound.isEmpty)
+                        }
+                    }
+                }
+                ForEach(model.agentsFound, id: \.self) { agent in
+                    LabeledContent {
+                        Text(model.agentHookStates[agent] == .installed ? "Hook installed" : "No hook")
+                    } label: {
+                        Text(verbatim: agent.displayName)
                     }
                 }
                 if model.settings.keepAwakeForAgents, model.agentHooksInstalled, let line = agentActivityLine {
@@ -61,9 +71,9 @@ struct StayAwakeTab: View {
     }
 
     private var hooksNote: LocalizedStringKey {
-        if model.agentsFound.isEmpty { return "Claude Code and Codex were not found on this Mac." }
-        if model.agentHooksInstalled { return "Installed: Claude Code and Codex tell ClamStop when they work." }
-        return "Not installed: the agents need them to tell ClamStop when they work. You see the change first."
+        if model.agentsFound.isEmpty { return "No supported AI agent was found on this Mac." }
+        if model.agentsMissingHooks.isEmpty { return "Installed: your AI agents tell ClamStop when they work." }
+        return "The agents need them to tell ClamStop when they work. You see the change first."
     }
 
     private var agentActivityLine: String? {
@@ -179,8 +189,10 @@ struct AgentHelpView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("About AI agents")
                 .font(.headline)
-            Text("Close the lid while Claude Code or Codex is working: your Mac stays awake until the task ends, then goes to sleep as usual.")
-            Text("ClamStop adds a small hook to the agents’ settings (~/.claude/settings.json, ~/.codex/hooks.json): the agent tells ClamStop when a task starts and ends. ClamStop also checks that the agent process is still running and still busy, so a crashed agent does not keep your Mac awake.")
+            Text("Close the lid while an AI agent is working: your Mac stays awake until the task ends, then goes to sleep as usual.")
+            Text("Supported: \(AgentKind.allCases.map(\.displayName).formatted(.list(type: .and))).")
+            Text("With your agreement, ClamStop adds a small hook to each agent’s settings: the agent tells ClamStop when a task starts and ends. ClamStop also checks that the agent is still busy, so a crashed agent does not keep your Mac awake.")
+            Text("For Aider, add it under “Stay awake while these apps work”.")
             Text("The guards of the Safety tab still apply: low battery, heat, power adapter unplugged, longest time.")
             Text("Based on ideas from clamshut by Ishaan Chamoli (MIT license).")
                 .foregroundStyle(.secondary)

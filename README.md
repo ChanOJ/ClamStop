@@ -24,9 +24,9 @@ Everything is free. The settings window has five tabs:
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
   battery (sleep or not, and another delay), the menu bar icon,
   opening at login, and the background service.
-- **Stay Awake**: whether the screens sleep during Stay Awake; stay awake with the lid closed while AI agents work (install or remove the AI
-  agent hooks, see [AI agents](#ai-agents)), or while chosen apps and commands work, see
-  [Apps that work](#apps-that-work).
+- **Stay Awake**: whether the screens sleep during Stay Awake; stay awake with the lid closed
+  while AI agents work (install or remove the AI agent hooks, see [AI agents](#ai-agents)), or
+  while chosen apps and commands work, see [Apps that work](#apps-that-work).
 - **Rules**: "when these conditions are true, do this when the lid closes". Conditions: power
   adapter or battery, external screen plugged in or not, time of day and days of the week. Action:
   sleep (with its own hibernation delay), stay awake, or do what macOS does. The first matching
@@ -62,8 +62,8 @@ long as the rule applies, even with the lid open: the Mac does not sleep when id
 
 Choose apps or commands in the Stay Awake tab (the list is empty at first): ready-made entries for
 those found on this Mac among HandBrake, Final Cut Pro, Compressor, DaVinci Resolve, Premiere Pro,
-Blender, ffmpeg, Xcode builds, Ollama and LM Studio, any other app, or a command by the name of its
-program (`rsync`; a script runs as its interpreter, such as `python3`).
+Blender, Aider, ffmpeg, Xcode builds, Ollama and LM Studio, any other app, or a command by the name
+of its program (`rsync`) or of its Python or Node.js script.
 
 An app works while it, or one of the processes it started, keeps the Mac from sleeping on its own
 (a power assertion) or uses more than 5 % of a processor core. The Mac then stays awake, even with
@@ -88,11 +88,22 @@ wake before hibernation stays silent.
 
 ### AI agents
 
-When you install the hooks (Stay Awake tab, or the first-run assistant), ClamStop adds a hook to the agents' settings
-(`~/.claude/settings.json` for Claude Code, including the Code sessions of the Claude desktop
-app, and `~/.codex/hooks.json` for Codex). Your other hooks are kept, and a backup of each file
-is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling ClamStop, removes the
-hook.
+When you install the hooks (Stay Awake tab, or the first-run assistant), ClamStop adds a hook to
+the settings of each supported agent it finds. Your other hooks are kept, and a backup of each
+existing file is written next to it (`.clamstop-backup`). Remove Hooks, or uninstalling
+ClamStop, removes the hook. An agent installed later gets it with Install Hooks.
+
+| Agent | File changed |
+|---|---|
+| Claude Code, including the Code sessions of the Claude desktop app | `~/.claude/settings.json` |
+| Codex | `~/.codex/hooks.json` |
+| Gemini CLI | `~/.gemini/settings.json` |
+| Antigravity (command line and app) | `~/.gemini/config/hooks.json` |
+| Cursor | `~/.cursor/hooks.json` |
+| GitHub Copilot CLI | `~/.copilot/hooks/clamstop.json` (a file of ClamStop's own) |
+
+Aider has no hook for the start of a task: add it under *Stay awake while these apps work*, so
+that your Mac stays awake while it uses the processor. OpenCode is not supported yet.
 
 The agent runs the hook when a task starts and ends; the hook passes the event to ClamStop's
 background service. While a task runs, the service sets `pmset disablesleep 1`, the only setting
@@ -101,12 +112,15 @@ soon as no task runs. To avoid keeping the Mac awake for nothing, the service al
 15 seconds and only while a task runs, that the agent process still exists and is still busy
 (its transcript is written, or it or its child processes use the CPU, for example during a long
 build). A task counts as finished 90 seconds after the agent's turn ends, or after 30 minutes
-without any sign of work.
+without any sign of work. The Cursor and Antigravity apps are always busy: for them, only the
+hooks and the transcript count.
 
 The guards of the Safety tab apply: by default the Mac only stays awake for agents on power
 adapter, and sleeps when it gets hot. On battery (guard turned off), it sleeps below 20 %.
 
-Codex support follows the hook format Codex documents; it has not been tested with Codex yet.
+Only Claude Code has been tested for real. The other agents follow the hook formats they
+document (read on 2026-11-28). Whether the Cursor command line tool (`cursor-agent`) runs the
+same hooks as the Cursor app is not documented.
 
 ## Install
 
@@ -245,7 +259,7 @@ sudo /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon --restore-defaults
    ```
 
    Then remove the ClamStop entries (commands containing `ClamStop` and `--agent-hook`) from the
-   `hooks` of `~/.claude/settings.json` and `~/.codex/hooks.json`.
+   files listed in [AI agents](#ai-agents).
 
 4. Delete the files of the background service:
 

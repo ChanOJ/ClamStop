@@ -2,15 +2,20 @@ import Foundation
 import ClamStopShared
 
 /// Runs as an AI agent hook (`ClamStop --agent-hook claude`): reads the event the agent writes
-/// on standard input, adds the agent's process ID, sends it to the daemon and exits. Prints
-/// nothing (Claude Code adds a UserPromptSubmit hook's output to the conversation) and always
-/// exits 0 within about 2 s, so that a missing daemon never slows down or breaks the agent.
+/// on standard input, adds the agent's process ID, sends it to the daemon and exits. Prints only
+/// what the agent expects (nothing for Claude Code, which adds a UserPromptSubmit hook's output
+/// to the conversation) and always exits 0 within about 2 s, so that a missing daemon never slows
+/// down or breaks the agent.
 enum AgentHook {
     static let timeout: TimeInterval = 2
 
-    static func run(agent: AgentKind) {
+    static func run(agent: AgentKind, event: String?) {
         let input = FileHandle.standardInput.readDataToEndOfFile().prefix(1_000_000)
-        guard var message = AgentHookMessage.fromHookInput(Data(input), agent: agent) else { return }
+        // First of all: some agents expect an answer, whatever happens next.
+        if let reply = AgentHookMessage.hookReply(agent: agent, event: event) {
+            FileHandle.standardOutput.write(Data(reply.utf8))
+        }
+        guard var message = AgentHookMessage.fromHookInput(Data(input), agent: agent, event: event) else { return }
         if let process = ProcessTable.agentAncestor(of: getppid(), kind: agent) {
             message.agentPID = process.pid
             message.agentStartMicros = process.startMicros

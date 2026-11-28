@@ -33,7 +33,7 @@ struct SettingsRootView: View {
         .confirmationDialog("Install the AI agent hooks?", isPresented: $model.confirmAgentHooks) {
             Button("Install Hooks") { model.setAgentHooks(installed: true) }
         } message: {
-            Text("ClamStop adds one hook to \(model.agentHookFiles.formatted(.list(type: .and))), so the agents tell it when a task starts and ends. Your other settings stay as they are, and a backup copy is kept next to each file.")
+            Text("ClamStop adds its hook to \(model.agentHookFiles.formatted(.list(type: .and))), so the agents tell it when a task starts and ends. Your other settings stay as they are, and a backup copy is kept next to each existing file.")
         }
         .alert("ClamStop", isPresented: Binding(
             get: { model.errorMessage != nil },

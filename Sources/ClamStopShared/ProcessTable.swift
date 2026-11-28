@@ -10,6 +10,16 @@ public enum ProcessTable {
         /// Start time, microseconds since 1970.
         public var startMicros: UInt64
         public var path: String
+        /// For an interpreter (node, python...), the script or module it runs.
+        public var script: String?
+
+        public init(pid: Int32, parent: Int32, startMicros: UInt64, path: String, script: String? = nil) {
+            self.pid = pid
+            self.parent = parent
+            self.startMicros = startMicros
+            self.path = path
+            self.script = script
+        }
     }
 
     public static func entry(_ pid: Int32) -> Entry? {
@@ -21,16 +31,85 @@ public enum ProcessTable {
         let path = length > 0 ? String(cString: buffer) : ""
         return Entry(pid: pid, parent: Int32(info.pbi_ppid),
                      startMicros: UInt64(info.pbi_start_tvsec) * 1_000_000 + UInt64(info.pbi_start_tvusec),
-                     path: path)
+                     path: path,
+                     script: isInterpreter(path) ? arguments(pid).flatMap(script(inArguments:)) : nil)
     }
 
-    /// Executable names of the supported agents (Claude Code's native binary, Codex's).
-    public static func agentKind(ofExecutable path: String) -> AgentKind? {
-        switch (path as NSString).lastPathComponent {
+    /// The agent a process is, from its executable's name or from the script an interpreter runs
+    /// (agents installed with npm run as `node`).
+    public static func agentKind(ofExecutable path: String, script: String? = nil) -> AgentKind? {
+        if let kind = agentKind(named: (path as NSString).lastPathComponent) { return kind }
+        guard let script else { return nil }
+        let name = ((script as NSString).lastPathComponent as NSString).deletingPathExtension
+        if let kind = agentKind(named: name) { return kind }
+        let packages: [(String, AgentKind)] = [
+            ("/@anthropic-ai/claude-code/", .claude), ("/@openai/codex/", .codex),
+            ("/@google/gemini-cli/", .gemini), ("/@github/copilot/", .copilot), ("/cursor-agent/", .cursor),
+        ]
+        return packages.first { script.contains($0.0) }?.1
+    }
+
+    /// Command line tools only: the Cursor and Antigravity apps are always busy, so their
+    /// sessions are followed without a process.
+    private static func agentKind(named name: String) -> AgentKind? {
+        switch name {
         case "claude": .claude
         case "codex": .codex
+        case "gemini": .gemini
+        case "agy": .antigravity
+        case "cursor-agent": .cursor
+        case "copilot": .copilot
         default: nil
         }
+    }
+
+    public static func isInterpreter(_ path: String) -> Bool {
+        let name = (path as NSString).lastPathComponent.lowercased()
+        return ["node", "bun", "deno"].contains(name) || name.hasPrefix("python")
+    }
+
+    /// The script (or Python module) in an interpreter's arguments, the first one being the
+    /// interpreter itself; nil for inline code or an interactive session.
+    public static func script(inArguments arguments: [String]) -> String? {
+        var rest = arguments.dropFirst()
+        while let argument = rest.popFirst() {
+            switch argument {
+            case "-m": return rest.first
+            case "-c", "-e", "--eval", "-p", "--print": return nil
+            case "-r", "--require", "--import", "--loader", "-W", "-X": _ = rest.popFirst()
+            case "run": continue  // `deno run`, `bun run`
+            default:
+                if !argument.hasPrefix("-") { return argument }
+            }
+        }
+        return nil
+    }
+
+    /// A process's arguments (`KERN_PROCARGS2`); nil for another user's process (except as root).
+    public static func arguments(_ pid: Int32) -> [String]? {
+        var name: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&name, 3, nil, &size, nil, 0) == 0, size > 0 else { return nil }
+        var buffer = [UInt8](repeating: 0, count: size)
+        guard sysctl(&name, 3, &buffer, &size, nil, 0) == 0 else { return nil }
+        return parseArguments(Array(buffer.prefix(size)))
+    }
+
+    /// Layout: argument count, executable path, padding zeros, then each argument, zero-ended
+    /// (the environment follows).
+    static func parseArguments(_ buffer: [UInt8]) -> [String]? {
+        guard buffer.count > 4 else { return nil }
+        let count = Int(buffer.withUnsafeBytes { $0.loadUnaligned(as: Int32.self) })
+        var index = 4
+        while index < buffer.count, buffer[index] != 0 { index += 1 }
+        while index < buffer.count, buffer[index] == 0 { index += 1 }
+        var result: [String] = []
+        while result.count < count, index < buffer.count {
+            let end = buffer[index...].firstIndex(of: 0) ?? buffer.count
+            result.append(String(decoding: buffer[index..<end], as: UTF8.self))
+            index = end + 1
+        }
+        return result
     }
 
     /// Walk up from `pid` to the nearest agent process of the given kind (the hook runs under a
@@ -40,7 +119,7 @@ public enum ProcessTable {
         var current = pid
         for _ in 0..<20 {
             guard let e = entry(current), e.pid > 1 else { return nil }
-            if agentKind(ofExecutable: e.path) == kind { return e }
+            if agentKind(ofExecutable: e.path, script: e.script) == kind { return e }
             current = e.parent
         }
         return nil
