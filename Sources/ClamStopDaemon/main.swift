@@ -28,6 +28,7 @@ final class DaemonService {
         controller = PowerController(settings: settings, effects: power, store: store, log: Log.info)
         controller.delayOverride = delayOverride
         controller.record = { [unowned self] kind, detail in self.record(kind, detail) }
+        controller.onAppUnresponsive = { [unowned self] in self.updateApps() }
         agents.onChange = { [unowned self] working in
             self.controller.agentsChanged(working: working)
             self.controller.reevaluate(trigger: "agent check")
@@ -77,6 +78,14 @@ final class DaemonService {
         Log.info("app process \(pid) connected")
         controller.setAppRunning(true)
         updateApps()
+    }
+
+    /// Only the watched app counts. A stuck app that reports again makes ClamStop active.
+    func appHeartbeat(pid: pid_t) {
+        guard pid > 0, pid == appPID else { return }
+        let wasRunning = controller.appRunning
+        controller.appHeartbeat()
+        if controller.appRunning != wasRunning { updateApps() }
     }
 
     func externalDisplayChanged(_ connected: Bool) {

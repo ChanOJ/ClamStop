@@ -203,6 +203,11 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   `JournalView`, a resizable window (`--preview-settings --journal --snapshot <png>`). Wake reasons
   come from `IOPMrootDomain` "Wake Reason" / "Wake Type" (`WakeReason`, matched on strings seen on
   this Mac). Entries written by earlier versions show without a reason.
+- Watchdog (spec E4, 2026-11-28): the app calls `appHeartbeat` every 5 s from a common-modes
+  timer (and holds off App Nap while sleep is held off); 6 silent checks while awake make the
+  daemon act as if the app quit, until it reports again. Quit, crash or stuck with the lid closed:
+  the daemon requests sleep unless there is a screen and the power adapter. Freeze the app to test:
+  `kill -STOP <pid>`, then `kill -CONT <pid>`.
 - External display names, if a rule needs them: IOKit `IOMobileFramebufferShim` >
   `DisplayAttributes` > `ProductAttributes` > `ProductName` (Apple Silicon; "DELL S2719DM" here,
   same name as in System Settings). Wi-Fi condition dropped: the SSID is `<redacted>` without Location Services

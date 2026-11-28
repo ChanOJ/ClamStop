@@ -81,6 +81,8 @@ final class AppModel: ObservableObject {
     }
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
+    private var heartbeatTimer: Timer?
+    private var awakeActivity: NSObjectProtocol?
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
     private var lastRegistrationRetry = Date.distantPast
@@ -123,10 +125,39 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.tick() }
         }
         timer?.tolerance = 0.2
+        startHeartbeat()
         // A screen plugged in or unplugged: tell the daemon at once (rules, spec D1).
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
+        }
+    }
+
+    /// Tell the service that the app still works (spec E4). Straight from the main thread, in
+    /// the common run loop modes, so that an open menu or alert does not silence it; a stuck
+    /// main thread does.
+    private func startHeartbeat() {
+        let timer = Timer(timeInterval: PowerController.heartbeatCheckInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.beat() }
+        }
+        timer.tolerance = 1
+        RunLoop.main.add(timer, forMode: .common)
+        heartbeatTimer = timer
+    }
+
+    private func beat() {
+        guard serviceState == .running else { return }
+        client.heartbeat()
+        // While ClamStop holds sleep off, macOS must not slow the app down (App Nap).
+        let holding = status.map {
+            $0.sleepDisabledByClamStop == true || $0.keepingAwakeForAgents == true || $0.session != nil
+        } ?? false
+        if holding, awakeActivity == nil {
+            awakeActivity = ProcessInfo.processInfo.beginActivity(
+                options: .userInitiatedAllowingIdleSystemSleep, reason: "Reporting while staying awake")
+        } else if !holding, let activity = awakeActivity {
+            ProcessInfo.processInfo.endActivity(activity)
+            awakeActivity = nil
         }
     }
 

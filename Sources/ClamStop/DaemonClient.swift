@@ -62,6 +62,11 @@ final class DaemonClient {
         return try await call(timeout: timeout) { $0.appStatus(externalDisplay: externalDisplay, reply: $1) }
     }
 
+    /// The watchdog's heartbeat, sent at once from the main thread: no answer expected.
+    func heartbeat() {
+        proxy { _ in }?.appHeartbeat()
+    }
+
     /// A screen other than the built-in one is connected (including one that sleeps).
     static var externalDisplayConnected: Bool {
         var count: UInt32 = 0

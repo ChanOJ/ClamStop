@@ -80,6 +80,15 @@ public final class PowerController {
     public static let sessionCheckInterval: TimeInterval = 60
     /// Wait after a power or display change before acting: a screen can drop for a moment.
     public static let settleDelay: TimeInterval = 5
+    /// Watchdog (spec E4): while ClamStop holds sleep off, the app must report this often...
+    public static let heartbeatCheckInterval: TimeInterval = 5
+    /// ... and counts as stuck after this many checks without a report (30 s awake). Checks are
+    /// counted, not the time elapsed: time asleep or in dark wakes never counts.
+    public static let missedHeartbeatLimit = 6
+    /// Called when the watchdog gives up on the app.
+    public var onAppUnresponsive: () -> Void = {}
+    /// The app runs but stopped reporting; its next report makes ClamStop active again.
+    public private(set) var appUnresponsive = false
     /// Local time of the rules' time windows.
     public var calendar = Calendar.autoupdatingCurrent
 
@@ -103,6 +112,11 @@ public final class PowerController {
     private var keepAwakeReleased = false
     private var sessionGeneration = 0
     private var conditionsGeneration = 0
+    /// The running app has reported at least once (never in the daemon's foreground test mode).
+    private var appReports = false
+    private var heartbeatSinceCheck = false
+    private var missedHeartbeats = 0
+    private var watchdogArmed = false
     private var ruleClockGeneration = 0
     /// What was decided for the lid closed now; nil when the lid is open, after a sleep, or when
     /// the user changed something since. A change of conditions only puts the Mac to sleep (or
@@ -374,6 +388,7 @@ public final class PowerController {
     }
 
     private func keepAwakeEnd(_ decision: LidDecision, trigger: String) -> KeepAwakeEnd {
+        if !appRunning { return appUnresponsive ? .appUnresponsive : .appQuit }
         guard case .sleep(_, let reason) = decision else { return .changed }
         if let guardReason = Notice.Reason(decisionReason: reason),
            let end = KeepAwakeEnd(rawValue: guardReason.rawValue) {
@@ -418,6 +433,7 @@ public final class PowerController {
         keepAwakeSince = effects.now()
         keepAwakeGeneration += 1
         updateSleepPrevention()
+        armWatchdog()
         record(.keptAwakeForAgents, keepAwakeReason.rawValue)
         let hours = settings.maxAwakeHours
         guard hours > 0 else { return }
@@ -463,6 +479,7 @@ public final class PowerController {
         }
         state.sleepDisabledByClamStop = true
         store.save(state)
+        armWatchdog()
         let why = session != nil ? "stay awake session" : agentsWorking ? "agents working"
             : appsWorking ? "apps working" : "rule"
         log("disablesleep 1 (\(why))")
@@ -601,15 +618,82 @@ public final class PowerController {
 
     /// The app started (true) or its process ended (false): quit, crash, logout.
     public func setAppRunning(_ running: Bool) {
+        setAppRunning(running, unresponsive: false)
+    }
+
+    private func setAppRunning(_ running: Bool, unresponsive: Bool) {
+        appUnresponsive = unresponsive
+        if !running { appReports = false }
         guard running != appRunning else { return }
         appRunning = running
         log(running ? "app running: ClamStop active" : "app not running: ClamStop inactive")
+        // Letting go with the lid closed: macOS may not notice the lid again, so ask for the
+        // sleep it would have chosen alone (it stays awake with a screen and the power adapter).
+        var mustSleep = false
         if !running {
+            let context = effects.powerContext()
+            mustSleep = awake && effects.isLidClosed()
+                && (state.sleepDisabledByClamStop == true || keepingAwakeForAgents)
+                && !(context.externalDisplay && context.onPowerAdapter)
             endSession(reason: "app quit")
             if state.phase == .awaitingHibernation { endHibernationPlan() }
         }
         lidClosedDecision = nil
         reevaluate(trigger: running ? "app started" : "app quit")
+        if mustSleep {
+            log("lid closed without the app: sleeping")
+            effects.requestSleep(after: 0)
+        }
+    }
+
+    // MARK: Watchdog (spec E4)
+
+    /// The app reports that it works (every few seconds).
+    public func appHeartbeat() {
+        appReports = true
+        heartbeatSinceCheck = true
+        missedHeartbeats = 0
+        if appUnresponsive {
+            log("app responding again")
+            setAppRunning(true)
+            appReports = true
+        }
+        armWatchdog()
+    }
+
+    /// Something an app that stopped responding could not turn off.
+    private var holdsSleepOff: Bool {
+        state.sleepDisabledByClamStop == true || keepingAwakeForAgents || session != nil
+    }
+
+    private func armWatchdog() {
+        guard !watchdogArmed, appRunning, appReports, holdsSleepOff else { return }
+        watchdogArmed = true
+        missedHeartbeats = 0
+        scheduleWatchdogCheck()
+    }
+
+    private func scheduleWatchdogCheck() {
+        effects.run(at: effects.now().addingTimeInterval(Self.heartbeatCheckInterval)) { [weak self] in
+            self?.checkHeartbeat()
+        }
+    }
+
+    private func checkHeartbeat() {
+        guard appRunning, appReports, holdsSleepOff else {
+            watchdogArmed = false
+            return
+        }
+        missedHeartbeats = heartbeatSinceCheck || !awake ? 0 : missedHeartbeats + 1
+        heartbeatSinceCheck = false
+        guard missedHeartbeats >= Self.missedHeartbeatLimit else {
+            scheduleWatchdogCheck()
+            return
+        }
+        watchdogArmed = false
+        log("app not responding for \(Int(Self.heartbeatCheckInterval) * Self.missedHeartbeatLimit) s")
+        setAppRunning(false, unresponsive: true)
+        onAppUnresponsive()
     }
 
     // MARK: Stay awake sessions (spec C1, C2)
@@ -630,6 +714,7 @@ public final class PowerController {
             }
         }
         scheduleSessionCheck(generation: generation)
+        armWatchdog()
         // Awake with the lid closed (external display and keyboard): hold it from now on.
         if effects.isLidClosed(), !keepingAwakeForAgents, decide() == .keepAwake {
             keepAwakeReleased = false
