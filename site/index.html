@@ -60,7 +60,7 @@
         <a class="button primary" href="https://github.com/ChanOJ/ClamStop/releases/latest">Download ClamStop</a>
         <a class="button" href="https://github.com/ChanOJ/ClamStop">View the source</a>
       </p>
-      <p class="fine">macOS 14 Sonoma or later · Apple silicon and Intel · Open source (MIT)</p>
+      <p class="fine">macOS 14 Sonoma or later · Apple silicon and Intel · Open source (MIT) · Early version (0.x)</p>
     </section>
 
     <section id="why" class="why wrap" aria-labelledby="why-title">
@@ -72,10 +72,10 @@
       </div>
       <figure class="shot shot-settings">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="img/settings-en-dark.png" width="440" height="482">
-    <img src="img/settings-en-light.png" width="440" height="482" alt="ClamStop settings window: sleep when the lid closes is on, hibernation after 5 minutes, audio paused while the Mac sleeps, icon shown in the menu bar, and the background service running.">
+    <source media="(prefers-color-scheme: dark)" srcset="img/settings-en-dark.png" width="640" height="1008">
+    <img src="img/settings-en-light.png" width="640" height="1008" alt="ClamStop settings window, General tab: on battery, closing the lid puts the Mac to sleep even with a screen plugged in, and it hibernates after 15 minutes; menu bar, login, update and background service settings below.">
   </picture>
-  <figcaption>All the settings fit in one window.</figcaption>
+  <figcaption>The General tab: what happens when you close the lid.</figcaption>
 </figure>
     </section>
 
@@ -85,8 +85,11 @@
         <li><h3>Sleep in clamshell mode too</h3><p>Closing the lid puts the Mac to sleep, whether or not a display, keyboard or power adapter is connected.</p></li>
         <li><h3>Apps cannot keep it awake</h3><p>The Mac sleeps on lid close even while audio plays or an app asks it to stay awake. No app is force-quit.</p></li>
         <li><h3>Delayed hibernation</h3><p>Hibernate immediately, after 5 minutes to 4 hours of sleep, or never. A hibernating Mac draws no power from its battery.</p></li>
-        <li><h3>Fully customizable</h3><p>Pick the hibernation delay, show or hide the menu bar icon, and decide whether ClamStop opens at login.</p></li>
-        <li><h3>In the menu bar</h3><p>Check the status and switch ClamStop on or off in two clicks.</p></li>
+        <li><h3>Stay Awake when you need it</h3><p>From the menu bar, keep the Mac awake for 5 minutes to 8 hours, until a time of day, or until you turn it off, even with the lid closed.</p></li>
+        <li><h3>AI agents and apps that work</h3><p>The Mac can stay awake while AI agents or chosen apps work, then sleep. Hooks exist for Claude Code, Codex, Gemini CLI, Antigravity, Cursor and GitHub Copilot CLI; only Claude Code has been tested so far.</p></li>
+        <li><h3>Rules</h3><p>Decide what closing the lid does according to the power adapter, an external screen and the time of day.</p></li>
+        <li><h3>Safety guards</h3><p>Staying awake with the lid closed ends when the Mac gets very hot, when the power adapter is unplugged or when the battery runs low.</p></li>
+        <li><h3>Sleep journal and health check</h3><p>See when the Mac slept, woke and why, what keeps it awake, and what could stop ClamStop from working.</p></li>
         <li><h3>Private and open</h3><p>No account, no tracking, no data collected. The whole source code is public, under the MIT license.</p></li>
       </ul>
       
@@ -94,7 +97,7 @@
 
     <section id="editions" class="wrap" aria-labelledby="editions-title">
       <h2 id="editions-title">Two editions</h2>
-      <p>Choose the edition that suits the way you use your MacBook.</p>
+      <p>ClamStop is available now. ClamStop Light, a smaller edition for the Mac App Store, comes later.</p>
       <ul class="cards editions">
         <li>
           <h3>ClamStop</h3>
@@ -114,7 +117,7 @@
             <li>No hibernation</li>
             <li>Installed and updated by the App Store</li>
           </ul>
-          <p class="actions"><a class="button primary" href="https://www.apple.com/app-store/">Get it on the Mac App Store</a></p>
+          <p class="actions fine">Coming later</p>
         </li>
       </ul>
     </section>
@@ -141,27 +144,16 @@
       <ul>
         <li>macOS 14 Sonoma or later.</li>
         <li>A MacBook with Apple silicon or an Intel processor.</li>
-        <li>Administrator rights, once, to allow the background service that handles hibernation.</li>
+        <li>Administrator rights, once, to allow the background service.</li>
       </ul>
       <h3>Steps</h3>
       <ol class="steps">
         <li>Download the <code>.dmg</code> file from the <a href="https://github.com/ChanOJ/ClamStop/releases/latest">latest release</a>.</li>
         <li>Open it and drag <strong>ClamStop</strong> onto <strong>Applications</strong>, then eject it.</li>
-        <li>Open ClamStop from the Applications folder. If macOS blocks it, follow the steps below.</li>
+        <li>Open ClamStop from the Applications folder.</li>
         <li>Allow the background service: in <strong>System Settings &gt; General &gt; Login Items &amp; Extensions</strong> (<strong>Login Items</strong> on macOS 14), turn the <strong>ClamStop</strong> switch on and authenticate.</li>
       </ol>
-      <details id="gatekeeper">
-        <summary>macOS blocks the app at first launch</summary>
-        <p>Builds that are not notarized by Apple are blocked at first launch; the release notes say whether a build is notarized. Only bypass this for a file downloaded from the ClamStop repository.</p>
-        <p>On macOS 15 Sequoia or later:</p>
-        <ol>
-          <li>Open ClamStop once. In the warning, click <strong>Done</strong> (not “Move to Trash”).</li>
-          <li>Open <strong>System Settings &gt; Privacy &amp; Security</strong> and scroll down to <strong>Security</strong>.</li>
-          <li>Next to the message about ClamStop, click <strong>Open Anyway</strong>, then authenticate.</li>
-          <li>Confirm with <strong>Open Anyway</strong> in the last dialog.</li>
-        </ol>
-        <p>On macOS 14 Sonoma, Control-click the app in Finder, choose <strong>Open</strong>, then <strong>Open</strong> again.</p>
-      </details>
+      <p>Releases are signed with an Apple Developer ID and notarized by Apple. ClamStop updates itself: it asks whether to check automatically, and the menu offers “Check for Updates…”.</p>
       <p class="actions">
         <a class="button primary" href="https://github.com/ChanOJ/ClamStop/releases/latest">Download ClamStop</a>
         <a href="https://github.com/ChanOJ/ClamStop/releases">All releases and checksums</a>
@@ -172,7 +164,7 @@
       <h2 id="faq-title">Questions and answers</h2>
       <details>
         <summary>What if I want to work with the lid closed?</summary>
-        <p>Turn “Sleep When the Lid Closes” off in the ClamStop menu: the lid then works as usual, clamshell mode included. Turn it on again whenever you like.</p>
+        <p>Choose “Stay Awake” in the ClamStop menu for as long as you need, add a rule for your desk setup, or set “When I close the lid” to “Do what macOS does” in the settings.</p>
       </details>
       <details>
         <summary>How do I wake the Mac?</summary>
@@ -180,11 +172,11 @@
       </details>
       <details>
         <summary>Why does ClamStop need a background service?</summary>
-        <p>Putting the Mac into hibernation requires administrator rights. A small background service does that part, and macOS asks you to approve it. It restores the default sleep settings when ClamStop is uninstalled.</p>
+        <p>Putting the Mac into hibernation, or keeping it awake with the lid closed, requires administrator rights. A small background service does that part, and macOS asks you to approve it. It restores the default sleep settings when ClamStop is uninstalled.</p>
       </details>
       <details>
         <summary>Does ClamStop collect any data?</summary>
-        <p>No. The app has no account, no analytics and no network code: nothing leaves your Mac.</p>
+        <p>No. The app has no account and no analytics. By itself it only connects to GitHub to look for updates, if you allow automatic checks or choose “Check for Updates…”, and sends nothing about your Mac. A problem report leaves your Mac only if you send it yourself.</p>
         <p>This website sets no cookies, runs no scripts and loads nothing from third parties. It is hosted on GitHub Pages, and GitHub logs the IP addresses of visitors for security purposes.</p>
       </details>
       <details>
@@ -205,7 +197,7 @@
 
   <footer>
     <div class="wrap">
-      <p><a href="https://github.com/ChanOJ/ClamStop">Source code</a> · <a href="https://github.com/ChanOJ/ClamStop/issues">Report a problem</a> · <a href="https://github.com/ChanOJ/ClamStop/blob/main/LICENSE">MIT license</a> · <a href="#support">Support</a></p>
+      <p><a href="https://github.com/ChanOJ/ClamStop">Source code</a> · <a href="https://github.com/ChanOJ/ClamStop/issues">Report a problem</a> · <a href="https://github.com/ChanOJ/ClamStop/blob/main/LICENSE">MIT license</a> · <a href="#support">Support</a> · <a href="help/">Help</a></p>
       <p>No cookies, no trackers.</p>
       <p>ClamStop is an independent project, not affiliated with Apple Inc. Mac, MacBook, macOS and App Store are trademarks of Apple Inc.</p>
     </div>

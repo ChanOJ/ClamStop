@@ -12,13 +12,16 @@ The deployment is off until the app is ready. To publish:
    `PUBLISH_SITE`, value `true`.
 3. **Actions > Pages > Run workflow** on `main`.
 
-Before that, check that a stable release exists (the download buttons point to it) and set the
-direct App Store link of ClamStop Light in `APP_STORE_URL` (`build.py`).
+Before that, check that a stable release exists (the download buttons point to it). ClamStop Light
+is announced as coming later: add its App Store link in `template.html` once it is published.
+
+`help/` is the page behind **Help** in the app, the only web link of the Mac App Store edition:
+no download or donation link there, and no mention of another edition.
 
 ## Edit
 
-Change `template.html`, `404.html`, `strings/*.json` or `../style.css`, then build and commit the
-generated files too:
+Change `template.html`, `help.html`, `404.html`, `strings/*.json` or `../style.css`, then build
+and commit the generated files too:
 
 ```bash
 python3 site/src/build.py
@@ -48,12 +51,12 @@ python3 -m http.server 3417 --directory site
 | `og-<code>.png` | Open Graph image: `swift site/src/og-image.swift <code>` |
 | `icon-*.png` | Extracted from `Resources/AppIcon.icns` by the build: do not edit |
 
-Settings screenshots come from the installed app (no Screen Recording permission needed). The
-app keeps running after writing the file: stop it afterwards. For the light appearance on a Mac
-in dark mode:
+Settings screenshots come from a local build with demonstration settings (no Screen Recording
+permission needed). The app keeps running after writing the file: stop it afterwards. Once per
+appearance (`light`, `dark`):
 
 ```bash
-/Applications/ClamStop.app/Contents/MacOS/ClamStop -NSRequiresAquaSystemAppearance YES --snapshot /tmp/settings-en-light.png
+dist/ClamStop.app/Contents/MacOS/ClamStop --preview-settings --on-battery --tab general --appearance light --snapshot /tmp/settings-en-light.png
 ```
 
 After a change of icon, run the Open Graph script again (the icons themselves are refreshed by

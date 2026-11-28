@@ -5,8 +5,8 @@ Standard library only. Run from anywhere:
 
     python3 site/src/build.py
 
-Reads site/src/{template,404}.html and site/src/strings/<lang>.json, writes site/index.html,
-site/<lang>/index.html, site/404.html, site/sitemap.xml, site/robots.txt, and extracts the
+Reads site/src/{template,help,404}.html and site/src/strings/<lang>.json, writes site/index.html,
+site/<lang>/index.html, the help page of each language (help/), site/404.html, site/sitemap.xml, site/robots.txt, and extracts the
 icons of site/img/ from Resources/AppIcon.icns. See site/src/README.md.
 """
 
@@ -25,8 +25,6 @@ BASE_URL = "https://chanoj.github.io/ClamStop/"
 BASE_PATH = "/ClamStop/"
 REPO_URL = "https://github.com/ChanOJ/ClamStop"
 DEFAULT_LANG = "en"
-# Placeholder: replace with the direct link to ClamStop Light once it is on the Mac App Store.
-APP_STORE_URL = "https://www.apple.com/app-store/"
 # Stripe Payment Link, same as Links.donation in the app and the link in README.md.
 DONATION_URL = "https://buy.stripe.com/9B600j1BrbSu2p9bCL6J200"
 
@@ -165,6 +163,7 @@ def sitemap(languages):
             for other in languages
         )
         urls.append(f"  <url>\n    <loc>{BASE_URL}{page_path(code)}</loc>{alternates}\n  </url>")
+    urls += [f"  <url>\n    <loc>{BASE_URL}{page_path(code)}help/</loc>\n  </url>" for code in languages]
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
@@ -187,6 +186,7 @@ def main():
     extract_icons()
     template = (SRC / "template.html").read_text(encoding="utf-8")
     not_found = (SRC / "404.html").read_text(encoding="utf-8")
+    help_template = (SRC / "help.html").read_text(encoding="utf-8")
 
     written = []
     for lang, strings in languages.items():
@@ -202,7 +202,6 @@ def main():
             "@repo": REPO_URL,
             "@download": f"{REPO_URL}/releases/latest",
             "@releases": f"{REPO_URL}/releases",
-            "@app_store": APP_STORE_URL,
             "@donation": DONATION_URL,
             "@url": f"{BASE_URL}{page_path(lang)}",
             "@og_image": f"{BASE_URL}{og_image}",
@@ -229,6 +228,8 @@ def main():
         if lang == DEFAULT_LANG:
             pages["404.html"] = error_page
 
+        help_page = render(help_template, strings, variables, used)
+
         unused = set(strings) - used
         if unused:
             fail(f"{lang}: unused strings {', '.join(sorted(unused))}")
@@ -238,6 +239,10 @@ def main():
         for name, content in pages.items():
             written.append((content, folder))
             (folder / name).write_text(content, encoding="utf-8")
+        help_folder = folder / "help"
+        help_folder.mkdir(exist_ok=True)
+        written.append((help_page, help_folder))
+        (help_folder / "index.html").write_text(help_page, encoding="utf-8")
         print(f"{lang}: {(folder / 'index.html').relative_to(SITE.parent)}")
 
     (SITE / "sitemap.xml").write_text(sitemap(languages), encoding="utf-8")

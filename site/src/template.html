@@ -78,8 +78,11 @@
         <li><h3>{{features.clamshell.title}}</h3><p>{{features.clamshell.text}}</p></li>
         <li><h3>{{features.assertions.title}}</h3><p>{{features.assertions.text}}</p></li>
         <li><h3>{{features.hibernate.title}}</h3><p>{{features.hibernate.text}}</p></li>
-        <li><h3>{{features.custom.title}}</h3><p>{{features.custom.text}}</p></li>
-        <li><h3>{{features.menu.title}}</h3><p>{{features.menu.text}}</p></li>
+        <li><h3>{{features.awake.title}}</h3><p>{{features.awake.text}}</p></li>
+        <li><h3>{{features.agents.title}}</h3><p>{{features.agents.text}}</p></li>
+        <li><h3>{{features.rules.title}}</h3><p>{{features.rules.text}}</p></li>
+        <li><h3>{{features.safety.title}}</h3><p>{{features.safety.text}}</p></li>
+        <li><h3>{{features.journal.title}}</h3><p>{{features.journal.text}}</p></li>
         <li><h3>{{features.private.title}}</h3><p>{{features.private.text}}</p></li>
       </ul>
       {{@shot_menu}}
@@ -107,7 +110,7 @@
             <li>{{editions.light.hibernation}}</li>
             <li>{{editions.light.source}}</li>
           </ul>
-          <p class="actions"><a class="button primary" href="{{@app_store}}">{{editions.light.download}}</a></p>
+          <p class="actions fine">{{editions.light.soon}}</p>
         </li>
       </ul>
     </section>
@@ -143,18 +146,7 @@
         <li>{{install.open}}</li>
         <li>{{install.service_html}}</li>
       </ol>
-      <details id="gatekeeper">
-        <summary>{{gatekeeper.title}}</summary>
-        <p>{{gatekeeper.why}}</p>
-        <p>{{gatekeeper.recent}}</p>
-        <ol>
-          <li>{{gatekeeper.step1_html}}</li>
-          <li>{{gatekeeper.step2_html}}</li>
-          <li>{{gatekeeper.step3_html}}</li>
-          <li>{{gatekeeper.step4_html}}</li>
-        </ol>
-        <p>{{gatekeeper.sonoma_html}}</p>
-      </details>
+      <p>{{install.signed}} {{install.updates}}</p>
       <p class="actions">
         <a class="button primary" href="{{@download}}">{{hero.download}}</a>
         <a href="{{@releases}}">{{install.all_releases}}</a>
@@ -198,7 +190,7 @@
 
   <footer>
     <div class="wrap">
-      <p><a href="{{@repo}}">{{footer.repo}}</a> · <a href="{{@repo}}/issues">{{footer.issues}}</a> · <a href="{{@repo}}/blob/main/LICENSE">{{footer.license}}</a> · <a href="#support">{{footer.support}}</a></p>
+      <p><a href="{{@repo}}">{{footer.repo}}</a> · <a href="{{@repo}}/issues">{{footer.issues}}</a> · <a href="{{@repo}}/blob/main/LICENSE">{{footer.license}}</a> · <a href="#support">{{footer.support}}</a> · <a href="help/">{{footer.help}}</a></p>
       <p>{{footer.privacy}}</p>
       <p>{{footer.apple}}</p>
     </div>

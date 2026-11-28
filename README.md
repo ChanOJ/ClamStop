@@ -16,6 +16,8 @@ stops drawing power, which spares the battery. Waking up then takes a few second
 
 Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
+Website: <https://chanoj.github.io/ClamStop/>.
+
 ## Settings
 
 Everything is free. The settings window has six tabs (⌘ with the keys 1 to 6 of the top row, on any keyboard layout):
