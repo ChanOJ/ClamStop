@@ -31,6 +31,15 @@ public struct WatchedApp: Codable, Equatable, Sendable, Identifiable {
         if let bundlePath, !bundlePath.isEmpty, path.hasPrefix(bundlePath + "/") { return true }
         return executables.contains((path as NSString).lastPathComponent)
     }
+
+    /// Also a command written in a script language, seen as its interpreter (`aider` runs as
+    /// Python).
+    public func matches(_ process: ProcessTable.Entry) -> Bool {
+        if matches(executablePath: process.path) { return true }
+        guard let script = process.script else { return false }
+        let name = (script as NSString).lastPathComponent
+        return executables.contains(name) || executables.contains((name as NSString).deletingPathExtension)
+    }
 }
 
 /// State of one watched app, shown in the app.
@@ -116,7 +125,7 @@ public final class AppTracker {
         for app in apps {
             var record = records[app.id] ?? Record()
             // The app's own processes and everything they started.
-            var stack = processes.filter { app.matches(executablePath: $0.path) }
+            var stack = processes.filter { app.matches($0) }
             var members: [ProcessTable.Entry] = []
             var seen: Set<Int32> = []
             while let process = stack.popLast() {

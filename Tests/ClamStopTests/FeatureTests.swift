@@ -515,30 +515,29 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
     }
 
     @Test func mergeKeepsOtherHooksAndIsIdempotent() {
-        let once = AgentHookSettings.merging(into: userSettings, command: command, events: events)
-        let twice = AgentHookSettings.merging(into: once, command: command, events: events)
+        let once = AgentHookSettings.merging(into: userSettings, events: events) { _ in command }
+        let twice = AgentHookSettings.merging(into: once, events: events) { _ in command }
         #expect(commands(twice, "Stop") == ["say done", command])
         #expect(commands(twice, "UserPromptSubmit") == [command])
         #expect(commands(twice, "PreToolUse") == ["check.sh"])
         #expect(twice["model"] as? String == "opus")
-        #expect(AgentHookSettings.state(of: twice, command: command, events: events) == .installed)
+        #expect(AgentHookSettings.state(of: twice, events: events) { _ in command } == .installed)
     }
 
     @Test func removeRestoresTheUserHooks() {
-        let merged = AgentHookSettings.merging(into: userSettings, command: command, events: events)
+        let merged = AgentHookSettings.merging(into: userSettings, events: events) { _ in command }
         let removed = AgentHookSettings.removing(from: merged)
         #expect(NSDictionary(dictionary: removed).isEqual(to: userSettings))
-        #expect(AgentHookSettings.state(of: removed, command: command, events: events) == .notInstalled)
-        let empty = AgentHookSettings.removing(from: AgentHookSettings.merging(into: [:], command: command, events: events))
+        #expect(AgentHookSettings.state(of: removed, events: events) { _ in command } == .notInstalled)
+        let empty = AgentHookSettings.removing(from: AgentHookSettings.merging(into: [:], events: events) { _ in command })
         #expect(empty.isEmpty)
     }
 
     @Test func otherCopyIsOutdatedAndReplaced() {
         let old = AgentHookSettings.merging(into: userSettings,
-                                            command: #""/Users/x/Downloads/ClamStop.app/Contents/MacOS/ClamStop" --agent-hook claude"#,
-                                            events: events)
-        #expect(AgentHookSettings.state(of: old, command: command, events: events) == .outdated)
-        let fixed = AgentHookSettings.merging(into: old, command: command, events: events)
+                                            events: events) { _ in #""/Users/x/Downloads/ClamStop.app/Contents/MacOS/ClamStop" --agent-hook claude"# }
+        #expect(AgentHookSettings.state(of: old, events: events) { _ in command } == .outdated)
+        let fixed = AgentHookSettings.merging(into: old, events: events) { _ in command }
         #expect(commands(fixed, "Stop") == ["say done", command])
     }
 }

@@ -1,15 +1,16 @@
 import AppKit
 import ClamStopShared
 
-/// Entry point. `ClamStop --agent-hook claude|codex` is the command written into the AI agents'
-/// hook settings: it forwards the hook event to the daemon and exits, without starting the app.
+/// Entry point. `ClamStop --agent-hook <agent> [event]` is the command written into the AI
+/// agents' hook settings: it forwards the hook event to the daemon and exits, without starting
+/// the app.
 @main
 enum Main {
     static func main() {
         let args = CommandLine.arguments
         if let i = args.firstIndex(of: "--agent-hook") {
             let agent = i + 1 < args.count ? AgentKind(rawValue: args[i + 1]) : nil
-            AgentHook.run(agent: agent ?? .claude)
+            AgentHook.run(agent: agent ?? .claude, event: i + 2 < args.count ? args[i + 2] : nil)
             exit(0)  // never fail or block the agent
         }
         guard args.contains(where: developmentRunFlags.contains) else {

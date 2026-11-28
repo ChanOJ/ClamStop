@@ -53,7 +53,7 @@ paragraphs of `README.md` carry the same text: change both together.
 
 `hibernatemode 3`, cancel any wake the daemon scheduled, `disablesleep 0` only if ClamStop set it
 (`PersistedState.sleepDisabledByClamStop`), and remove the agent hooks from
-`~/.claude/settings.json` and `~/.codex/hooks.json` (done by the app). Do not write `standbydelay*` (no effect
+every file of `AgentHookTarget.all` (done by the app). Do not write `standbydelay*` (no effect
 on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelaylow 10800`.
 
 ## Installing a new build on this Mac (ad-hoc signed)
@@ -182,7 +182,7 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   stays zero for them on macOS 27.2.
 - Agent keep-awake, adapted from `IshaanChamoli/clamshut` (MIT, notice in
   `THIRD_PARTY_NOTICES.md`, copied into the app; never reuse its Noto Emoji logo): the app writes
-  a hook (`ClamStop.app/Contents/MacOS/ClamStop --agent-hook claude|codex`, entry point
+  a hook (`ClamStop.app/Contents/MacOS/ClamStop --agent-hook <agent> [event]`, entry point
   `Sources/ClamStop/Main.swift`) into the agents' settings; the hook sends the event to the
   daemon over XPC (same binary, so it passes the cdhash requirement). `AgentTracker` keeps one
   lease per session; while a lease exists the daemon probes every 15 s (libproc: process alive,
@@ -192,6 +192,13 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - Hook stdout is added to Claude's context on UserPromptSubmit: the hook prints nothing and
   always exits 0. Process anchor: the nearest ancestor named `claude`/`codex`, never the outermost
   (the Claude desktop app, "Claude", hosts Code sessions and is always busy).
+- Other agents (spec C7, 2026-11-28): `AgentHookTarget.all` (file, layout, events) and
+  `AgentHookMessage.fromHookInput` / `hookReply` translate each agent's names to Claude Code's.
+  Gemini CLI, Antigravity, Cursor, Copilot CLI follow their documentation only (none tried).
+  Agents run by node are found by their script (`KERN_PROCARGS2`); the Cursor and Antigravity
+  apps are not process anchors (always busy). Cursor `subagentStart` is not hooked (a wrong reply
+  blocks the subagent). Aider: watched command (matched by script name). OpenCode: not yet, its
+  plugin event names were not found. A scheduled task checks the agents' documentation monthly.
 - External display names, if a rule needs them: IOKit `IOMobileFramebufferShim` >
   `DisplayAttributes` > `ProductAttributes` > `ProductName` (Apple Silicon; "DELL S2719DM" here,
   same name as in System Settings). Wi-Fi condition dropped: the SSID is `<redacted>` without Location Services

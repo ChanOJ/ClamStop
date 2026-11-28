@@ -88,7 +88,7 @@ enum KnownApps {
     }
 
     private static func commands(_ name: String) -> [String] {
-        ["/opt/homebrew/bin/", "/usr/local/bin/"].map { $0 + name }
+        ["/opt/homebrew/bin/", "/usr/local/bin/", NSHomeDirectory() + "/.local/bin/"].map { $0 + name }
     }
 
     private static let candidates: [Candidate] = [
@@ -99,6 +99,8 @@ enum KnownApps {
         Candidate(name: "DaVinci Resolve", appName: "DaVinci Resolve"),
         Candidate(name: "Premiere Pro", appName: "Adobe Premiere Pro"),
         Candidate(name: "Blender", appName: "Blender"),
+        // An AI agent without a hook for the start of a task: followed like any command.
+        Candidate(name: "Aider", executables: ["aider"], commandFiles: commands("aider")),
         Candidate(name: "ffmpeg", executables: ["ffmpeg"], commandFiles: commands("ffmpeg")),
         Candidate(name: "Xcode Builds", executables: ["xcodebuild", "SWBBuildService", "XCBBuildService", "swift-build"],
                   commandFiles: ["/Applications/Xcode.app", "/Library/Developer/CommandLineTools/usr/bin/swift-build"]),

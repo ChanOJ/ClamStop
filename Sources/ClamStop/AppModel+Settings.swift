@@ -290,7 +290,7 @@ extension AppModel {
                 self?.ruleDraft = Rule(power: .battery, time: TimeWindow(start: 22 * 60, end: 7 * 60), action: .stayAwake)
             }
         }
-        agentHookStates = [.claude: .installed, .codex: .notFound]
+        agentHookStates = [.claude: .installed, .cursor: .notInstalled]
         let now = Date()
         sleepLog = [
             SleepEvent(date: now - 86_400 * 2, kind: .sleep, batteryPercent: 91),
@@ -305,7 +305,7 @@ extension AppModel {
 
     func refreshAgentHooks() {
         var states: [AgentKind: AgentHookSettings.State] = [:]
-        for target in AgentHookInstaller.targets() {
+        for target in AgentHookTarget.all {
             states[target.agent] = AgentHookInstaller.state(target)
         }
         if states != agentHookStates { agentHookStates = states }
@@ -314,7 +314,7 @@ extension AppModel {
     /// Hooks pointing to another copy of ClamStop (the app moved or was replaced): fix them.
     func updateOutdatedAgentHooks() {
         guard Bundle.main.bundleURL.pathExtension == "app" else { return }
-        for target in AgentHookInstaller.targets() where AgentHookInstaller.state(target) == .outdated {
+        for target in AgentHookTarget.all where AgentHookInstaller.state(target) == .outdated {
             try? AgentHookInstaller.install(target)
         }
     }
@@ -327,26 +327,35 @@ extension AppModel {
         AgentKind.allCases.filter { (agentHookStates[$0] ?? .notFound) != .notFound }
     }
 
-    /// Files changed by installing the hooks, for the confirmation shown first (spec I5).
-    var agentHookFiles: [String] {
-        AgentHookInstaller.targets()
-            .filter { (agentHookStates[$0.agent] ?? .notFound) != .notFound }
-            .map { $0.file.path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~") }
+    /// Agents on this Mac that do not have the hook yet.
+    var agentsMissingHooks: [AgentKind] {
+        agentsFound.filter { agentHookStates[$0] != .installed }
     }
 
-    /// Add (or remove) ClamStop's hook in every agent found on this Mac.
+    /// Files changed by installing the hooks, for the confirmation shown first (spec I5).
+    var agentHookFiles: [String] {
+        let missing = Set(agentsMissingHooks)
+        return AgentHookTarget.all.filter { missing.contains($0.agent) }.map { "~/" + $0.file }
+    }
+
+    /// Add ClamStop's hook to every agent found on this Mac, or remove it from every agent.
     func setAgentHooks(installed: Bool) {
         guard !Self.previewSettings else { return }
-        do {
-            for target in AgentHookInstaller.targets() where AgentHookInstaller.state(target) != .notFound {
-                if installed {
-                    try AgentHookInstaller.install(target)
-                } else {
+        var failure: Error?
+        // One agent's unreadable settings do not stop the others.
+        for target in AgentHookTarget.all {
+            do {
+                if !installed {
                     try AgentHookInstaller.uninstall(target)
+                } else if AgentHookInstaller.state(target) != .notFound {
+                    try AgentHookInstaller.install(target)
                 }
+            } catch {
+                failure = error
             }
-        } catch {
-            errorMessage = String(localized: "The AI agent settings could not be changed: \(error.localizedDescription)")
+        }
+        if let failure {
+            errorMessage = String(localized: "The AI agent settings could not be changed: \(failure.localizedDescription)")
         }
         refreshAgentHooks()
     }

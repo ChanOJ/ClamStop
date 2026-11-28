@@ -4,55 +4,45 @@ import ClamStopShared
 /// Adds ClamStop's hook to the AI agents' settings, and removes it. Approach adapted from
 /// clamshut (https://github.com/IshaanChamoli/clamshut, MIT, see THIRD_PARTY_NOTICES.md): merge,
 /// never replace; keep a backup; idempotent; absolute paths; other hooks are left untouched.
-///
-/// - Claude Code: `~/.claude/settings.json` (applies to the CLI and to the Claude desktop app's
-///   Code sessions).
-/// - Codex: `~/.codex/hooks.json` (same layout).
+/// Which files and events: `AgentHookTarget.all`.
 enum AgentHookInstaller {
-    static let claudeEvents = ["UserPromptSubmit", "Stop", "StopFailure", "SubagentStart", "SubagentStop", "SessionEnd"]
-    static let codexEvents = ["UserPromptSubmit", "Stop", "SubagentStart", "SubagentStop", "SessionEnd"]
-
-    struct Target {
-        let agent: AgentKind
-        let folder: URL
-        let file: URL
-        let events: [String]
-    }
-
-    static func targets(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [Target] {
-        [
-            Target(agent: .claude, folder: home.appendingPathComponent(".claude"),
-                   file: home.appendingPathComponent(".claude/settings.json"), events: claudeEvents),
-            Target(agent: .codex, folder: home.appendingPathComponent(".codex"),
-                   file: home.appendingPathComponent(".codex/hooks.json"), events: codexEvents),
-        ]
-    }
-
     typealias State = AgentHookSettings.State
 
-    static func command(agent: AgentKind, executable: String = Bundle.main.executablePath ?? "") -> String {
-        "\"\(executable)\" --agent-hook \(agent.rawValue)"
+    private static var executable: String { Bundle.main.executablePath ?? "" }
+
+    private static func url(_ path: String) -> URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(path)
     }
 
     // MARK: Files
 
-    static func state(_ target: Target) -> State {
-        guard FileManager.default.fileExists(atPath: target.folder.path) else { return .notFound }
-        guard let settings = read(target.file) else { return .notInstalled }
-        return AgentHookSettings.state(of: settings, command: command(agent: target.agent), events: target.events)
+    static func state(_ target: AgentHookTarget) -> State {
+        guard target.isFound(exists: { FileManager.default.fileExists(atPath: url($0).path) }) else { return .notFound }
+        guard let settings = read(url(target.file)) else { return .notInstalled }
+        return AgentHookSettings.state(of: settings, layout: target.layout, events: target.events) {
+            target.command(executable: executable, event: $0)
+        }
     }
 
-    static func install(_ target: Target) throws {
-        let settings = read(target.file) ?? [:]
-        try backUp(target.file)
-        try write(AgentHookSettings.merging(into: settings, command: command(agent: target.agent), events: target.events), to: target.file)
+    static func install(_ target: AgentHookTarget) throws {
+        let file = url(target.file)
+        let settings = read(file) ?? [:]
+        try backUp(file)
+        try write(AgentHookSettings.merging(into: settings, layout: target.layout, events: target.events) {
+            target.command(executable: executable, event: $0)
+        }, to: file)
     }
 
-    static func uninstall(_ target: Target) throws {
-        guard let settings = read(target.file) else { return }
-        let cleaned = AgentHookSettings.removing(from: settings)
+    static func uninstall(_ target: AgentHookTarget) throws {
+        let file = url(target.file)
+        guard let settings = read(file) else { return }
+        let cleaned = AgentHookSettings.removing(from: settings, layout: target.layout)
         guard !NSDictionary(dictionary: cleaned).isEqual(to: settings) else { return }
-        try write(cleaned, to: target.file)
+        if target.layout == .ownFile, AgentHookSettings.isEmpty(cleaned) {
+            try FileManager.default.removeItem(at: file)
+        } else {
+            try write(cleaned, to: file)
+        }
     }
 
     /// nil when missing; throws nothing on a malformed file but returns nil, and `install`

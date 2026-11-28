@@ -10,11 +10,19 @@ import Foundation
 public enum AgentKind: String, Codable, Sendable, CaseIterable {
     case claude
     case codex
+    case gemini
+    case antigravity
+    case cursor
+    case copilot
 
     public var displayName: String {
         switch self {
         case .claude: "Claude Code"
         case .codex: "Codex"
+        case .gemini: "Gemini CLI"
+        case .antigravity: "Antigravity"
+        case .cursor: "Cursor"
+        case .copilot: "GitHub Copilot CLI"
         }
     }
 }
@@ -41,13 +49,44 @@ public struct AgentHookMessage: Codable, Equatable, Sendable {
         self.agentStartMicros = agentStartMicros
     }
 
-    /// Parse the JSON an agent writes on the hook's standard input.
-    public static func fromHookInput(_ data: Data, agent: AgentKind) -> AgentHookMessage? {
+    /// Parse the JSON an agent writes on the hook's standard input. Each agent has its own event
+    /// and field names: events are translated to Claude Code's (`UserPromptSubmit`, `Stop`,
+    /// `SessionEnd`...), the ones `AgentTracker` understands.
+    /// - Parameter event: the event name given on the command line, for the agents that do not
+    ///   write it in the JSON (Antigravity, GitHub Copilot CLI).
+    public static func fromHookInput(_ data: Data, agent: AgentKind, event: String? = nil) -> AgentHookMessage? {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let event = object["hook_event_name"] as? String,
-              let session = object["session_id"] as? String, !session.isEmpty else { return nil }
-        return AgentHookMessage(agent: agent, event: event, sessionID: session,
-                                transcriptPath: object["transcript_path"] as? String)
+              let name = event ?? object["hook_event_name"] as? String else { return nil }
+        func text(_ keys: String...) -> String? {
+            keys.lazy.compactMap { object[$0] as? String }.first { !$0.isEmpty }
+        }
+        // Cursor's `conversation_id` is on every event, `session_id` only on some.
+        guard let session = text("conversation_id", "session_id", "sessionId", "conversationId") else { return nil }
+        // Antigravity's loop ended while background work goes on: not the end of the task.
+        if agent == .antigravity, name == "Stop", object["fullyIdle"] as? Bool == false { return nil }
+        return AgentHookMessage(agent: agent, event: commonEventName(name), sessionID: session,
+                                transcriptPath: text("transcript_path", "transcriptPath"))
+    }
+
+    static func commonEventName(_ name: String) -> String {
+        switch name {
+        case "BeforeAgent", "beforeSubmitPrompt", "userPromptSubmitted", "PreInvocation": "UserPromptSubmit"
+        case "AfterAgent", "stop", "agentStop": "Stop"
+        case "sessionEnd": "SessionEnd"
+        default: name
+        }
+    }
+
+    /// What the hook must print on standard output so that the agent carries on unchanged;
+    /// nil = nothing (Claude Code would add it to the conversation).
+    public static func hookReply(agent: AgentKind, event: String?) -> String? {
+        switch agent {
+        case .claude, .codex: nil
+        case .gemini, .copilot: "{}"
+        case .cursor: #"{"continue":true}"#  // `beforeSubmitPrompt` can block a prompt
+        // `Stop` requires a decision; any value but "continue" lets the agent stop.
+        case .antigravity: event == "Stop" ? #"{"decision":"stop"}"# : "{}"
+        }
     }
 }
 

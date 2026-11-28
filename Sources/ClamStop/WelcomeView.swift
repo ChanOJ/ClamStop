@@ -39,7 +39,7 @@ struct WelcomeView: View {
                 ChoiceCard(
                     symbol: "sparkles",
                     title: "Stay awake while AI agents work, then sleep",
-                    detail: "For Claude Code and Codex: your Mac keeps working even with the lid closed and sleeps when they are done.",
+                    detail: "For Claude Code, Codex, Cursor and others: your Mac keeps working even with the lid closed and sleeps when they are done.",
                     info: "ClamStop adds a small hook to the agents’ settings so they can tell it when they work.",
                     warning: "With the lid closed, your Mac can get hot, especially in a bag. Keep it out in the open while agents work. If it gets too hot, ClamStop puts it to sleep.",
                     isSelected: model.firstRunChoice == .agents
