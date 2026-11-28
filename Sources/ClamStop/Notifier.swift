@@ -134,6 +134,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
         let id = response.notification.request.identifier
         Task { @MainActor in
+            logger.notice("notification clicked: \(id == Self.sleepReportID ? id : "other", privacy: .public)")
             if id == Self.sleepReportID {
                 self.onOpenJournal()
             } else {
