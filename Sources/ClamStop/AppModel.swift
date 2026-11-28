@@ -79,9 +79,6 @@ final class AppModel: ObservableObject {
     /// register() was refused because the item is turned off in System Settings.
     private var registrationDenied = false
     private var lastRegistrationRetry = Date.distantPast
-    /// Approved but not answering since then (see `repairIfStuck`).
-    private var notRespondingSince: Date?
-    private var repairAttempts = 0
     /// The approval was awaited and the service has not answered since.
     private var awaitingFirstAnswer = false
     private var lastRefresh = Date.distantPast
@@ -138,9 +135,14 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    /// Only an answer ends a wait: passing states (checking, not registered during a repair)
+    /// keep what is known.
     private func updateServiceWait() {
-        let waiting = serviceState == .requiresApproval || serviceState == .notResponding || awaitingFirstAnswer
-        serviceWait.update(waiting: waiting, now: Date())
+        if serviceState == .running {
+            serviceWait.update(waiting: false, now: Date())
+        } else if serviceState == .requiresApproval || serviceState == .notResponding || awaitingFirstAnswer {
+            serviceWait.update(waiting: true, now: Date())
+        }
     }
 
     func refresh() {
@@ -155,7 +157,6 @@ final class AppModel: ObservableObject {
             retryRegistration()
         }
         let registration = daemonService.status
-        if registration != .enabled { notRespondingSince = nil }
         switch registration {
         case .notRegistered:
             serviceState = registrationDenied ? .requiresApproval : .notRegistered
@@ -168,11 +169,15 @@ final class AppModel: ObservableObject {
             serviceState = Self.daemonPlistInBundle ? (registrationDenied ? .requiresApproval : .notRegistered) : .notFound
             status = nil
         case .enabled:
+            serviceWait.switchIsOn(now: Date())
             askStatus()
         @unknown default:
             serviceState = .notResponding
         }
-        if serviceState == .requiresApproval { awaitingFirstAnswer = true }
+        if serviceState == .requiresApproval {
+            awaitingFirstAnswer = true
+            serviceWait.switchIsOff(now: Date())
+        }
         updateServiceWait()
     }
 
@@ -187,13 +192,13 @@ final class AppModel: ObservableObject {
             do {
                 self.status = try await client.status(timeout: timeout)
                 self.serviceState = .running
-                self.notRespondingSince = nil
                 self.awaitingFirstAnswer = false
                 self.updateServiceWait()
                 self.applyPendingFirstRun()
             } catch {
                 self.status = nil
                 self.serviceState = .notResponding
+                self.updateServiceWait()
                 self.repairIfStuck()
             }
         }
@@ -282,22 +287,11 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Approved in System Settings but the service never answers: with ad-hoc builds launchd
-    /// sometimes refuses the new daemon after an update (EX_CONFIG, "spawn scheduled") until it is
-    /// registered again, which then needs no new approval (seen on macOS 27.2). Do what the
-    /// "Reinstall Background Service" button does: after 3 s when the approval was just given (a
-    /// healthy service answers within a second), after 20 s otherwise; at most twice per launch.
+    /// Switched on but silent: do what the "Reinstall Background Service" button does when
+    /// `serviceWait` says so. That needs no new approval.
     private func repairIfStuck() {
-        let now = Date()
-        guard let since = notRespondingSince else {
-            notRespondingSince = now
-            return
-        }
-        let patience: TimeInterval = awaitingFirstAnswer ? 3 : 20
-        guard repairAttempts < 2, now.timeIntervalSince(since) >= patience else { return }
-        repairAttempts += 1
-        notRespondingSince = nil
-        logger.info("service approved but not answering for \(Int(patience)) s: registering it again")
+        guard serviceWait.repairIsDue(now: Date()) else { return }
+        logger.info("service switched on but not answering: registering it again")
         reinstallService()
     }
 

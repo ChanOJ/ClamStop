@@ -55,3 +55,64 @@ private let delay = ServiceWait.reminderDelay
         #expect(first && again)
     }
 }
+
+@Suite struct ServiceRepairTests {
+    /// Switch states as seen every second, then whether a repair is due.
+    private func repair(_ wait: inout ServiceWait, at seconds: TimeInterval) -> Bool {
+        wait.repairIsDue(now: t0 + seconds)
+    }
+
+    @Test func soonAfterAnApprovalAndOnlyOnce() {
+        var wait = ServiceWait()
+        wait.switchIsOff(now: t0)
+        wait.switchIsOn(now: t0 + 60)
+        let early = repair(&wait, at: 64)
+        let due = repair(&wait, at: 65)
+        wait.switchIsOn(now: t0 + 66)
+        let again = repair(&wait, at: 72)
+        #expect([early, due, again] == [false, true, false])
+    }
+
+    @Test func aSwitchThatShowsOnForAMomentIsNotAnApproval() {
+        // Right after a registration: off, on for a few seconds, off again (seen on macOS 27.2).
+        var wait = ServiceWait()
+        wait.switchIsOff(now: t0)
+        wait.switchIsOn(now: t0 + 2)
+        let during = repair(&wait, at: 12)
+        wait.switchIsOff(now: t0 + 15)
+        wait.switchIsOn(now: t0 + 90)
+        let afterApproval = repair(&wait, at: 95)
+        #expect([during, afterApproval] == [false, true])
+    }
+
+    @Test func theSwitchMovingAfterOurOwnRepairIsNotAnApproval() {
+        var wait = ServiceWait()
+        wait.switchIsOff(now: t0)
+        wait.switchIsOn(now: t0 + 60)
+        let first = repair(&wait, at: 65)
+        wait.switchIsOff(now: t0 + 66)
+        wait.switchIsOn(now: t0 + 78)
+        let soon = repair(&wait, at: 84)
+        #expect([first, soon] == [true, false])
+    }
+
+    @Test func aSilentServiceIsRegisteredAgainAFewTimes() {
+        var wait = ServiceWait()
+        var due: [TimeInterval] = []
+        for second in stride(from: 0.0, through: 200, by: 1) {
+            wait.switchIsOn(now: t0 + second)
+            if repair(&wait, at: second) { due.append(second) }
+        }
+        #expect(due.count == ServiceWait.unattendedRepairs)
+        #expect(due.first == ServiceWait.patience)
+    }
+
+    @Test func anAnswerStartsOver() {
+        var wait = ServiceWait()
+        wait.switchIsOn(now: t0)
+        wait.update(waiting: false, now: t0 + 1)
+        let due = repair(&wait, at: 60)
+        #expect(!due)
+    }
+}
+
