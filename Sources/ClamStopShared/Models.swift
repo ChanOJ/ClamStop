@@ -200,8 +200,8 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     public var sleepDisabledByClamStop: Bool?
     /// AI agent sessions currently counted as working.
     public var agents: [AgentSessionInfo]?
-    /// The lid is closed and the Mac stays awake (agents, session or rule).
-    public var keepingAwakeForAgents: Bool?
+    /// The lid is closed and the Mac stays awake (agents, apps, session or rule).
+    public var keepingAwake: Bool?
     public var onPowerAdapter: Bool?
     public var batteryPercent: Int?
     /// Why ClamStop did or did not force sleep the last time the lid closed.
@@ -221,7 +221,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
     public init(version: String, settings: ClamStopSettings, phase: PowerPhase, pendingWake: Date?,
                 lidClosed: Bool, sleepDisabled: Bool, hibernateMode: Int?,
                 sleepDisabledByClamStop: Bool? = nil, agents: [AgentSessionInfo]? = nil,
-                keepingAwakeForAgents: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
+                keepingAwake: Bool? = nil, onPowerAdapter: Bool? = nil, batteryPercent: Int? = nil,
                 lastLidDecision: String? = nil, appRunning: Bool? = nil, session: StayAwakeSession? = nil,
                 notices: [Notice]? = nil, lidPlan: LidPlan? = nil,
                 apps: [WatchedAppActivity]? = nil) {
@@ -234,7 +234,7 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.hibernateMode = hibernateMode
         self.sleepDisabledByClamStop = sleepDisabledByClamStop
         self.agents = agents
-        self.keepingAwakeForAgents = keepingAwakeForAgents
+        self.keepingAwake = keepingAwake
         self.onPowerAdapter = onPowerAdapter
         self.batteryPercent = batteryPercent
         self.lastLidDecision = lastLidDecision
@@ -243,6 +243,15 @@ public struct DaemonStatus: Codable, Equatable, Sendable {
         self.appRunning = appRunning
         self.lidPlan = lidPlan
         self.apps = apps
+    }
+
+    // JSON keys are part of the XPC contract with older apps and daemons: `keepingAwake` keeps
+    // its first name.
+    private enum CodingKeys: String, CodingKey {
+        case version, settings, phase, pendingWake, lidClosed, sleepDisabled, hibernateMode,
+             sleepDisabledByClamStop, agents, onPowerAdapter, batteryPercent, lastLidDecision,
+             session, notices, appRunning, lidPlan, apps
+        case keepingAwake = "keepingAwakeForAgents"
     }
 
     public func encoded() -> Data {

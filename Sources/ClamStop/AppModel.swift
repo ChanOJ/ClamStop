@@ -177,7 +177,7 @@ final class AppModel: ObservableObject {
         client.heartbeat()
         // While ClamStop holds sleep off, macOS must not slow the app down (App Nap).
         let holding = status.map {
-            $0.sleepDisabledByClamStop == true || $0.keepingAwakeForAgents == true || $0.session != nil
+            $0.sleepDisabledByClamStop == true || $0.keepingAwake == true || $0.session != nil
         } ?? false
         if holding, awakeActivity == nil {
             awakeActivity = ProcessInfo.processInfo.beginActivity(

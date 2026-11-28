@@ -30,7 +30,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(c.state.sleepDisabledByClamStop == true)
         closeLid(c, e)
         #expect(e.sleepRequests == 0)
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
     }
 
     @Test func agentsDoneSleepsThenHibernationPathAsUsual() {
@@ -41,7 +41,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(!e.sleepDisabled)
         #expect(c.state.sleepDisabledByClamStop == nil)
         #expect(e.sleepRequests == 1)
-        #expect(!c.keepingAwakeForAgents)
+        #expect(!c.keepingAwake)
         c.systemWillSleep()
         #expect(c.state.phase == .awaitingHibernation)
         #expect(e.scheduled == [e.clock.addingTimeInterval(600)])
@@ -64,7 +64,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         e.advance(2 * 3600)
         #expect(e.sleepRequests == 1)
         #expect(!e.sleepDisabled)
-        #expect(!c.keepingAwakeForAgents)
+        #expect(!c.keepingAwake)
         // Still working: the next check must not take disablesleep again.
         c.reevaluate(trigger: "agent check")
         #expect(!e.sleepDisabled)
@@ -80,7 +80,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         closeLid(c, e)
         e.advance(48 * 3600)
         c.reevaluate(trigger: "agent check")
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
         #expect(e.sleepRequests == 0)
     }
 
@@ -89,11 +89,11 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         let (c, e, _) = controller(ClamStopSettings(hibernateDelayMinutes: 10, onlyWhileCharging: false), context: context)
         c.agentsChanged(working: true)
         closeLid(c, e)
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
         context.batteryPercent = 19
         e.context = context
         c.reevaluate(trigger: "agent check")
-        #expect(!c.keepingAwakeForAgents)
+        #expect(!c.keepingAwake)
         #expect(e.sleepRequests == 1)
         #expect(!e.sleepDisabled)
     }
@@ -113,7 +113,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         closeLid(c, e)
         e.lidClosed = false
         c.lidChanged(closed: false)
-        #expect(!c.keepingAwakeForAgents)
+        #expect(!c.keepingAwake)
         #expect(e.sleepDisabled)  // agents still work: ready for the next close
         c.agentsChanged(working: false)
         #expect(!e.sleepDisabled)
@@ -132,11 +132,11 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         let (c, e, _) = controller()
         c.agentsChanged(working: true)
         closeLid(c, e)
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
         e.context.onPowerAdapter = false
         e.context.batteryPercent = 90
         c.reevaluate(trigger: "agent check")
-        #expect(!c.keepingAwakeForAgents)
+        #expect(!c.keepingAwake)
         #expect(e.sleepRequests == 1)
         #expect(!e.sleepDisabled)
     }
@@ -147,7 +147,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         closeLid(c, e)
         e.context.thermalPressure = true
         c.reevaluate(trigger: "agent check")
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
     }
 
     @Test func sleepNowWhileKeepingAwake() {
@@ -157,7 +157,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         c.sleepNow()
         #expect(!e.sleepDisabled)
         #expect(e.sleepRequests == 1)
-        #expect(!c.keepingAwakeForAgents)
+        #expect(!c.keepingAwake)
         c.reevaluate(trigger: "agent check")  // agents still work: no new hold until the lid opens
         #expect(!e.sleepDisabled)
     }
@@ -213,7 +213,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         c.systemWillSleep()
         e.lidClosed = false
         c.systemDidWake()
-        #expect(kinds == [.lidClosed, .keptAwakeForAgents, .agentsDone, .sleep, .lidOpened, .wake])
+        #expect(kinds == [.lidClosed, .keptAwake, .keepAwakeEnded, .sleep, .lidOpened, .wake])
     }
 }
 
@@ -602,7 +602,7 @@ private func closeLid(_ c: PowerController, _ e: FakeEffects) {
         #expect(e.sleepDisabled)  // before the lid closes
         closeLid(c, e)
         #expect(e.sleepRequests == 0)
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
         c.stopSession()
         #expect(!e.idleSleepPrevented)
         #expect(!e.sleepDisabled)

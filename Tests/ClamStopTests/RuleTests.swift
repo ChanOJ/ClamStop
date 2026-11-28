@@ -151,7 +151,7 @@ private func change(_ c: PowerController, _ e: FakeEffects, _ context: PowerCont
         #expect(!e.sleepDisabled)  // macOS stays awake by itself
         closeLid(c, e)
         #expect(e.sleepRequests == 0)
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
         #expect(!e.sleepDisabled)
     }
 
@@ -192,7 +192,7 @@ private func change(_ c: PowerController, _ e: FakeEffects, _ context: PowerCont
         c.conditionsChanged(trigger: "back")
         e.advance(PowerController.settleDelay)
         #expect(e.sleepRequests == 0)
-        #expect(c.keepingAwakeForAgents)
+        #expect(c.keepingAwake)
     }
 
     @Test func leftToMacOSThenUnpluggedSleeps() {

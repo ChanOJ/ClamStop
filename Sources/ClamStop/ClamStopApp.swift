@@ -112,7 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let status else { return }
             // The lid as it is now: a reply can be older than the last notification.
             let closed = LidMonitor.isLidClosed
-            let keptAwake = closed && status.lidClosed && status.keepingAwakeForAgents == true
+            let keptAwake = closed && status.lidClosed && status.keepingAwake == true
             model.screenDimmer.lidChanged(closed: closed)
             model.screenDimmer.update(keptAwake: keptAwake)
             self?.lockIfAsked(lidClosed: closed, keptAwake: keptAwake)

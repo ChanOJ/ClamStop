@@ -132,7 +132,7 @@ final class DaemonService {
             pendingWake: controller.state.pendingWake, lidClosed: power.isLidClosed(),
             sleepDisabled: power.sleepDisabled, hibernateMode: power.currentHibernateMode(),
             sleepDisabledByClamStop: controller.state.sleepDisabledByClamStop == true,
-            agents: agents.tracker.sessions, keepingAwakeForAgents: controller.keepingAwakeForAgents,
+            agents: agents.tracker.sessions, keepingAwake: controller.keepingAwake,
             onPowerAdapter: context.onPowerAdapter, batteryPercent: context.batteryPercent,
             lastLidDecision: controller.lastLidDecision, appRunning: controller.appRunning, session: controller.session,
             notices: controller.notices, lidPlan: controller.currentPlan, apps: apps.tracker.activity)

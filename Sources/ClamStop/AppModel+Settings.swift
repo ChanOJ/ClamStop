@@ -110,12 +110,12 @@ extension AppModel {
     var iconState: MenuBarIconState {
         guard statusIsOK, let status else { return .inactive }
         let agentsHolding = !(status.agents ?? []).isEmpty
-            && (status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true)
+            && (status.keepingAwake == true || status.sleepDisabledByClamStop == true)
         // Same precedence as the menu lines: a Stay Awake session first, then AI agents, then apps.
         if status.session != nil { return .awake(.session) }
         if agentsHolding { return .awake(.agents) }
         if !workingApps.isEmpty,
-           status.keepingAwakeForAgents == true || status.sleepDisabledByClamStop == true {
+           status.keepingAwake == true || status.sleepDisabledByClamStop == true {
             return .awake(.app)
         }
         return .active
@@ -125,7 +125,7 @@ extension AppModel {
     /// guards): the "Sleeps when you close the lid" line no longer applies.
     var lidLineOverridden: Bool {
         statusIsOK && status?.lidPlan?.action != .stayAwake
-            && (status?.sleepDisabledByClamStop == true || status?.keepingAwakeForAgents == true)
+            && (status?.sleepDisabledByClamStop == true || status?.keepingAwake == true)
     }
 
     /// Watched apps that hold the Mac awake.
@@ -286,7 +286,7 @@ extension AppModel {
             version: ClamStopVersion.current, settings: settings, phase: .idle, pendingWake: nil, lidClosed: false,
             sleepDisabled: true, hibernateMode: 3, sleepDisabledByClamStop: true,
             agents: [AgentSessionInfo(agent: .claude, since: Date(), finishing: false, subagents: 0)],
-            keepingAwakeForAgents: false, onPowerAdapter: !onBattery, batteryPercent: 76, lastLidDecision: nil,
+            keepingAwake: false, onPowerAdapter: !onBattery, batteryPercent: 76, lastLidDecision: nil,
             lidPlan: settings.lidPlan(for: PowerContext(onPowerAdapter: !onBattery, externalDisplay: !onBattery)),
             apps: zip(settings.watchedApps, [WatchedAppActivity.State.working, .notRunning]).map {
                 WatchedAppActivity(id: $0.id, name: $0.name, state: $1)
@@ -307,9 +307,9 @@ extension AppModel {
         }
         sleepLog = [
             event(136_000, .lidClosed, 64),
-            event(135_990, .keptAwakeForAgents, 64, KeepAwakeReason.agents.rawValue),
+            event(135_990, .keptAwake, 64, KeepAwakeReason.agents.rawValue),
             event(133_000, .thermalChanged, 42, ThermalLevel.heavy.rawValue, nil, .heavy),
-            event(130_000, .agentsDone, 19, KeepAwakeEnd.batteryFloor.rawValue, nil, .heavy),
+            event(130_000, .keepAwakeEnded, 19, KeepAwakeEnd.batteryFloor.rawValue, nil, .heavy),
             event(129_990, .sleep, 19),
             event(100_000, .lidOpened, 18),
             event(99_999, .wake, 18, SleepLog.wakeLidOpen, .lid),

@@ -399,4 +399,16 @@ private func closeLidAndSleep(_ c: PowerController, _ e: FakeEffects) {
                                   sleepDisabled: false, hibernateMode: 3)
         #expect(DaemonStatus.decode(status.encoded()) == status)
     }
+
+    /// Apps and daemons of other versions talk to each other, and the journal file outlives them:
+    /// renamed Swift names keep their first JSON names.
+    @Test func storedNamesDoNotChange() throws {
+        var status = DaemonStatus(version: "1", settings: ClamStopSettings(), phase: .idle, pendingWake: nil,
+                                  lidClosed: true, sleepDisabled: true, hibernateMode: 3)
+        status.keepingAwake = true
+        let json = try #require(String(data: status.encoded(), encoding: .utf8))
+        #expect(json.contains("\"keepingAwakeForAgents\":true"))
+        #expect(SleepEvent.Kind.keptAwake.rawValue == "keptAwakeForAgents")
+        #expect(SleepEvent.Kind.keepAwakeEnded.rawValue == "agentsDone")
+    }
 }

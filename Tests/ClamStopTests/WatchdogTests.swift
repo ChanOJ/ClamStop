@@ -92,7 +92,7 @@ import Testing
     @Test func aClosedLidSleepsAndTheJournalSaysWhy() {
         let (controller, effects) = setUp()
         var ends: [String?] = []
-        controller.record = { kind, detail in if kind == .agentsDone { ends.append(detail) } }
+        controller.record = { kind, detail in if kind == .keepAwakeEnded { ends.append(detail) } }
         controller.appHeartbeat()
         controller.startSession(until: nil)
         closeLid(controller, effects)
@@ -105,7 +105,7 @@ import Testing
     @Test func quittingWithTheLidClosedSleepsToo() {
         let (controller, effects) = setUp()
         var ends: [String?] = []
-        controller.record = { kind, detail in if kind == .agentsDone { ends.append(detail) } }
+        controller.record = { kind, detail in if kind == .keepAwakeEnded { ends.append(detail) } }
         controller.startSession(until: nil)
         closeLid(controller, effects)
         let before = effects.sleepRequests

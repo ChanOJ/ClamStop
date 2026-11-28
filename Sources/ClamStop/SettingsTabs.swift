@@ -85,7 +85,7 @@ struct StayAwakeTab: View {
     private var agentActivityLine: String? {
         guard let sessions = model.status?.agents, !sessions.isEmpty else { return nil }
         let names = Set(sessions.map(\.agent.displayName)).sorted().formatted(.list(type: .and))
-        if model.status?.keepingAwakeForAgents == true {
+        if model.status?.keepingAwake == true {
             return String(localized: "Lid closed, staying awake for \(names)")
         }
         return String(localized: "Working now: \(names)")

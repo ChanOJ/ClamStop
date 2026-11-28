@@ -89,8 +89,8 @@ private func event(_ seconds: TimeInterval, _ kind: SleepEvent.Kind, battery: In
         effects.lidClosed = true
         controller.lidChanged(closed: true)
         controller.agentsChanged(working: false)
-        #expect(log.details(.keptAwakeForAgents) == [KeepAwakeReason.agents.rawValue])
-        #expect(log.details(.agentsDone) == [KeepAwakeEnd.finished.rawValue])
+        #expect(log.details(.keptAwake) == [KeepAwakeReason.agents.rawValue])
+        #expect(log.details(.keepAwakeEnded) == [KeepAwakeEnd.finished.rawValue])
     }
 
     @Test func lidOpeningIsRecordedOnceWhenTheWakeComesFirst() {

@@ -8,8 +8,11 @@ public struct SleepEvent: Codable, Equatable, Sendable {
         case sleep
         case wake
         case hibernate
-        case keptAwakeForAgents
-        case agentsDone
+        // Raw values are stored in the journal file: they keep their first names.
+        /// The Mac started staying awake with the lid closed (detail: a `KeepAwakeReason`).
+        case keptAwake = "keptAwakeForAgents"
+        /// It stopped staying awake (detail: a `KeepAwakeEnd`).
+        case keepAwakeEnded = "agentsDone"
         /// The thermal level changed while the Mac stayed awake with the lid closed.
         case thermalChanged
     }
