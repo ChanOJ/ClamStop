@@ -5,7 +5,7 @@ the generator and deploys `site/` (without `src/`) on every push to `main` that 
 
 ## Going online
 
-The deployment is off until the app is ready. To publish:
+The site has been online since 2026-11-28. On a fork, or after switching it off, publish it with:
 
 1. **Settings > Pages > Build and deployment > Source**: **GitHub Actions**.
 2. **Settings > Secrets and variables > Actions > Variables > New repository variable**: name

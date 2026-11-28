@@ -60,6 +60,10 @@ on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelay
 
 ## Installing a new build on this Mac (ad-hoc signed)
 
+The installed app has been the signed release since 2026-11-28: an ad-hoc build replacing it is
+signed differently, so expect the "Different" case below the first time (not tried). Signing
+local builds with `SIGN_IDENTITY` (`docs/signing.md`) has not been tried either.
+
 After `scripts/build-app.sh`, compare the daemons first:
 `cmp dist/ClamStop.app/Contents/MacOS/ClamStopDaemon /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon`.
 Any change in `ClamStopShared` changes the daemon, even app-only logic.
@@ -99,10 +103,16 @@ branch from `origin/main`.
 - `ci.yml` still builds ad-hoc artifacts, and so do local builds without `SIGN_IDENTITY`.
 - Six secrets in GitHub Actions, copies in Proton Pass (`docs/signing.md`, `docs/updates.md`):
   never print or commit them; the user enters them. The certificate expires on 2027-12-28.
-- Verified on the dry run of 2026-11-28: `spctl` and `stapler` accept the downloaded DMG and app,
-  hardened runtime on every executable, the appcast's EdDSA signature matches the public key, the
-  signed binary launches. Not verified: installing a Developer ID build (service approval, Team ID
-  XPC requirement), replacing an installed ad-hoc build, a Sparkle update between signed releases.
+- First release: `v0.1.0` (2026-11-28). Versions stay `0.x`, without release candidates, while
+  basic features are still being added (user's choice).
+- Verified on 2026-11-28: `spctl` and `stapler` accept the downloaded DMG and app, hardened
+  runtime on every executable, the appcast's EdDSA signature matches the public key. Installed on
+  this Mac over an ad-hoc build, from a browser download: no Gatekeeper warning; the old daemon,
+  still in memory, accepted the new app until `--reinstall-service`; then one switch, "not
+  responding" until the app registered the service again by itself (about 45 s in all), and the
+  new daemon requires the Team ID. Not verified: a Sparkle update between two signed releases.
+- Website online since 2026-11-28: <https://chanoj.github.io/ClamStop/> (variable
+  `PUBLISH_SITE`); a push to `main` touching `site/` deploys it.
 
 ## Updates
 

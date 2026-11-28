@@ -271,7 +271,8 @@ launchctl print system/io.github.chanoj.clamstop.daemon | grep -E "state|last ex
 
 Builds signed with a Developer ID keep the same signature from one version to the next and do
 not need any of this. Replacing an unsigned build with a signed one changes the signature: follow
-these steps once if the service does not start.
+these steps once, even if the service seems to run (until the next restart it is still the old
+one). "Not responding" can show for up to a minute before the service starts.
 
 ## Uninstall
 
