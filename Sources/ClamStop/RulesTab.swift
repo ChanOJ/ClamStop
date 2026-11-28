@@ -43,8 +43,13 @@ private struct RuleRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Toggle("Use this rule", isOn: Binding(get: { rule.enabled },
-                                                  set: { model.setRule(rule, enabled: $0) }))
+            Toggle("Use this rule", isOn: Binding(get: { rule.enabled }, set: { enabled in
+                model.setRule(rule, enabled: enabled)
+                // VoiceOver only says "on" or "off" after the change.
+                let conditions = RuleText.conditions(rule)
+                VoiceOver.say(enabled ? String(localized: "Rule on: \(conditions)")
+                    : String(localized: "Rule off: \(conditions)"))
+            }))
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
