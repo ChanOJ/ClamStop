@@ -131,7 +131,18 @@ public struct AgentHookTarget: Sendable {
     public var passesEvent = false
 
     public func command(executable: String, event: String) -> String {
-        "\"\(executable)\" --agent-hook \(agent.rawValue)" + (passesEvent ? " \(event)" : "")
+        // The shell reads these four even between double quotes.
+        let quoted = executable.reduce(into: "") { result, character in
+            if "\\\"$`".contains(character) { result.append("\\") }
+            result.append(character)
+        }
+        return "\"\(quoted)\" --agent-hook \(agent.rawValue)" + (passesEvent ? " \(event)" : "")
+    }
+
+    /// Whether this copy of the app may repoint hooks on its own: only an installed one, not one
+    /// run from a disk image, a download or a build folder.
+    public static func mayRepointHooks(toAppAt path: String, home: String) -> Bool {
+        path.hasPrefix("/Applications/") || path.hasPrefix(home + "/Applications/")
     }
 
     /// - Parameter exists: whether a path relative to the home folder exists.

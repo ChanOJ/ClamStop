@@ -116,9 +116,12 @@ extension AppModel {
         if states != agentHookStates { agentHookStates = states }
     }
 
-    /// Hooks pointing to another copy of ClamStop (the app moved or was replaced): fix them.
+    /// Hooks pointing to another copy of ClamStop (the app moved or was replaced): fix them,
+    /// from an installed copy only. Elsewhere, the settings window still offers to install.
     func updateOutdatedAgentHooks() {
-        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
+        let bundle = Bundle.main.bundleURL
+        guard bundle.pathExtension == "app",
+              AgentHookTarget.mayRepointHooks(toAppAt: bundle.path, home: NSHomeDirectory()) else { return }
         for target in AgentHookTarget.all where AgentHookInstaller.state(target) == .outdated {
             try? AgentHookInstaller.install(target)
         }
