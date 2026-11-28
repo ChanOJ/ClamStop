@@ -486,6 +486,9 @@ struct MenuContent: View {
         if model.sessionLine != nil {
             Button { model.stopSession() } label: { Label("Turn Off Stay Awake", systemImage: "cup.and.saucer.fill") }
         }
+        if model.sessionLine != nil, model.status?.session?.until != nil {
+            Button { model.extendSession() } label: { Label("Add 30 Minutes", systemImage: "plus.circle") }
+        }
         Divider()
         Button { model.sleepNow() } label: { Label("Sleep Now", systemImage: "moon") }
             .disabled(!model.serviceRunning)

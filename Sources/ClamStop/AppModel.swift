@@ -40,11 +40,13 @@ enum DefaultsKey {
     static let lastSleepReport = "lastSleepReport"
     /// Development aid: report sleeps from this many minutes instead of 4 hours.
     static let sleepReportMinimumMinutes = "sleepReportMinimumMinutes"
+    /// "Lock the screen when the lid closes" is on (off by default).
+    static let lockOnLidClose = "lockOnLidClose"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
                       skipQuitConfirmation, showTimeLeft, animateBadge, savedScreenBrightness, sleepReport,
-                      lastSleepReport, sleepReportMinimumMinutes]
+                      lastSleepReport, sleepReportMinimumMinutes, lockOnLidClose]
 }
 
 @MainActor

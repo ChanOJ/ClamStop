@@ -17,7 +17,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     var onOpen: () -> Void = {}
     /// Called when the sleep report is clicked.
     var onOpenJournal: () -> Void = {}
+    /// Called when any notification or one of its buttons is clicked, before the rest.
+    var onClick: () -> Void = {}
+    /// Called by "+30 min" on the reminder that a session ends.
+    var onExtendSession: () -> Void = {}
     private nonisolated static let sleepReportID = "sleep-report"
+    private nonisolated static let sessionEndingID = "session-ending"
+    private nonisolated static let extendActionID = "extend"
+    /// The end of the session already reminded of.
+    private var remindedEnd: Date?
 
     /// Only from a ClamStop.app bundle: `current()` raises an exception outside one (`swift run`).
     private var center: UNUserNotificationCenter { .current() }
@@ -34,6 +42,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func start() {
         guard available else { return }
         center.delegate = self
+        center.setNotificationCategories([UNNotificationCategory(
+            identifier: Self.sessionEndingID,
+            actions: [UNNotificationAction(identifier: Self.extendActionID, title: String(localized: "+30 min"))],
+            intentIdentifiers: [])])
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error { logger.error("notifications: \(error.localizedDescription, privacy: .public)") }
             logger.info("notifications allowed: \(granted)")
@@ -42,6 +54,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     /// New status from the daemon: post the notices not shown yet.
     func process(_ status: DaemonStatus) {
+        remindOfSessionEnd(status.session)
         let last = lastNoticeDate
         let now = Date()
         let fresh = (status.notices ?? []).filter { $0.date > last && now.timeIntervalSince($0.date) < Self.maxAge }
@@ -50,6 +63,21 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         for notice in fresh {
             post(id: notice.id.uuidString, title: Self.title(notice), body: Self.body(notice))
         }
+    }
+
+    /// A few minutes before a "Stay awake" session ends (spec C4), with a "+30 min" button. The
+    /// reminder goes once the session is over or its end has moved.
+    private func remindOfSessionEnd(_ session: StayAwakeSession?) {
+        if let reminded = remindedEnd, session?.until.map({ abs($0.timeIntervalSince(reminded)) >= 1 }) ?? true {
+            remindedEnd = nil
+            if available { center.removeDeliveredNotifications(withIdentifiers: [Self.sessionEndingID]) }
+        }
+        guard let session, let until = session.until,
+              SessionEnd.reminderIsDue(session, now: Date(), reminded: remindedEnd) else { return }
+        remindedEnd = until
+        let time = until.formatted(date: .omitted, time: .shortened)
+        post(id: Self.sessionEndingID, title: String(localized: "Stay Awake ends at \(time)"),
+             body: String(localized: "After that, your Mac can sleep again."), category: Self.sessionEndingID)
     }
 
     /// The service is waiting for approval: say so once per launch.
@@ -87,11 +115,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         post(id: Self.sleepReportID, title: SleepReport.title, body: report.body)
     }
 
-    private func post(id: String, title: String, body: String) {
+    private func post(id: String, title: String, body: String, category: String? = nil) {
         guard available else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
+        if let category { content.categoryIdentifier = category }
         center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil)) { error in
             if let error { logger.error("notification not posted: \(error.localizedDescription, privacy: .public)") }
         }
@@ -133,11 +162,16 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
         let id = response.notification.request.identifier
+        let action = response.actionIdentifier
         Task { @MainActor in
-            logger.notice("notification clicked: \(id == Self.sleepReportID ? id : "other", privacy: .public)")
-            if id == Self.sleepReportID {
+            logger.notice("notification clicked: \(id, privacy: .public), \(action, privacy: .public)")
+            self.onClick()
+            switch id {
+            case Self.sleepReportID:
                 self.onOpenJournal()
-            } else {
+            case Self.sessionEndingID:
+                if action == Self.extendActionID { self.onExtendSession() }
+            default:
                 self.onOpen()
             }
             completionHandler()

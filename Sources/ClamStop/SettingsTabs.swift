@@ -14,6 +14,7 @@ func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettin
 /// Stay Awake: the screens (spec C3), AI agents and their hooks (C7, I5), the watched apps (C5).
 struct StayAwakeTab: View {
     @ObservedObject var model: AppModel
+    @AppStorage(DefaultsKey.lockOnLidClose) private var lockOnLidClose = false
 
     var body: some View {
         Form {
@@ -28,6 +29,11 @@ struct StayAwakeTab: View {
                     .fixedSize()
                 }
                 .disabled(!model.serviceRunning)
+                if Edition.current == .full {
+                    ToggleRow(title: "Lock the screen when the lid closes",
+                              note: "While ClamStop keeps your Mac awake with the lid closed. Not with an external screen: you may be working on it.",
+                              isOn: $lockOnLidClose)
+                }
             }
             Section {
                 OptionRow(title: "Stay awake while AI agents work",

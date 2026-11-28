@@ -179,6 +179,12 @@ branch from `origin/main`.
   bundle, follows "on behalf of" and sets macOS services apart. Reports name the apps, never the
   assertions (they can hold titles or file names). Preview: `--preview-settings --awake
   --snapshot <png>`. Not verified in a sandboxed build.
+- Session end (spec C4) and lock on lid close (F2), 2026-11-28: app only (`SessionEnd`,
+  `LidLock` in `ClamStopDiagnostics`, which holds the app-only logic). The reminder is posted from
+  the status poll; "+30 min" starts a new session through XPC. `ScreenLocker` calls the private
+  `SACLockScreenImmediate` (`login.framework`, full edition only; falls back to
+  `pmset displaysleepnow`). macOS asks the app to reopen when a notification is clicked: ignored
+  for 2 s after a click.
 - Sleep report (spec B5, 2026-11-28): app only. On `didWakeNotification` and on lid open, 5 s
   and 30 s later, `SleepReport.latest` reads the journal (newest sleep of 4 h or more, ended less
   than 1 h ago, once). Try it with

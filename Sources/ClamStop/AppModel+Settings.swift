@@ -1,4 +1,5 @@
 import Foundation
+import ClamStopDiagnostics
 import ClamStopShared
 
 /// Settings sent to the daemon as a whole `ClamStopSettings`, agent hooks, journal, menu actions
@@ -74,6 +75,13 @@ extension AppModel {
         let seconds = date.timeIntervalSinceNow
         guard seconds > 0 else { return }
         update { try await $0.startSession(seconds: seconds) }
+    }
+
+    /// "+30 min" (spec C4): from the session's end, or a new half hour when it is over. The
+    /// service sees it as a new session.
+    func extendSession() {
+        guard let until = SessionEnd.extended(status?.session, now: Date()) else { return }
+        startSession(until: until)
     }
 
     func stopSession() {
