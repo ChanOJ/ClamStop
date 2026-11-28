@@ -60,9 +60,10 @@ on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelay
 
 ## Installing a new build on this Mac (ad-hoc signed)
 
-The installed app has been the signed release since 2026-11-28: an ad-hoc build replacing it is
-signed differently, so expect the "Different" case below the first time (not tried). Signing
-local builds with `SIGN_IDENTITY` (`docs/signing.md`) has not been tried either.
+First `codesign -dv --verbose=2 /Applications/ClamStop.app`: when a Developer ID release is there
+(the case on 2026-11-28), ask the user before replacing it, whatever the daemon comparison says.
+An ad-hoc build is signed differently, so expect the "Different" case below the first time (not
+tried). Signing local builds with `SIGN_IDENTITY` (`docs/signing.md`) has not been tried either.
 
 After `scripts/build-app.sh`, compare the daemons first:
 `cmp dist/ClamStop.app/Contents/MacOS/ClamStopDaemon /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon`.
