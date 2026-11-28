@@ -43,5 +43,11 @@
 	<string>NSApplication</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/ChanOJ/ClamStop/releases/latest/download/appcast.xml</string>
+	<!-- The feed itself is signed (scripts/make-appcast.sh), and a download is checked before
+	     it is opened. -->
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

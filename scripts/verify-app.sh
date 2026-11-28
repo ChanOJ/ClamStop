@@ -72,6 +72,8 @@ done
 otool -l "$CONTENTS/MacOS/$APP_NAME" | grep '@executable_path/../Frameworks' >/dev/null ||
     die "$APP_NAME: no rpath to Contents/Frameworks (Sparkle would not load)"
 /usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$info" >/dev/null 2>&1 || die "$info: missing SUFeedURL"
+expect "$info" SURequireSignedFeed true
+expect "$info" SUVerifyUpdateBeforeExtraction true
 if /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$info" >/dev/null 2>&1; then
     echo "Updates on (SUPublicEDKey set)"
 else

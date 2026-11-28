@@ -6,14 +6,17 @@ The full edition updates itself with [Sparkle 2](https://sparkle-project.org) (p
 ## How it works
 
 - Each `v*` tag runs `release.yml`. After notarization, `scripts/make-appcast.sh` signs the DMG
-  with the EdDSA private key (GitHub secret `SPARKLE_ED_PRIVATE_KEY`) and writes `appcast.xml`,
-  uploaded with the DMG to the GitHub Release.
+  with the EdDSA private key (secret `SPARKLE_ED_PRIVATE_KEY`), writes `appcast.xml` and signs
+  that file too; it is uploaded with the DMG to the GitHub Release. Do not edit it afterwards.
 - The app reads `https://github.com/ChanOJ/ClamStop/releases/latest/download/appcast.xml`
   (`SUFeedURL` in `Resources/Info.plist`): GitHub redirects it to the newest release that is not
   a pre-release. No website needed.
 - The app accepts an update only if its EdDSA signature matches `SUPublicEDKey` (from
   `Resources/sparkle-public-ed-key.txt`) **and** its code signature satisfies the installed app's
-  designated requirement.
+  designated requirement. It also requires a signed feed (`SURequireSignedFeed`) and checks a
+  download before opening it (`SUVerifyUpdateBeforeExtraction`). If the feed signature kept
+  failing for 20 days, Sparkle would fall back to a restricted mode (no release notes or links),
+  so that a key rotation stays possible. v0.1.0 ignores the feed signature.
 - Settings: "Automatically check for updates" (Sparkle asks once, at the second launch) and
   "Check for Updates…", also in the menu. Background checks never pop up a window: the menu shows
   "Update Available…" instead (Sparkle's gentle reminders). Sparkle sends no system profile.
