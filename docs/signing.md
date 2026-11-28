@@ -92,7 +92,42 @@ not stay in the shell history.
 7. Once the password manager holds both files, delete `DeveloperID.p12`, the `.p8` file and the
    certificate signing request from `Downloads`.
 
-## 5. Publish a signed release
+## 5. Dry run
+
+Builds, signs, notarizes and writes the appcast without publishing anything. It needs the five
+secrets above and `SPARKLE_ED_PRIVATE_KEY` ([updates.md](updates.md)), with the public key
+committed.
+
+1. Start it:
+
+   ```bash
+   gh workflow run release.yml --repo ChanOJ/ClamStop --ref main
+   ```
+
+2. Find the run ID:
+
+   ```bash
+   gh run list --repo ChanOJ/ClamStop --workflow release.yml --limit 1
+   ```
+
+3. Once it is green, download the `ClamStop-dry-run` artifact into a new folder:
+
+   ```bash
+   gh run download --repo ChanOJ/ClamStop --name ClamStop-dry-run --dir ~/Downloads/ClamStop-dry-run
+   ```
+
+4. Check the DMG. The first command must succeed, the second answer
+   `source=Notarized Developer ID`:
+
+   ```bash
+   xcrun stapler validate ~/Downloads/ClamStop-dry-run/ClamStop-0.0.0.dmg
+   ```
+
+   ```bash
+   spctl -a -vv -t open --context context:primary-signature ~/Downloads/ClamStop-dry-run/ClamStop-0.0.0.dmg
+   ```
+
+## 6. Publish a signed release
 
 1. From an up-to-date `main`, create the tag:
 
