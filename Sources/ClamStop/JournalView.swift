@@ -122,6 +122,30 @@ private struct JournalRow: View {
                 : String(localized: "Woke up with the lid closed")
         case .keptAwakeForAgents: String(localized: "Staying awake with the lid closed")
         case .agentsDone: String(localized: "Stopped staying awake")
+        case .thermalChanged:
+            switch thermalLevel {
+            case .nominal: String(localized: "Temperature back to normal")
+            case .fair: String(localized: "Mac warm")
+            case .serious: String(localized: "Mac hot")
+            case .critical: String(localized: "Mac very hot")
+            case nil: String(localized: "Temperature changed")
+            }
+        }
+    }
+
+    private var thermalLevel: ThermalLevel? {
+        entry.event.thermal.flatMap(ThermalLevel.init(rawValue:))
+    }
+
+    /// How warm the Mac was, only when warmer than normal and not already said by the line.
+    private var heat: String? {
+        guard entry.event.kind != .thermalChanged,
+              !(entry.event.kind == .agentsDone && entry.event.detail == KeepAwakeEnd.heat.rawValue) else { return nil }
+        switch thermalLevel {
+        case .fair: return String(localized: "Mac warm")
+        case .serious: return String(localized: "Mac hot")
+        case .critical: return String(localized: "Mac very hot")
+        case .nominal, nil: return nil
         }
     }
 
@@ -139,6 +163,7 @@ private struct JournalRow: View {
         default:
             break
         }
+        if let heat { parts.append(heat) }
         if let session = entry.asleep, let end = session.end {
             parts.append(String(localized: "asleep \(duration(from: session.start, to: end))"))
             if let used = session.batteryUsed, used > 0 { parts.append(String(localized: "battery −\(used) %")) }

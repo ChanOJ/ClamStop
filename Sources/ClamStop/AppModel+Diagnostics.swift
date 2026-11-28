@@ -96,7 +96,8 @@ extension AppModel {
         let log = await SystemProbe.recentLog()
         return DiagnosticsReport(date: Date(), appVersion: appVersionAndBuild,
                                  macOSVersion: SystemProbe.macOSVersion, model: SystemProbe.hardwareModel,
-                                 facts: healthFacts, events: events, log: log)
+                                 facts: healthFacts, events: events, log: log,
+                                 thermalLevel: ThermalLevel(ProcessInfo.processInfo.thermalState))
     }
 
     /// Collect the diagnostics (a few seconds, mostly the log), hand them over, say what happened.

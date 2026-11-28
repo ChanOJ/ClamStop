@@ -91,6 +91,8 @@ public final class PowerController {
     public private(set) var appUnresponsive = false
     /// Local time of the rules' time windows.
     public var calendar = Calendar.autoupdatingCurrent
+    /// The last thermal level reported, nil before the first one.
+    public private(set) var thermalLevel: ThermalLevel?
 
     private let effects: PowerEffects
     private let store: StateStore
@@ -247,6 +249,18 @@ public final class PowerController {
             guard let self, self.conditionsGeneration == generation else { return }
             self.evaluateConditions(trigger: trigger)
         }
+    }
+
+    /// The thermal level, at the start and then at each change: logged, noted in the journal while
+    /// the Mac stays awake with the lid closed, and the heat guard looks again (spec E2).
+    public func thermalChanged(_ level: ThermalLevel) {
+        guard level != thermalLevel else { return }
+        let first = thermalLevel == nil
+        thermalLevel = level
+        log("thermal level \(level.rawValue)")
+        guard !first else { return }
+        if awake, keepingAwakeForAgents, effects.isLidClosed() { record(.thermalChanged, level.rawValue) }
+        conditionsChanged(trigger: "thermal level changed")
     }
 
     /// Apply the current conditions: sessions and keep-awake first (`reevaluate`), then a Mac that
@@ -635,11 +649,11 @@ public final class PowerController {
             mustSleep = awake && effects.isLidClosed()
                 && (state.sleepDisabledByClamStop == true || keepingAwakeForAgents)
                 && !(context.externalDisplay && context.onPowerAdapter)
-            endSession(reason: "app quit")
+            endSession(reason: unresponsive ? "app not responding" : "app quit")
             if state.phase == .awaitingHibernation { endHibernationPlan() }
         }
         lidClosedDecision = nil
-        reevaluate(trigger: running ? "app started" : "app quit")
+        reevaluate(trigger: running ? "app started" : unresponsive ? "app not responding" : "app quit")
         if mustSleep {
             log("lid closed without the app: sleeping")
             effects.requestSleep(after: 0)

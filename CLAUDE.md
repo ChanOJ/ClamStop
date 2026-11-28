@@ -220,6 +220,11 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   `JournalView`, a resizable window (`--preview-settings --journal --snapshot <png>`). Wake reasons
   come from `IOPMrootDomain` "Wake Reason" / "Wake Type" (`WakeReason`, matched on strings seen on
   this Mac). Entries written by earlier versions show without a reason.
+- Thermal level (2026-11-28): `ThermalLevel` (`ProcessInfo.thermalState`, levels only: no
+  temperature in degrees without private interfaces, and `AppleSmartBattery` showed none on this
+  Mac). Each journal event holds it; the daemon logs every change (read the state once at start,
+  or macOS sends no notification), journals the changes while it stays awake with the lid closed,
+  and the heat guard looks again after the 5 s settle delay. Not verified on a hot Mac.
 - Watchdog (spec E4, 2026-11-28): the app calls `appHeartbeat` every 5 s from a common-modes
   timer (and holds off App Nap while sleep is held off); 6 silent checks while awake make the
   daemon act as if the app quit, until it reports again. Quit, crash or stuck with the lid closed:

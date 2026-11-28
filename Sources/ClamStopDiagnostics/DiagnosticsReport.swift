@@ -9,6 +9,7 @@ public struct DiagnosticsReport: Sendable {
     public var appVersion: String
     public var macOSVersion: String
     public var model: String
+    public var thermalLevel: ThermalLevel?
     public var facts: HealthFacts
     /// nil when the service did not give its journal.
     public var events: [SleepEvent]?
@@ -26,7 +27,7 @@ public struct DiagnosticsReport: Sendable {
     public static let characterLimit = 60_000
 
     public init(date: Date, appVersion: String, macOSVersion: String, model: String, facts: HealthFacts,
-                events: [SleepEvent]?, log: Result<String, LogUnavailable>) {
+                events: [SleepEvent]?, log: Result<String, LogUnavailable>, thermalLevel: ThermalLevel? = nil) {
         self.date = date
         self.appVersion = appVersion
         self.macOSVersion = macOSVersion
@@ -34,6 +35,7 @@ public struct DiagnosticsReport: Sendable {
         self.facts = facts
         self.events = events
         self.log = log
+        self.thermalLevel = thermalLevel
     }
 
     /// The whole report, with the home folder written `~`. Beyond the limits, the oldest log lines
@@ -45,6 +47,7 @@ public struct DiagnosticsReport: Sendable {
                     "macOS: \(macOSVersion)",
                     "Mac: \(model)"]
         let status = facts.status
+        if let thermalLevel { head.append("Thermal level: \(thermalLevel.rawValue)") }
         if let adapter = status?.onPowerAdapter {
             let battery = status?.batteryPercent.map { ", battery \($0) %" } ?? ""
             head.append("Power: \(adapter ? "adapter" : "battery")\(battery)")
@@ -133,6 +136,7 @@ public struct DiagnosticsReport: Sendable {
         if let adapter = event.onPowerAdapter { parts.append("adapter=\(adapter)") }
         if let detail = event.detail { parts.append("detail=\"\(detail)\"") }
         if let wake = event.wakeReason { parts.append("wake=\(wake)") }
+        if let thermal = event.thermal { parts.append("thermal=\(thermal)") }
         return parts.joined(separator: " ")
     }
 }

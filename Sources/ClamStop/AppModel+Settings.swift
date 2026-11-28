@@ -293,13 +293,15 @@ extension AppModel {
         agentHookStates = [.claude: .installed, .cursor: .notInstalled]
         let now = Date()
         func event(_ ago: TimeInterval, _ kind: SleepEvent.Kind, _ battery: Int, _ detail: String? = nil,
-                   _ wake: WakeReason? = nil) -> SleepEvent {
-            SleepEvent(date: now - ago, kind: kind, batteryPercent: battery, detail: detail, wakeReason: wake?.rawValue)
+                   _ wake: WakeReason? = nil, _ thermal: ThermalLevel? = nil) -> SleepEvent {
+            SleepEvent(date: now - ago, kind: kind, batteryPercent: battery, detail: detail, wakeReason: wake?.rawValue,
+                       thermal: thermal?.rawValue)
         }
         sleepLog = [
             event(136_000, .lidClosed, 64),
             event(135_990, .keptAwakeForAgents, 64, KeepAwakeReason.agents.rawValue),
-            event(130_000, .agentsDone, 19, KeepAwakeEnd.batteryFloor.rawValue),
+            event(133_000, .thermalChanged, 42, ThermalLevel.fair.rawValue, nil, .fair),
+            event(130_000, .agentsDone, 19, KeepAwakeEnd.batteryFloor.rawValue, nil, .fair),
             event(129_990, .sleep, 19),
             event(100_000, .lidOpened, 18),
             event(99_999, .wake, 18, SleepLog.wakeLidOpen, .lid),

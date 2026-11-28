@@ -122,11 +122,14 @@ final class SystemPower: PowerEffects {
         DispatchQueue.main.asyncAfter(wallDeadline: .now() + seconds, execute: block)
     }
 
+    static func thermalLevel() -> ThermalLevel {
+        ThermalLevel(ProcessInfo.processInfo.thermalState)
+    }
+
     func powerContext() -> PowerContext {
         let battery = Self.battery()
-        let thermal = ProcessInfo.processInfo.thermalState
         return PowerContext(onPowerAdapter: battery.onPowerAdapter, batteryPercent: battery.percent,
-                            thermalPressure: thermal == .serious || thermal == .critical,
+                            thermalPressure: Self.thermalLevel().isTooHot,
                             externalDisplay: externalDisplay)
     }
 

@@ -94,9 +94,14 @@ struct SafetyTab: View {
     var body: some View {
         Form {
             Section {
-                ToggleRow(title: "Sleep when the Mac gets hot",
-                          note: "With the lid closed, a warm Mac goes to sleep to cool down.",
-                          isOn: setting(model, \.heatGuard))
+                VStack(alignment: .leading, spacing: 6) {
+                    ToggleRow(title: "Sleep when the Mac gets hot",
+                              note: "With the lid closed, a warm Mac goes to sleep to cool down.",
+                              isOn: setting(model, \.heatGuard))
+                    if !model.settings.heatGuard {
+                        HeatGuardWarning()
+                    }
+                }
                 ToggleRow(title: "Sleep when the power adapter is unplugged",
                           note: "Only while staying awake with the lid closed.",
                           isOn: setting(model, \.onlyWhileCharging))
@@ -124,6 +129,23 @@ struct SafetyTab: View {
         case 1: String(localized: "1 hour")
         default: String(localized: "\(hours) hours")
         }
+    }
+}
+
+/// Shown while the heat guard is off.
+private struct HeatGuardWarning: View {
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .accessibilityLabel("Warning")
+            Text("With this off, your Mac stays awake with the lid closed even when it gets too hot.")
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.footnote)
+        .accessibilityElement(children: .combine)
+        .onAppear { VoiceOver.say(String(localized: "Warning: the heat guard is off")) }
     }
 }
 
