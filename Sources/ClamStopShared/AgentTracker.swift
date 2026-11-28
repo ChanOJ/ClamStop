@@ -77,6 +77,13 @@ public struct AgentHookMessage: Codable, Equatable, Sendable {
         }
     }
 
+    /// Longest values the daemon accepts, in UTF-8 bytes: far above what agents send.
+    public var isWithinLimits: Bool {
+        !sessionID.isEmpty && sessionID.utf8.count <= 256
+            && !sessionID.unicodeScalars.contains { $0.properties.generalCategory == .control }
+            && event.utf8.count <= 64 && (transcriptPath?.utf8.count ?? 0) <= 1024
+    }
+
     /// What the hook must print on standard output so that the agent carries on unchanged;
     /// nil = nothing (Claude Code would add it to the conversation).
     public static func hookReply(agent: AgentKind, event: String?) -> String? {
@@ -127,6 +134,8 @@ public struct AgentLease: Codable, Equatable, Sendable {
     public var subagents: Int
     /// CPU seconds of the agent's process tree at the previous tick.
     public var lastCPUSeconds: Double?
+    /// The user who opened the lease: only that user's files count as activity.
+    public var owner: UInt32? = nil
 
     public var key: String { "\(agent.rawValue)-\(sessionID)" }
 }
@@ -165,6 +174,8 @@ public final class AgentTracker {
     public static let graceWriteMargin: TimeInterval = 10
     /// Seconds between probes while at least one lease exists.
     public static let tickInterval: TimeInterval = 15
+    /// Sessions followed at once; a new one beyond that is ignored.
+    public static let maxLeases = 64
 
     public private(set) var leases: [String: AgentLease] = [:]
     private let log: (String) -> Void
@@ -186,10 +197,15 @@ public final class AgentTracker {
         leases.removeAll()
     }
 
-    public func handle(_ message: AgentHookMessage, now: Date) {
+    public func handle(_ message: AgentHookMessage, now: Date, owner: UInt32? = nil) {
+        guard message.isWithinLimits else { return }
         let key = "\(message.agent.rawValue)-\(message.sessionID)"
         switch message.event {
         case "UserPromptSubmit":
+            if leases[key] == nil, leases.count >= Self.maxLeases {
+                log("agent \(message.agent.rawValue): \(Self.maxLeases) sessions already followed, ignoring one more")
+                return
+            }
             var lease = leases[key] ?? AgentLease(
                 agent: message.agent, sessionID: message.sessionID, pid: nil, pidStartMicros: nil,
                 transcriptPath: nil, state: .active, acquiredAt: now, lastActivity: now,
@@ -198,6 +214,7 @@ public final class AgentTracker {
             lease.state = .active
             lease.graceStarted = nil
             lease.lastActivity = now
+            lease.owner = owner
             // Refresh anchors: a resumed session may run in a new process.
             if let pid = message.agentPID {
                 if pid != lease.pid { lease.lastCPUSeconds = nil }

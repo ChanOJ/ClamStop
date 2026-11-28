@@ -206,7 +206,8 @@ public final class PowerController {
 
     /// Uninstall: back to macOS defaults (`hibernatemode 3`, no ClamStop wake).
     public func restoreDefaults() {
-        // No rule or app may hold the Mac awake again before the daemon is removed.
+        // Nothing may change the Mac again before the daemon is removed.
+        settings.enabled = false
         settings.rules = []
         settings.watchedApps = []
         appsWorking = false
@@ -487,12 +488,16 @@ public final class PowerController {
             log("disablesleep already set by something else: leaving it alone")
             return
         }
-        guard effects.setSleepDisabled(true) else {
+        // Recorded first: a daemon that dies in between still releases it at its next start.
+        state.sleepDisabledByClamStop = true
+        store.save(state)
+        // A failed check can still leave it set: then it stays recorded, to be released.
+        guard effects.setSleepDisabled(true) || effects.isSleepDisabled() else {
+            state.sleepDisabledByClamStop = nil
+            store.save(state)
             log("could not set disablesleep 1")
             return
         }
-        state.sleepDisabledByClamStop = true
-        store.save(state)
         armWatchdog()
         let why = session != nil ? "stay awake session" : agentsWorking ? "agents working"
             : appsWorking ? "apps working" : "rule"
