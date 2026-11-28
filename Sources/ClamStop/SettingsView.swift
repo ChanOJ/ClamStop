@@ -118,7 +118,7 @@ private struct SettingsTabBar: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(Array(SettingsTab.allCases.enumerated()), id: \.element) { index, tab in
+            ForEach(SettingsTab.allCases) { tab in
                 let selected = selection == tab
                 Button {
                     selection = tab
@@ -137,8 +137,6 @@ private struct SettingsTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                // ⌘1 to ⌘5.
-                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
                 .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
             }
