@@ -162,16 +162,23 @@ private func level(_ kind: HealthCheck.Kind, _ facts: HealthFacts) -> HealthChec
     }
 
     @Test func mail() throws {
-        let url = try #require(report.mailtoURL(address: "bugs@example.org", diagnostics: "one\ntwo"))
+        let url = try #require(report.mailtoURL(address: "bugs@example.org", diagnostics: .inBody("one\ntwo")))
         #expect(url.absoluteString.hasPrefix("mailto:bugs@example.org?subject="))
         #expect(query(url, "subject") == "ClamStop 1.2.3: problem report")
         #expect(query(url, "body")?.contains("--- Diagnostics ---\r\none\r\ntwo\r\n") == true)
-        #expect(report.mailBody(diagnostics: nil).contains("are attached"))
+        #expect(report.mailBody(.attached).contains("are attached"))
+    }
+
+    @Test func webmailGetsAShortAddress() throws {
+        let url = try #require(report.mailtoURL(address: "bugs@example.org", diagnostics: .toPaste))
+        #expect(query(url, "body")?.contains("Paste the diagnostics below this line (⌘V):") == true)
+        #expect(query(url, "body")?.contains("Failed checks: service (problem)") == true)
+        #expect(url.absoluteString.count < 2000)
     }
 
     @Test func reservedCharacters() throws {
         let odd = ProblemReport(appVersion: "1+2&3=4#5", macOSVersion: "27.2", model: "Mac", checks: [])
-        let url = try #require(odd.mailtoURL(address: "bugs@example.org", diagnostics: ""))
+        let url = try #require(odd.mailtoURL(address: "bugs@example.org", diagnostics: .toPaste))
         #expect(!url.absoluteString.contains("1+2"))
         #expect(query(url, "subject") == "ClamStop 1+2&3=4#5: problem report")
     }

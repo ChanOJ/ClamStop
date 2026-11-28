@@ -163,7 +163,8 @@ notarization are wired in CI behind secrets and skipped when they are absent.
 - Diagnostics (spec H4, 2026-11-28): checks in `HealthCheck`, report text in `DiagnosticsReport`
   (home folder as `~`, 60 000 characters at most for a GitHub issue), prefilled issue and e-mail in
   `ProblemReport`; the app sends nothing itself and holds no secret (no SMTP, no GitHub token).
-  Reports by e-mail go to `Links.reportEmail`, an alias for ClamStop alone. `--export-diagnostics
+  Reports by e-mail go to `Links.reportEmail`, an alias for ClamStop alone. A browser as mail
+  app gets a short `mailto:` (Gmail answers "400" to a long one, seen 2026-11-28). `--export-diagnostics
   <file>` writes the real report without telling the daemon that the app runs (installed copy
   only: another build gets no XPC answer).
 - Notifications (spec H5): the root daemon cannot post them, so `PowerController.notify` keeps the
