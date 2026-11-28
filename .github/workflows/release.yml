@@ -8,6 +8,9 @@ name: Release
 # "Run workflow" (workflow_dispatch) is a dry run, version 0.0.0: same build, signature,
 # notarization and appcast, kept as a workflow artifact. Nothing is published, and the run
 # fails when a secret is missing.
+#
+# The secrets live in the "release" environment: a run starts only from main or a v* tag, and
+# waits for an approval (Actions > the run > Review deployments).
 on:
   push:
     tags: ["v*"]
@@ -24,6 +27,7 @@ jobs:
     name: Build and publish
     runs-on: macos-26
     timeout-minutes: 90
+    environment: release # holds the signing secrets
     permissions:
       contents: write # create the GitHub Release
     steps:
