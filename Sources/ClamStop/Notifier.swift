@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import UserNotifications
+import ClamStopDiagnostics
 import ClamStopShared
 import os
 
@@ -14,6 +15,9 @@ private let logger = Logger(subsystem: ClamStopID.appBundleID, category: "notifi
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// Called when a notification is clicked.
     var onOpen: () -> Void = {}
+    /// Called when the sleep report is clicked.
+    var onOpenJournal: () -> Void = {}
+    private nonisolated static let sleepReportID = "sleep-report"
 
     /// Only from a ClamStop.app bundle: `current()` raises an exception outside one (`swift run`).
     private var center: UNUserNotificationCenter { .current() }
@@ -78,6 +82,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         center.removeDeliveredNotifications(withIdentifiers: [Self.approvalID, Self.reminderID])
     }
 
+    /// "Sleep report" (spec B5): the newest one replaces the one before.
+    func sleepEnded(_ report: SleepReport) {
+        post(id: Self.sleepReportID, title: SleepReport.title, body: report.body)
+    }
+
     private func post(id: String, title: String, body: String) {
         guard available else { return }
         let content = UNMutableNotificationContent()
@@ -123,8 +132,14 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
+        let id = response.notification.request.identifier
         Task { @MainActor in
-            self.onOpen()
+            logger.notice("notification clicked: \(id == Self.sleepReportID ? id : "other", privacy: .public)")
+            if id == Self.sleepReportID {
+                self.onOpenJournal()
+            } else {
+                self.onOpen()
+            }
             completionHandler()
         }
     }

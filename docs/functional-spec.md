@@ -85,7 +85,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 | B2 | Hibernate immediately on lid close | F | M (exists) | `hibernatemode 25` before sleep | HsOjo SleeperX (Hackintosh) |
 | B3 | Hibernate (or sleep) when the battery falls below a level | F | M | Battery level on wakes | SleeperX, Sleepless, double-shot |
 | B4 | Separate settings on power and on battery (lid action, hibernation delay) | F+S | M | | MacMiniMode, turnintoserver, Clapet, mac-lid-mode-adjuster |
-| B5 | Morning report: battery used during the night, how long it slept, whether it hibernated | F+S | 1 | Sleep log (H3) | Latch (lid journal), LidSleepToggle (dashboard), adrafinil |
+| B5 | Sleep report (option, off by default): after a sleep of 4 h or more, at any hour, a notification says how long it lasted, the battery used and whether it hibernated | F+S | 1 | Sleep log (H3) | Latch (lid journal), LidSleepToggle (dashboard), adrafinil |
 | B6 | Low Power Mode during lid-closed sessions, restored after | F | 1 | `pmset lowpowermode` (root) | Insomnia (krishhgg), Pilot Light, ClamDown |
 
 ### C. Staying awake (sessions)

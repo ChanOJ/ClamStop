@@ -98,6 +98,12 @@ extension AppModel {
                      holder("Handoff and sharing", nil, 300, "Handoff")])
     }
 
+    func openNotificationSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     private var appVersionAndBuild: String {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? ClamStopVersion.current

@@ -233,8 +233,8 @@ struct SettingsMockupView: View {
                     Button("Change…") {}
                 }
             }
-            ToggleRow(title: "Morning report",
-                      note: "Battery used overnight and how long your Mac slept.", isOn: $model.options.morningReport)
+            ToggleRow(title: "Sleep report",
+                      note: "After a long sleep, how long it lasted and the battery used.", isOn: $model.options.morningReport)
             OptionRow(title: "What keeps my Mac awake?",
                       note: "Apps that prevent sleep right now.") {
                 Button("Show…") {}

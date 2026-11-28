@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var journalWindow: NSWindow?
     private var awakeWindow: NSWindow?
     private var awakeTimer: Timer?
+    private var journalAskedByNotification = Date.distantPast
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
@@ -116,7 +117,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 guard let model else { return }
                 model.screenDimmer.lidChanged(closed: closed)
-                guard closed else { return }
+                guard closed else {
+                    model.checkSleepReport()
+                    return
+                }
                 // Ask the service once it has decided, without waiting for the next poll.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.refresh() }
             }
@@ -274,6 +278,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Opening the app again (Finder, Spotlight, Launchpad) while it runs: show the settings.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        iconLogger.notice("reopen")
+        // Not over the journal that a notification just asked for.
+        guard Date().timeIntervalSince(journalAskedByNotification) > 2 else { return false }
         showSettings()
         return false
     }
@@ -315,6 +322,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !AppModel.previewSettings, !AppModel.previewApproval,
               !CommandLine.arguments.contains("--snapshot") else { return }
         notifier.onOpen = { [weak self] in self?.showSettings() }
+        notifier.onOpenJournal = { [weak self] in self?.showJournalFromNotification() }
+        model.onSleepReport = { [notifier] in notifier.sleepEnded($0) }
         notifier.start()
         model.onApprovalReminder = { [notifier] in notifier.serviceStillNeedsApproval() }
         notifierObservers.append(model.$status.sink { [notifier] status in
@@ -353,6 +362,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         model.loadSleepLog()
         journalWindow?.showInFront()
+    }
+
+    /// The sleep report was clicked. macOS activates the app around the click, which can bring
+    /// another of its windows in front of the journal (the settings, seen 2026-11-28): bring the
+    /// journal forward again once that is over.
+    private func showJournalFromNotification() {
+        journalAskedByNotification = Date()
+        showJournal()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.journalWindow?.showInFront()
+        }
     }
 
     /// "What keeps my Mac awake?" (spec H2): read again every few seconds while it is open.

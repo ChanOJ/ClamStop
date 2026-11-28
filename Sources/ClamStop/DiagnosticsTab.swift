@@ -35,6 +35,7 @@ struct DiagnosticsTab: View {
 /// What keeps the Mac awake (spec H2) and the sleep journal (H3), each in its own window.
 private struct JournalSection: View {
     @ObservedObject var model: AppModel
+    @AppStorage(DefaultsKey.sleepReport) private var sleepReport = false
 
     var body: some View {
         Section {
@@ -48,6 +49,25 @@ private struct JournalSection: View {
                 Button("Show…") { model.onShowJournal() }
                     .accessibilityLabel("Show the sleep journal")
                     .disabled(!model.serviceRunning)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                ToggleRow(title: "Sleep report",
+                          note: "After a sleep of 4 hours or more, a notification says how long it lasted and the battery used.",
+                          isOn: $sleepReport)
+                if sleepReport, model.notificationAccess == .denied {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .accessibilityLabel("Warning")
+                            Text("ClamStop’s notifications are turned off.")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .accessibilityElement(children: .combine)
+                        Button("Open Notification Settings…") { model.openNotificationSettings() }
+                    }
+                    .font(.footnote)
+                }
             }
         }
     }
@@ -244,11 +264,7 @@ private struct HealthRow: View {
         case .hibernateMode:
             copyButton(Self.hibernateCommand)
         case .notifications:
-            Button("Open Notification Settings…") {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
+            Button("Open Notification Settings…") { model.openNotificationSettings() }
         case .agentHooks:
             Button("Install Hooks…") { model.confirmAgentHooks = true }
         case .openAtLogin:

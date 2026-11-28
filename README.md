@@ -103,6 +103,10 @@ levels, not degrees; a hot Mac is normal under a large load, and only a very hot
 sleep). Brief wakes with the screen off are not listed. The journal
 covers the last 30 days and stays on this Mac.
 
+**Sleep report**, in the same tab, off by default: when the Mac wakes after a sleep of 4 hours or
+more, a notification says how long it lasted, the battery used and whether it hibernated. A click
+opens the journal.
+
 ### What keeps my Mac awake?
 
 **What Keeps My Mac Awake…** in the menu, or **Show…** in the Diagnostics tab, lists what stops
