@@ -30,6 +30,6 @@ enum Main {
     /// Development aids that show windows or write images (see `AppDelegate`).
     private static let developmentRunFlags: Set<String> = [
         "--preview-settings", "--preview-approval", "--snapshot", "--mockups", "--export-icons",
-        "--export-illustration",
+        "--export-illustration", "--export-diagnostics",
     ]
 }

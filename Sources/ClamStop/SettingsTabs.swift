@@ -87,7 +87,7 @@ struct StayAwakeTab: View {
 }
 
 /// Safety: guards that end staying awake with the lid closed (spec E1, E2, E3, E5), then
-/// hibernation on a low battery and the sleep journal.
+/// hibernation on a low battery.
 struct SafetyTab: View {
     @ObservedObject var model: AppModel
 
@@ -115,7 +115,6 @@ struct SafetyTab: View {
             }
             .disabled(!model.serviceRunning)
             BatteryLevelSection(model: model)
-            JournalSection(model: model)
         }
     }
 
@@ -158,21 +157,6 @@ private struct BatteryLevelSection: View {
                 }
             }
             .disabled(!model.serviceRunning || !model.settings.enabled)
-        }
-    }
-}
-
-/// Sleep journal, in its own window (spec H3).
-private struct JournalSection: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        Section {
-            OptionRow(title: "Sleep journal",
-                      note: "When the lid closed and opened, when your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
-                Button("Show…") { model.onShowJournal() }
-                    .disabled(!model.serviceRunning)
-            }
         }
     }
 }

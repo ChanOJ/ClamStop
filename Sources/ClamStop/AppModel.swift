@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import ServiceManagement
+import ClamStopDiagnostics
 import ClamStopShared
 import os
 
@@ -49,7 +50,7 @@ final class AppModel: ObservableObject {
         }
     }
     @Published private(set) var status: DaemonStatus?
-    @Published private(set) var launchAtLogin = false
+    @Published var launchAtLogin = false
     @Published var errorMessage: String?
     // Kept here rather than in a view's @State: with the Command Line Tools alone, the SwiftUI
     // macro plugin behind @State is missing on recent SDKs, and plain `swift build` must work.
@@ -67,6 +68,13 @@ final class AppModel: ObservableObject {
     @Published var ruleDraft: Rule?
     /// Apps and commands offered by "Add App…" (see WatchedAppsView.swift).
     @Published var knownApps: [WatchedApp] = []
+    // Diagnostics tab (see AppModel+Diagnostics.swift)
+    @Published var systemState: SystemSleepState?
+    @Published var notificationAccess = NotificationAccess.unknown
+    /// While "Check Again" runs: how many checks show their result again. nil otherwise.
+    @Published var revealedChecks: Int?
+    @Published var preparingReport = false
+    @Published var reportMessage: String?
     // First run (see FirstRunView.swift)
     @Published var firstRunStep = 1
     @Published var firstRunChoice = FirstRunChoice.sleep
@@ -257,6 +265,23 @@ final class AppModel: ObservableObject {
     func setPreviewStatus(_ status: DaemonStatus) {
         self.status = status
         serviceState = .running
+    }
+
+    /// `--export-diagnostics`: ask the service once, without telling it that the app runs, and
+    /// register nothing.
+    func readServiceOnce() async {
+        refreshAgentHooks()
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+        if let answer = try? await client.peekStatus() {
+            status = answer
+            serviceState = .running
+            return
+        }
+        switch daemonService.status {
+        case .enabled: serviceState = .notResponding
+        case .requiresApproval: serviceState = .requiresApproval
+        default: serviceState = Self.daemonPlistInBundle ? .notRegistered : .notFound
+        }
     }
 
     // MARK: Daemon settings
