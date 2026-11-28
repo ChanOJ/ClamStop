@@ -1,7 +1,8 @@
 # Signing and notarization
 
-Every `v*` tag publishes a Developer ID signed and notarized DMG. The five GitHub secrets below
-have been set since 2026-11-28 (copies in Proton Pass); sections 1 to 4 are for renewing them.
+Every `v*` tag publishes a Developer ID signed and notarized DMG. The five secrets below,
+in the GitHub environment `release`, have been set since 2026-11-28 (copies in Proton Pass);
+sections 1 to 4 are for renewing them.
 Without them (a fork, for instance), builds are signed ad-hoc and macOS blocks them at first
 launch.
 
@@ -54,6 +55,11 @@ membership. Only the Account Holder can create Developer ID certificates.
 
 ## 4. Add the GitHub secrets
 
+The secrets belong to the environment `release`, never to the repository (where any workflow of
+any branch could read them). The environment allows runs from `main` and `v*` tags only, and each
+run waits for the approval of its reviewer (**Settings > Environments > release**). For a fork:
+create that environment first.
+
 Run each command from any folder. Those without a pipe or `<` prompt for the value, so it does
 not stay in the shell history.
 
@@ -63,38 +69,38 @@ answer "Operation not permitted": `gh` then still reports success, but the secre
 1. The certificate:
 
    ```bash
-   base64 -i ~/Downloads/DeveloperID.p12 | gh secret set MACOS_CERTIFICATE_P12_BASE64 --repo ChanOJ/ClamStop
+   base64 -i ~/Downloads/DeveloperID.p12 | gh secret set MACOS_CERTIFICATE_P12_BASE64 --repo ChanOJ/ClamStop --env release
    ```
 
 2. Its password (paste it at the prompt):
 
    ```bash
-   gh secret set MACOS_CERTIFICATE_PASSWORD --repo ChanOJ/ClamStop
+   gh secret set MACOS_CERTIFICATE_PASSWORD --repo ChanOJ/ClamStop --env release
    ```
 
 3. The API key. The pattern matches the single `AuthKey_*.p8` file in `Downloads`; if several
    exist, replace it with the exact file name:
 
    ```bash
-   base64 -i ~/Downloads/AuthKey_*.p8 | gh secret set NOTARY_API_KEY_P8_BASE64 --repo ChanOJ/ClamStop
+   base64 -i ~/Downloads/AuthKey_*.p8 | gh secret set NOTARY_API_KEY_P8_BASE64 --repo ChanOJ/ClamStop --env release
    ```
 
 4. The key ID (paste it at the prompt):
 
    ```bash
-   gh secret set NOTARY_API_KEY_ID --repo ChanOJ/ClamStop
+   gh secret set NOTARY_API_KEY_ID --repo ChanOJ/ClamStop --env release
    ```
 
 5. The issuer ID (paste it at the prompt; a UUID, `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`):
 
    ```bash
-   gh secret set NOTARY_API_ISSUER_ID --repo ChanOJ/ClamStop
+   gh secret set NOTARY_API_ISSUER_ID --repo ChanOJ/ClamStop --env release
    ```
 
 6. Check that the five names are listed (with `SPARKLE_ED_PRIVATE_KEY`, six):
 
    ```bash
-   gh secret list --repo ChanOJ/ClamStop
+   gh secret list --repo ChanOJ/ClamStop --env release
    ```
 
 7. Once the password manager holds both files, delete `DeveloperID.p12`, the `.p8` file and the
@@ -112,20 +118,23 @@ committed.
    gh workflow run release.yml --repo ChanOJ/ClamStop --ref main
    ```
 
-2. Find the run ID:
+2. Approve it: open the run (**Actions > Release**), **Review deployments**, tick **release**,
+   **Approve and deploy**. Every release run, tags included, waits for this.
+
+3. Find the run ID:
 
    ```bash
    gh run list --repo ChanOJ/ClamStop --workflow release.yml --limit 1
    ```
 
-3. Once it is green (the account's first notarization took 33 minutes on 2026-11-28, the next
+4. Once it is green (the account's first notarization took 33 minutes on 2026-11-28, the next
    one less than a minute), download the `ClamStop-dry-run` artifact into a new folder:
 
    ```bash
    gh run download --repo ChanOJ/ClamStop --name ClamStop-dry-run --dir ~/Downloads/ClamStop-dry-run
    ```
 
-4. Check the DMG. The first command must succeed, the second answer
+5. Check the DMG. The first command must succeed, the second answer
    `source=Notarized Developer ID`:
 
    ```bash
@@ -137,6 +146,9 @@ committed.
    ```
 
 ## 6. Publish a signed release
+
+The tag must point to a commit of `main`, and the repository does not let a `v*` tag be moved
+or deleted, nor a published release be changed: after a mistake, release the next version.
 
 1. From an up-to-date `main`, create the tag:
 
@@ -150,7 +162,8 @@ committed.
    git push origin v1.0.0
    ```
 
-3. Follow the **Release** workflow under the repository's **Actions** tab. The release notes
+3. Follow the **Release** workflow under the repository's **Actions** tab and approve it
+   (**Review deployments**). The release notes
    state whether the build is notarized. A tag with a suffix (`v1.0.0-rc.1`) publishes a
    pre-release, useful for a first trial of the secrets.
 4. Download the DMG from the release in a browser, install it, and check that it opens without a

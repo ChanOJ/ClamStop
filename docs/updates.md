@@ -31,7 +31,8 @@ The full edition updates itself with [Sparkle 2](https://sparkle-project.org) (p
 ## Create the signing key (once)
 
 Done on 2026-11-28: the steps below are only for a new key. The private key never goes into the
-repository. It lives in Proton Pass and in a GitHub secret.
+repository. It lives in Proton Pass and in a secret of
+the GitHub environment `release` ([signing.md](signing.md), section 4).
 
 1. Build once so that SwiftPM downloads Sparkle and its tools:
 
@@ -57,13 +58,13 @@ repository. It lives in Proton Pass and in a GitHub secret.
 5. Add the GitHub secret from the file:
 
    ```bash
-   gh secret set SPARKLE_ED_PRIVATE_KEY --repo ChanOJ/ClamStop < ~/Downloads/clamstop-sparkle-private-key.txt
+   gh secret set SPARKLE_ED_PRIVATE_KEY --repo ChanOJ/ClamStop --env release < ~/Downloads/clamstop-sparkle-private-key.txt
    ```
 
 6. Check that the secret is listed:
 
    ```bash
-   gh secret list --repo ChanOJ/ClamStop
+   gh secret list --repo ChanOJ/ClamStop --env release
    ```
 
 7. Delete the exported file:
