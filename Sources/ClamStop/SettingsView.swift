@@ -118,7 +118,7 @@ private struct SettingsTabBar: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(SettingsTab.allCases) { tab in
+            ForEach(Array(SettingsTab.allCases.enumerated()), id: \.element) { index, tab in
                 let selected = selection == tab
                 Button {
                     selection = tab
@@ -137,12 +137,16 @@ private struct SettingsTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                // ⌘1 to ⌘5.
+                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
                 .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
             }
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Settings tabs")
     }
 }
 
@@ -331,7 +335,7 @@ struct DonationLink: View {
             // Wording approved by the user on their accountant's advice (2026-11-27); full terms
             // in the README and on the website. Full edition only, like the link.
             Text("A gift, with nothing in return: no feature, no priority support, no tax receipt.")
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }

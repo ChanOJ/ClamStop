@@ -18,7 +18,7 @@ Work in progress. Requires macOS 14 Sonoma or later (Apple silicon or Intel).
 
 ## Settings
 
-Everything is free. The settings window has five tabs:
+Everything is free. The settings window has five tabs (⌘1 to ⌘5):
 
 - **General**: what happens when you close the lid (sleep, or do what macOS does), the
   hibernation delay (immediately, after 5 minutes to 4 hours, or never), different settings on
