@@ -92,16 +92,46 @@ struct ChoiceCard: View {
     }
 }
 
+/// Marks a setting that ClamStop advises to keep on.
+struct RecommendedBadge: View {
+    var body: some View {
+        Text("Recommended")
+            .font(.caption)
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+            .fixedSize()
+    }
+}
+
+/// A switch's title followed by the badge, one element for VoiceOver.
+struct RecommendedTitle: View {
+    let title: LocalizedStringKey
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+            RecommendedBadge()
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// A settings row: title and a one-line note on the left, the control on the right.
 struct OptionRow<Control: View>: View {
     let title: LocalizedStringKey
     var note: LocalizedStringKey?
+    var recommended = false
     @ViewBuilder let control: () -> Control
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                HStack(spacing: 6) {
+                    Text(title)
+                    if recommended { RecommendedBadge() }
+                }
                 if let note {
                     Text(note)
                         .font(.footnote)
@@ -120,10 +150,11 @@ struct OptionRow<Control: View>: View {
 struct ToggleRow: View {
     let title: LocalizedStringKey
     var note: LocalizedStringKey?
+    var recommended = false
     @Binding var isOn: Bool
 
     var body: some View {
-        OptionRow(title: title, note: note) {
+        OptionRow(title: title, note: note, recommended: recommended) {
             Toggle(title, isOn: $isOn)
                 .labelsHidden()
                 .toggleStyle(.switch)

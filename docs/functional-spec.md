@@ -116,7 +116,7 @@ L = later or to be validated. **Tech** notes requirements: root (daemon), privat
 
 | ID | Feature | Ed. | Prio | Tech | Seen in |
 |---|---|---|---|---|---|
-| E1 | Battery floor: end any session and sleep below a level on battery (default 20 %, minimum 5 %) | F+S | M | | nearly all keep-awake tools |
+| E1 | Battery floor: end any session and sleep below a level on battery (default 20 %, minimum 5 %, can be disabled) | F+S | M | | nearly all keep-awake tools |
 | E2 | Heat guard: end a lid-closed session when the Mac gets hot (first warm level when the lid is closed) | F+S | M | `ProcessInfo.thermalState` | clamshut, double-shot, ClamDown, Lidless, Lidwork |
 | E3 | Only while charging: end a lid-closed session when the power adapter is disconnected (option, default on) | F+S | M | | MacMiniMode, Lidless, turnintoserver, Insomnio |
 | E4 | Crash recovery: a watchdog in the daemon restores normal sleep within seconds if the app quits, crashes or hangs; the next launch undoes leftovers | F | M | Daemon heartbeat | Lidless, double-shot, Insomnia (krishhgg), ClamshellToggle, StayAwake, PeachPocket, Lidwork |

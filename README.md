@@ -33,7 +33,7 @@ Everything is free. The settings window has six tabs (⌘ with the keys 1 to 6 o
   rule applies; the Safety guards and the low battery hibernation come first. Without a matching
   rule, the General tab applies. See [Rules](#rules).
 - **Safety**: guards that end staying awake with the lid closed: heat, power adapter unplugged
-  (on by default), longest time (no limit by default), battery below a level (20 % by default).
+  (on by default), longest time (no limit by default), battery below a level (20 % by default, can be disabled).
   An option hibernates at once when the lid closes on battery below a level.
 - **Diagnostics**: the [health check](#health-check-and-problem-reports), the
   [sleep journal](#sleep-journal) and problem reports.

@@ -40,7 +40,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     public var lowBatteryPercent: Int
 
     // Safety guards (spec E1, E2, E3, E5): they end staying awake with the lid closed.
-    /// On battery, sleep below this level (spec E1, default 20 %, minimum 5 %).
+    /// On battery, sleep below this level (spec E1, default 20 %, minimum 5 %,
+    /// `noBatteryFloor` = off).
     public var batteryFloorPercent: Int
     /// Sleep when the Mac gets hot (spec E2).
     public var heatGuard: Bool
@@ -62,6 +63,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     public static let never = -1
     public static let maxAwakeHourChoices = [0, 1, 2, 4, 8, 12]
     public static let batteryFloorChoices = [5, 10, 20, 30, 50]
+    /// `batteryFloorPercent` when this guard is off: no level is below it.
+    public static let noBatteryFloor = 0
 
     /// Seconds before hibernating, nil when hibernation is off.
     public var hibernateDelay: TimeInterval? {
@@ -84,7 +87,8 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
         self.battery = battery
         self.lowBatteryHibernation = lowBatteryHibernation
         self.lowBatteryPercent = ClamStopSettings.clampPercent(lowBatteryPercent)
-        self.batteryFloorPercent = ClamStopSettings.clampPercent(batteryFloorPercent)
+        self.batteryFloorPercent = batteryFloorPercent <= ClamStopSettings.noBatteryFloor
+            ? ClamStopSettings.noBatteryFloor : ClamStopSettings.clampPercent(batteryFloorPercent)
         self.heatGuard = heatGuard
         self.onlyWhileCharging = onlyWhileCharging
         self.maxAwakeHours = max(0, maxAwakeHours)

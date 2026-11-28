@@ -97,6 +97,7 @@ struct SafetyTab: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ToggleRow(title: "Sleep when the Mac gets hot",
                               note: "With the lid closed, a warm Mac goes to sleep to cool down.",
+                              recommended: true,
                               isOn: setting(model, \.heatGuard))
                     if !model.settings.heatGuard {
                         HeatGuardWarning()
@@ -156,8 +157,10 @@ private struct BatteryLevelSection: View {
     var body: some View {
         Section {
             OptionRow(title: "Sleep when the battery falls below",
-                      note: "Ends staying awake to keep enough battery.") {
+                      note: "Ends staying awake to keep enough battery.",
+                      recommended: true) {
                 Picker("Sleep when the battery falls below", selection: setting(model, \.batteryFloorPercent)) {
+                    Text("Disabled").tag(ClamStopSettings.noBatteryFloor)
                     ForEach(ClamStopSettings.batteryFloorChoices, id: \.self) { Text(verbatim: "\($0) %").tag($0) }
                 }
                 .labelsHidden()
