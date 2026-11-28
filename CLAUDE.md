@@ -58,13 +58,31 @@ on Apple Silicon); on Intel Macs restore `standbydelayhigh 86400`, `standbydelay
 
 ## Installing a new build on this Mac (ad-hoc signed)
 
-Follow README "Updating an unsigned build" (verified 2026-11-26): quit the app, `ditto
-dist/ClamStop.app /Applications/ClamStop.app`, `open /Applications/ClamStop.app --args
---reinstall-service`, then the user turns the switch on once (never off and on: it restores the
-pinned registration, `last exit code = 78: EX_CONFIG`). Check with `launchctl print
-system/io.github.chanoj.clamstop.daemon`. Do not run `sfltool dumpbtm`: every call pops up an
-administrator prompt. Every reinstall needs the user's approval again, so batch fixes before
-installing.
+After `scripts/build-app.sh`, compare the daemons first:
+`cmp dist/ClamStop.app/Contents/MacOS/ClamStopDaemon /Applications/ClamStop.app/Contents/MacOS/ClamStopDaemon`.
+Any change in `ClamStopShared` changes the daemon, even app-only logic.
+
+- Identical: quit the app, `ditto dist/ClamStop.app /Applications/ClamStop.app`,
+  `open /Applications/ClamStop.app`. No approval needed.
+- Different: same, with `open /Applications/ClamStop.app --args --reinstall-service` (always quit
+  first: `open --args` passes nothing to a running app), then the user turns the switch on once
+  (README "Updating an unsigned build"). The app registers a silent service again by itself
+  (`ServiceWait`); green about 4 s after the switch (2026-11-28). Every such install needs the
+  user's approval again, so batch daemon changes.
+
+Check with `launchctl print system/io.github.chanoj.clamstop.daemon` and the log
+(`/usr/bin/log show --predicate 'subsystem == "io.github.chanoj.clamstop"'`; the app's
+`service` lines are `notice`, kept; `info` lines disappear within minutes). Do not run
+`sfltool dumpbtm`: every call pops up an administrator prompt. End real-Mac tests with
+`hibernatemode 3` and no stray ClamStop wake (`pmset -g`, `pmset -g sched`). Quitting the app to
+install ends a running "Stay Awake" session and releases `disablesleep`.
+
+## Pull requests
+
+The repository has auto-merge disabled and no required check, and desktop sessions must not poll
+CI: after opening a pull request, read its status once, then merge (squash) when the user asks
+again and the check is green; sync `~/Code/ClamStop` (`git pull --ff-only`) and start the next
+branch from `origin/main`.
 
 ## Distribution
 
