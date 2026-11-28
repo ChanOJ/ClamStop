@@ -88,6 +88,22 @@ public struct Rule: Codable, Equatable, Sendable, Identifiable {
         self.hibernateDelayMinutes = ClamStopSettings.clampDelay(hibernateDelayMinutes)
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, enabled, power, display, time, action, hibernateDelayMinutes
+    }
+
+    /// Decoded values go through the same limits.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(id: try c.decode(UUID.self, forKey: .id),
+                  enabled: try c.decode(Bool.self, forKey: .enabled),
+                  power: try c.decodeIfPresent(Power.self, forKey: .power),
+                  display: try c.decodeIfPresent(Display.self, forKey: .display),
+                  time: try c.decodeIfPresent(TimeWindow.self, forKey: .time),
+                  action: try c.decode(Action.self, forKey: .action),
+                  hibernateDelayMinutes: try c.decode(Int.self, forKey: .hibernateDelayMinutes))
+    }
+
     /// At least one condition, and at least one day when there is a time window.
     public var isValid: Bool {
         (power != nil || display != nil || time != nil) && time?.days.isEmpty != true

@@ -6,7 +6,8 @@ final class FileStore: StateStore {
     static let defaultDirectory = URL(fileURLWithPath: "/Library/Application Support/ClamStop", isDirectory: true)
 
     let directory: URL
-    /// Set after `removeAll()`: no more writes, so uninstall leaves nothing behind.
+    /// Set after `removeAll()`: no more writes, so uninstall leaves nothing behind. Except a
+    /// state with something left to restore, should the daemon not be removed after all.
     private var removed = false
     private var stateURL: URL { directory.appendingPathComponent("state.json") }
     private var settingsURL: URL { directory.appendingPathComponent("settings.json") }
@@ -23,6 +24,7 @@ final class FileStore: StateStore {
     }
 
     func save(_ state: PersistedState) {
+        if state != PersistedState() { removed = false }
         write(state, to: stateURL)
     }
 

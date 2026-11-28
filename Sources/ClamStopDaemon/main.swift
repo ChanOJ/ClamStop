@@ -10,6 +10,7 @@
 import Foundation
 import IOKit.ps
 import notify
+import SystemConfiguration
 import ClamStopShared
 
 /// Glue between the IOKit monitor, the state machine, persistence and XPC. Main queue only.
@@ -47,14 +48,30 @@ final class DaemonService {
 
     private var appWatcher: DispatchSourceProcess?
     private var appPID: pid_t = 0
+    /// The user the watched app runs as.
+    private var appUser: UInt32?
+
+    /// See `CallerPolicy`.
+    func mayControl(_ caller: UInt32) -> Bool {
+        CallerPolicy.mayControl(caller: caller, consoleUser: Self.consoleUser(), appUser: appUser)
+    }
+
+    /// The user at the screen, nil at the login window.
+    private static func consoleUser() -> UInt32? {
+        var uid: uid_t = 0
+        guard let name = SCDynamicStoreCopyConsoleUser(nil, &uid, nil) as String?,
+              name != "loginwindow" else { return nil }
+        return uid
+    }
 
     /// The app polls its status: watch its process, and stay inactive once it ends.
-    func appConnected(pid: pid_t) {
+    func appConnected(pid: pid_t, user: UInt32) {
         if pid == appPID, appWatcher != nil {
             return
         }
         appWatcher?.cancel()
         appPID = pid
+        appUser = user
         let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit, queue: .main)
         source.setEventHandler { [weak self] in
             guard let self, self.appPID == pid else { return }
@@ -62,6 +79,7 @@ final class DaemonService {
             self.appWatcher?.cancel()
             self.appWatcher = nil
             self.appPID = 0
+            self.appUser = nil
             self.controller.setAppRunning(false)
             self.updateApps()
         }
@@ -72,6 +90,7 @@ final class DaemonService {
             source.cancel()
             appWatcher = nil
             appPID = 0
+            appUser = nil
             controller.setAppRunning(false)
             updateApps()
             return
@@ -122,6 +141,7 @@ final class DaemonService {
         controller.agentsChanged(working: false)
         apps.update(watched: [], active: false)
         controller.restoreDefaults()
+        settings = controller.settings
         store.removeAll()
         Log.info("removed \(store.directory.path)")
     }

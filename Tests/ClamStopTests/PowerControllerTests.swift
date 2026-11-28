@@ -29,7 +29,14 @@ final class FakeEffects: PowerEffects {
     var sleepDisabled = false
     func powerContext() -> PowerContext { context }
     func isSleepDisabled() -> Bool { sleepDisabled }
-    func setSleepDisabled(_ disabled: Bool) -> Bool { sleepDisabled = disabled; return true }
+    var setSleepDisabledFails = false
+    var onSetSleepDisabled: () -> Void = {}
+    func setSleepDisabled(_ disabled: Bool) -> Bool {
+        onSetSleepDisabled()
+        guard !setSleepDisabledFails else { return false }
+        sleepDisabled = disabled
+        return true
+    }
     var idleSleepPrevented = false
     func setIdleSleepPrevented(_ prevented: Bool) { idleSleepPrevented = prevented }
     var displaySleepPrevented = false

@@ -14,7 +14,8 @@ final class AgentMonitor {
         tracker = AgentTracker(log: Log.info)
     }
 
-    func handle(_ message: AgentHookMessage) {
+    /// - Parameter owner: the user who sent the message (nil: the daemon's own test aid).
+    func handle(_ message: AgentHookMessage, owner: UInt32? = nil) {
         var message = message
         // The hook found the agent process; check it from here too (the hook could be anyone
         // allowed to connect, but only the ClamStop app passes the XPC code signing check).
@@ -22,7 +23,7 @@ final class AgentMonitor {
             message.agentPID = nil
             message.agentStartMicros = nil
         }
-        tracker.handle(message, now: Date())
+        tracker.handle(message, now: Date(), owner: owner)
         updateTimer()
         onChange(tracker.isWorking)
     }
@@ -31,7 +32,9 @@ final class AgentMonitor {
         tracker.tick(now: Date()) { lease in
             AgentProbe(
                 alive: lease.pid.map { ProcessTable.isAlive(pid: $0, startMicros: lease.pidStartMicros) },
-                newestActivity: lease.transcriptPath.flatMap { ProcessTable.newestActivity(transcript: $0) },
+                newestActivity: lease.transcriptPath.flatMap {
+                    ProcessTable.newestActivity(transcript: $0, owner: lease.owner)
+                },
                 cpuSeconds: lease.pid.flatMap { ProcessTable.treeCPUSeconds(root: $0, includeRoot: false) })
         }
         updateTimer()

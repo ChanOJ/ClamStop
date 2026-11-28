@@ -184,16 +184,24 @@ public enum ProcessTable {
     /// Newest modification date of a Claude Code transcript and of its subagent transcripts,
     /// which live in a folder named after the session next to it (`<session>.jsonl` and
     /// `<session>/`). At most `budget` files are checked.
-    public static func newestActivity(transcript: String, budget: Int = 400) -> Date? {
+    /// - Parameter owner: only count files of this user (nil: any).
+    public static func newestActivity(transcript: String, owner: UInt32? = nil, budget: Int = 400) -> Date? {
         let fm = FileManager.default
         var newest: Date?
+        /// Attributes of the item itself (links are not followed), if it belongs to `owner`.
+        func attributes(_ path: String) -> [FileAttributeKey: Any]? {
+            guard let found = try? fm.attributesOfItem(atPath: path) else { return nil }
+            if let owner, (found[.ownerAccountID] as? NSNumber)?.uint32Value != owner { return nil }
+            return found
+        }
         func consider(_ path: String) {
-            guard let date = (try? fm.attributesOfItem(atPath: path))?[.modificationDate] as? Date else { return }
+            guard let date = attributes(path)?[.modificationDate] as? Date else { return }
             if newest.map({ date > $0 }) ?? true { newest = date }
         }
         consider(transcript)
         guard transcript.hasSuffix(".jsonl") else { return newest }
         let folder = String(transcript.dropLast(".jsonl".count))
+        if owner != nil, attributes(folder)?[.type] as? FileAttributeType != .typeDirectory { return newest }
         guard let walker = fm.enumerator(atPath: folder) else { return newest }
         var remaining = budget
         while let relative = walker.nextObject() as? String, remaining > 0 {

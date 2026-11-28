@@ -180,6 +180,12 @@ branch from `origin/main`.
   that process (`DaemonService.appConnected`, `DispatchSource` exit) and `PowerController.appRunning`
   makes `decide` return `leaveAlone` while no app runs (also after a daemon start, until the app
   connects; not in `--foreground`). The agent hook never calls `appStatus`.
+- XPC callers: the system checks the signature (`ClientRequirement`: Developer ID and the daemon's
+  Team ID, read once at start; ad-hoc builds: the exact cdhash), then `CallerPolicy` lets only
+  root, the console user or the followed app's user change anything (other accounts read the
+  status). Keep new XPC methods behind `XPCServer.control`. Limits: settings and agent message
+  sizes, `AgentTracker.maxLeases`, only the sender's files count as transcript activity, and
+  decoded settings are clamped in their `init(from:)`.
 - Diagnostics (spec H4, 2026-11-28): checks in `HealthCheck`, report text in `DiagnosticsReport`
   (home folder as `~`, 60 000 characters at most for a GitHub issue), prefilled issue and e-mail in
   `ProblemReport`; the app sends nothing itself and holds no secret (no SMTP, no GitHub token).

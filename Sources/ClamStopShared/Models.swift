@@ -12,6 +12,17 @@ public struct PowerSourceProfile: Codable, Equatable, Sendable {
         self.hibernateDelayMinutes = ClamStopSettings.clampDelay(hibernateDelayMinutes)
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case enabled, hibernateDelayMinutes
+    }
+
+    /// Decoded values go through the same limits.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(enabled: try c.decode(Bool.self, forKey: .enabled),
+                  hibernateDelayMinutes: try c.decode(Int.self, forKey: .hibernateDelayMinutes))
+    }
+
     /// Seconds before hibernating, nil when hibernation is off.
     public var hibernateDelay: TimeInterval? {
         hibernateDelayMinutes < 0 ? nil : TimeInterval(hibernateDelayMinutes * 60)
@@ -61,6 +72,10 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
     public static let delayChoices = [0, 5, 15, 30, 60, 120, 240, never]
     public static let maxDelayMinutes = 24 * 60
     public static let never = -1
+    /// Upper limits of what is accepted, far above what the settings window offers.
+    public static let maxAwakeHoursLimit = 7 * 24
+    public static let maxRules = 100
+    public static let maxWatchedApps = 100
     public static let maxAwakeHourChoices = [0, 1, 2, 4, 8, 12]
     public static let batteryFloorChoices = [5, 10, 20, 30, 50]
     /// `batteryFloorPercent` when this guard is off: no level is below it.
@@ -91,9 +106,9 @@ public struct ClamStopSettings: Codable, Equatable, Sendable {
             ? ClamStopSettings.noBatteryFloor : ClamStopSettings.clampPercent(batteryFloorPercent)
         self.heatGuard = heatGuard
         self.onlyWhileCharging = onlyWhileCharging
-        self.maxAwakeHours = max(0, maxAwakeHours)
-        self.rules = rules
-        self.watchedApps = watchedApps
+        self.maxAwakeHours = min(max(0, maxAwakeHours), ClamStopSettings.maxAwakeHoursLimit)
+        self.rules = Array(rules.prefix(ClamStopSettings.maxRules))
+        self.watchedApps = Array(watchedApps.prefix(ClamStopSettings.maxWatchedApps))
         self.keepScreensOn = keepScreensOn
     }
 
