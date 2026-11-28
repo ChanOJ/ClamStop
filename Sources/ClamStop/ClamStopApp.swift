@@ -256,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               !CommandLine.arguments.contains("--snapshot") else { return }
         notifier.onOpen = { [weak self] in self?.showSettings() }
         notifier.start()
+        model.onApprovalReminder = { [notifier] in notifier.serviceStillNeedsApproval() }
         notifierObservers.append(model.$status.sink { [notifier] status in
             if let status { notifier.process(status) }
         })

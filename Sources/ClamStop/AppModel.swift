@@ -86,6 +86,9 @@ final class AppModel: ObservableObject {
     private var awaitingFirstAnswer = false
     private var lastRefresh = Date.distantPast
     private var statusRequestRunning = false
+    private var serviceWait = ServiceWait()
+    /// The switch has been off for a while (see `ServiceWait`): post the approval notification again.
+    var onApprovalReminder: () -> Void = {}
 
     var enabled: Bool { status?.settings.enabled ?? false }
     var delayMinutes: Int { status?.settings.hibernateDelayMinutes ?? ClamStopSettings.defaultDelayMinutes }
@@ -111,9 +114,10 @@ final class AppModel: ObservableObject {
         }
         updateOutdatedAgentHooks()
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: ServiceWait.eagerInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+        timer?.tolerance = 0.2
         // A screen plugged in or unplugged: tell the daemon at once (rules, spec D1).
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in
@@ -121,12 +125,22 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Every second while waiting for the service, so that the switch turned on in System
-    /// Settings shows at once; every 5 seconds otherwise.
+    /// Look at the service as often as `serviceWait` says: every second just after it stopped
+    /// answering, so that the switch turned on in System Settings shows at once.
     private func tick() {
-        let waiting = serviceState == .requiresApproval || serviceState == .notResponding || awaitingFirstAnswer
-        guard waiting || Date().timeIntervalSince(lastRefresh) >= 5 else { return }
+        let now = Date()
+        if serviceWait.reminderIsDue(switchOff: serviceState == .requiresApproval, now: now) {
+            logger.info("switch still off after \(Int(ServiceWait.reminderDelay)) s: reminding")
+            onApprovalReminder()
+        }
+        // Half a second of slack, for the timer's tolerance.
+        guard now.timeIntervalSince(lastRefresh) >= serviceWait.interval(now: now) - 0.5 else { return }
         refresh()
+    }
+
+    private func updateServiceWait() {
+        let waiting = serviceState == .requiresApproval || serviceState == .notResponding || awaitingFirstAnswer
+        serviceWait.update(waiting: waiting, now: Date())
     }
 
     func refresh() {
@@ -159,6 +173,7 @@ final class AppModel: ObservableObject {
             serviceState = .notResponding
         }
         if serviceState == .requiresApproval { awaitingFirstAnswer = true }
+        updateServiceWait()
     }
 
     /// One request at a time. A service that was not answering gets less time, to notice sooner
@@ -174,6 +189,7 @@ final class AppModel: ObservableObject {
                 self.serviceState = .running
                 self.notRespondingSince = nil
                 self.awaitingFirstAnswer = false
+                self.updateServiceWait()
                 self.applyPendingFirstRun()
             } catch {
                 self.status = nil
@@ -311,6 +327,7 @@ final class AppModel: ObservableObject {
     }
 
     func openLoginItemsSettings() {
+        serviceWait.userIsActing(now: Date())
         SMAppService.openSystemSettingsLoginItems()
     }
 

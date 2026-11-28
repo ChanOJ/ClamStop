@@ -52,7 +52,22 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func serviceNeedsApproval() {
         guard !approvalNotified else { return }
         approvalNotified = true
-        post(id: "approval",
+        postApproval(id: Self.approvalID)
+    }
+
+    /// The switch is still off a while later: the same notification again, as a new one so that
+    /// macOS shows it.
+    func serviceStillNeedsApproval() {
+        guard available else { return }
+        center.removeDeliveredNotifications(withIdentifiers: [Self.approvalID])
+        postApproval(id: Self.reminderID)
+    }
+
+    private static let approvalID = "approval"
+    private static let reminderID = "approval-reminder"
+
+    private func postApproval(id: String) {
+        post(id: id,
              title: String(localized: "ClamStop needs your approval"),
              body: String(localized: "Turn ClamStop on in System Settings > General > Login Items & Extensions, so that it can work."))
     }
@@ -60,7 +75,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func serviceApproved() {
         approvalNotified = false
         guard available else { return }
-        center.removeDeliveredNotifications(withIdentifiers: ["approval"])
+        center.removeDeliveredNotifications(withIdentifiers: [Self.approvalID, Self.reminderID])
     }
 
     private func post(id: String, title: String, body: String) {
