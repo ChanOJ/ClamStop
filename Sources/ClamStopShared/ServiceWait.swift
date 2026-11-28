@@ -17,8 +17,9 @@ public struct ServiceWait: Sendable {
     /// A switch off at least this long, then on: the user just approved the service. Shorter:
     /// macOS says "on" for a moment while a registration settles.
     public static let approvalTime: TimeInterval = 10
-    /// Silence after an approval before registering again (a healthy service answers at once).
-    public static let patienceAfterApproval: TimeInterval = 5
+    /// Silence after an approval before registering again (a healthy service answers at once; the
+    /// first request already gives up after 2 seconds).
+    public static let patienceAfterApproval: TimeInterval = 2
     /// Silence otherwise, and how many times to register again then.
     public static let patience: TimeInterval = 20
     public static let unattendedRepairs = 2

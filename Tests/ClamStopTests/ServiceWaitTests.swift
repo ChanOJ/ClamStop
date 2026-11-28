@@ -65,9 +65,11 @@ private let delay = ServiceWait.reminderDelay
     @Test func soonAfterAnApprovalAndOnlyOnce() {
         var wait = ServiceWait()
         wait.switchIsOff(now: t0)
+        // Seen every second while the first request is still out.
         wait.switchIsOn(now: t0 + 60)
-        let early = repair(&wait, at: 64)
-        let due = repair(&wait, at: 65)
+        let early = repair(&wait, at: 60 + ServiceWait.patienceAfterApproval - 1)
+        wait.switchIsOn(now: t0 + 61)
+        let due = repair(&wait, at: 60 + ServiceWait.patienceAfterApproval)
         wait.switchIsOn(now: t0 + 66)
         let again = repair(&wait, at: 72)
         #expect([early, due, again] == [false, true, false])
@@ -81,7 +83,7 @@ private let delay = ServiceWait.reminderDelay
         let during = repair(&wait, at: 12)
         wait.switchIsOff(now: t0 + 15)
         wait.switchIsOn(now: t0 + 90)
-        let afterApproval = repair(&wait, at: 95)
+        let afterApproval = repair(&wait, at: 90 + ServiceWait.patienceAfterApproval)
         #expect([during, afterApproval] == [false, true])
     }
 
@@ -89,7 +91,7 @@ private let delay = ServiceWait.reminderDelay
         var wait = ServiceWait()
         wait.switchIsOff(now: t0)
         wait.switchIsOn(now: t0 + 60)
-        let first = repair(&wait, at: 65)
+        let first = repair(&wait, at: 60 + ServiceWait.patienceAfterApproval)
         wait.switchIsOff(now: t0 + 66)
         wait.switchIsOn(now: t0 + 78)
         let soon = repair(&wait, at: 84)

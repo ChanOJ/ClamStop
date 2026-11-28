@@ -159,7 +159,7 @@ final class AppModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         // Turned on in System Settings while the app kept running (macOS does not always quit
         // it): nothing registers the daemon again, so retry while waiting (seen 2026-11-26).
-        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 2 {
+        if registrationDenied, Date().timeIntervalSince(lastRegistrationRetry) >= 1 {
             lastRegistrationRetry = Date()
             retryRegistration()
         }
@@ -180,12 +180,14 @@ final class AppModel: ObservableObject {
             serviceState = Self.daemonPlistInBundle ? (registrationDenied ? .requiresApproval : .notRegistered) : .notFound
             status = nil
         case .enabled:
-            serviceWait.switchIsOn(now: Date())
             askStatus()
         @unknown default:
             serviceState = .notResponding
         }
-        if serviceState == .requiresApproval {
+        // What macOS says now, not `serviceState`: that one waits for the service's answer.
+        if registration == .enabled {
+            serviceWait.switchIsOn(now: Date())
+        } else if serviceState == .requiresApproval {
             awaitingFirstAnswer = true
             serviceWait.switchIsOff(now: Date())
         }
