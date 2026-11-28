@@ -32,6 +32,8 @@ final class FakeEffects: PowerEffects {
     func setSleepDisabled(_ disabled: Bool) -> Bool { sleepDisabled = disabled; return true }
     var idleSleepPrevented = false
     func setIdleSleepPrevented(_ prevented: Bool) { idleSleepPrevented = prevented }
+    var displaySleepPrevented = false
+    func setDisplaySleepPrevented(_ prevented: Bool) { displaySleepPrevented = prevented }
 
     func advance(_ seconds: TimeInterval) {
         clock = clock.addingTimeInterval(seconds)

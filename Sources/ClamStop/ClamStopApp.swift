@@ -27,6 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
     let badgeAnimator = BadgeAnimator()
     private let audioPauser = AudioPauser()
+    private let lidMonitor = LidMonitor()
+    private var screenObserver: AnyCancellable?
     private let notifier = Notifier()
     private var notifierObservers: [AnyCancellable] = []
     private var badgeObserver: AnyCancellable?
@@ -54,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.serviceState == .running && model.enabled && model.delayMinutes != ClamStopSettings.never
         }
         audioPauser.start()
+        startScreenDimming()
         startNotifications()
         // Status refresh, or a setting changed (animation, time left, icon style). After a short
         // delay, so that the menu bar label has its new layout.
@@ -89,6 +92,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showSettings()
         }
         snapshotIfRequested()
+    }
+
+    /// The built-in screen goes off while the Mac stays awake with the lid closed, and comes back
+    /// when it opens.
+    private func startScreenDimming() {
+        guard !AppModel.previewSettings, !AppModel.previewApproval,
+              !CommandLine.arguments.contains("--snapshot") else { return }
+        model.screenDimmer.start(lidClosed: LidMonitor.isLidClosed)
+        screenObserver = model.$status.sink { [model] status in
+            guard let status else { return }
+            // The lid as it is now: a reply can be older than the last notification.
+            let closed = LidMonitor.isLidClosed
+            model.screenDimmer.lidChanged(closed: closed)
+            model.screenDimmer.update(keptAwake: closed && status.lidClosed && status.keepingAwakeForAgents == true)
+        }
+        lidMonitor.onChange = { [weak model] closed in
+            MainActor.assumeIsolated {
+                guard let model else { return }
+                model.screenDimmer.lidChanged(closed: closed)
+                guard closed else { return }
+                // Ask the service once it has decided, without waiting for the next poll.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { model.refresh() }
+            }
+        }
+        lidMonitor.start()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.screenDimmer.restore()
     }
 
     /// Development aids, for docs and reviews (no Screen Recording permission needed):

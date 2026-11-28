@@ -11,12 +11,24 @@ func setting<Value>(_ model: AppModel, _ keyPath: WritableKeyPath<ClamStopSettin
             set: { value in model.changeSettings { $0[keyPath: keyPath] = value } })
 }
 
-/// Stay Awake: AI agents and their hooks (spec C7, I5), then the watched apps (C5).
+/// Stay Awake: the screens (spec C3), AI agents and their hooks (C7, I5), the watched apps (C5).
 struct StayAwakeTab: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Form {
+            Section {
+                OptionRow(title: "Screens while staying awake",
+                          note: "For Stay Awake from the menu. With the lid closed, the built-in screen always turns off.") {
+                    Picker("Screens while staying awake", selection: setting(model, \.keepScreensOn)) {
+                        Text("Let them sleep").tag(false)
+                        Text("Keep them on").tag(true)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                .disabled(!model.serviceRunning)
+            }
             Section {
                 OptionRow(title: "Stay awake while AI agents work",
                           note: "Claude Code and Codex. Your Mac sleeps when they are all done.") {

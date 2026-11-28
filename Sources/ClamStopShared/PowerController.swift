@@ -25,6 +25,8 @@ public protocol PowerEffects: AnyObject {
     @discardableResult func setSleepDisabled(_ disabled: Bool) -> Bool
     /// Hold or release a "prevent idle sleep" power assertion (lid open, during a session).
     func setIdleSleepPrevented(_ prevented: Bool)
+    /// Hold or release a "prevent display sleep" assertion (session with the screens kept on).
+    func setDisplaySleepPrevented(_ prevented: Bool)
 }
 
 public protocol StateStore: AnyObject {
@@ -168,6 +170,7 @@ public final class PowerController {
         restoreHibernateMode()
         releaseSleepPrevention()
         effects.setIdleSleepPrevented(false)
+        effects.setDisplaySleepPrevented(false)
         update(phase: .idle, pendingWake: nil)
         scheduleRuleClock()
     }
@@ -429,6 +432,7 @@ public final class PowerController {
         }
         if want { preventSleep() } else { releaseSleepPrevention() }
         effects.setIdleSleepPrevented(session != nil)
+        effects.setDisplaySleepPrevented(session != nil && settings.keepScreensOn)
     }
 
     private func preventSleep() {
@@ -652,6 +656,7 @@ public final class PowerController {
         sessionGeneration += 1
         log("stay awake session ended: \(reason)")
         effects.setIdleSleepPrevented(false)
+        effects.setDisplaySleepPrevented(false)
     }
 
     // MARK: Internals

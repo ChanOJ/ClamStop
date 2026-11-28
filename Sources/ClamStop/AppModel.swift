@@ -31,10 +31,12 @@ enum DefaultsKey {
     static let skipQuitConfirmation = "skipQuitConfirmation"
     static let showTimeLeft = "showTimeLeftInMenuBar"
     static let animateBadge = "animateMenuBarBadge"
+    /// Brightness of the built-in screen to put back, while ClamStop has it off.
+    static let savedScreenBrightness = "savedScreenBrightness"
 
     /// Every key, removed on uninstall.
     static let all = [showMenuBarIcon, hasLaunchedBefore, pauseAudio, menuBarIconStyle, lastNoticeDate,
-                      skipQuitConfirmation, showTimeLeft, animateBadge]
+                      skipQuitConfirmation, showTimeLeft, animateBadge, savedScreenBrightness]
 }
 
 @MainActor
@@ -68,6 +70,10 @@ final class AppModel: ObservableObject {
     var pendingFirstRun: FirstRunResult?
 
     let client = DaemonClient()
+    /// Switches the built-in screen off while the Mac stays awake with the lid closed (spec G2).
+    let screenDimmer = ScreenDimmer(screen: BuiltInScreen(), store: DefaultsLevelStore()) { message in
+        logger.info("\(message, privacy: .public)")
+    }
     private let daemonService = SMAppService.daemon(plistName: ClamStopID.daemonPlistName)
     private var timer: Timer?
     /// register() was refused because the item is turned off in System Settings.
@@ -295,6 +301,7 @@ final class AppModel: ObservableObject {
     /// Restore the default power settings, remove the daemon and the login item, reveal the app, quit.
     func uninstall() {
         Task {
+            screenDimmer.restore()  // before its saved level is removed below
             if serviceState == .running {
                 _ = try? await client.restoreDefaults()
             }
