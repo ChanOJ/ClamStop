@@ -300,8 +300,8 @@ extension AppModel {
         sleepLog = [
             event(136_000, .lidClosed, 64),
             event(135_990, .keptAwakeForAgents, 64, KeepAwakeReason.agents.rawValue),
-            event(133_000, .thermalChanged, 42, ThermalLevel.fair.rawValue, nil, .fair),
-            event(130_000, .agentsDone, 19, KeepAwakeEnd.batteryFloor.rawValue, nil, .fair),
+            event(133_000, .thermalChanged, 42, ThermalLevel.heavy.rawValue, nil, .heavy),
+            event(130_000, .agentsDone, 19, KeepAwakeEnd.batteryFloor.rawValue, nil, .heavy),
             event(129_990, .sleep, 19),
             event(100_000, .lidOpened, 18),
             event(99_999, .wake, 18, SleepLog.wakeLidOpen, .lid),

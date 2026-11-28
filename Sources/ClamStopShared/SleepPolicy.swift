@@ -5,7 +5,7 @@ public struct PowerContext: Equatable, Sendable {
     public var onPowerAdapter: Bool
     /// nil on a Mac without battery or when it cannot be read.
     public var batteryPercent: Int?
-    /// `ProcessInfo.thermalState` is serious or critical.
+    /// The Mac is very hot (`ThermalLevel.isTooHot`).
     public var thermalPressure: Bool
     /// A screen other than the built-in one is connected.
     public var externalDisplay: Bool

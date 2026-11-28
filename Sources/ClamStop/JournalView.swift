@@ -125,9 +125,9 @@ private struct JournalRow: View {
         case .thermalChanged:
             switch thermalLevel {
             case .nominal: String(localized: "Temperature back to normal")
-            case .fair: String(localized: "Mac warm")
-            case .serious: String(localized: "Mac hot")
-            case .critical: String(localized: "Mac very hot")
+            case .moderate: String(localized: "Mac warm")
+            case .heavy: String(localized: "Mac hot")
+            case .trapping, .sleeping: String(localized: "Mac very hot")
             case nil: String(localized: "Temperature changed")
             }
         }
@@ -142,9 +142,9 @@ private struct JournalRow: View {
         guard entry.event.kind != .thermalChanged,
               !(entry.event.kind == .agentsDone && entry.event.detail == KeepAwakeEnd.heat.rawValue) else { return nil }
         switch thermalLevel {
-        case .fair: return String(localized: "Mac warm")
-        case .serious: return String(localized: "Mac hot")
-        case .critical: return String(localized: "Mac very hot")
+        case .moderate: return String(localized: "Mac warm")
+        case .heavy: return String(localized: "Mac hot")
+        case .trapping, .sleeping: return String(localized: "Mac very hot")
         case .nominal, nil: return nil
         }
     }

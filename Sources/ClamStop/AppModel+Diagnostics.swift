@@ -97,7 +97,7 @@ extension AppModel {
         return DiagnosticsReport(date: Date(), appVersion: appVersionAndBuild,
                                  macOSVersion: SystemProbe.macOSVersion, model: SystemProbe.hardwareModel,
                                  facts: healthFacts, events: events, log: log,
-                                 thermalLevel: ThermalLevel(ProcessInfo.processInfo.thermalState))
+                                 thermalLevel: .current)
     }
 
     /// Collect the diagnostics (a few seconds, mostly the log), hand them over, say what happened.

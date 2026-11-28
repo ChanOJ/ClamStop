@@ -220,11 +220,15 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   `JournalView`, a resizable window (`--preview-settings --journal --snapshot <png>`). Wake reasons
   come from `IOPMrootDomain` "Wake Reason" / "Wake Type" (`WakeReason`, matched on strings seen on
   this Mac). Entries written by earlier versions show without a reason.
-- Thermal level (2026-11-28): `ThermalLevel` (`ProcessInfo.thermalState`, levels only: no
-  temperature in degrees without private interfaces, and `AppleSmartBattery` showed none on this
-  Mac). Each journal event holds it; the daemon logs every change (read the state once at start,
-  or macOS sends no notification), journals the changes while it stays awake with the lid closed,
-  and the heat guard looks again after the 5 s settle delay. Not verified on a hot Mac.
+- Thermal level (2026-11-28): `ThermalLevel` follows macOS's pressure levels (notify key
+  `com.apple.system.thermalpressurelevel`, 0 nominal to 4 sleeping, public header
+  `libkern/OSThermalNotification.h`), the warmer of it and `ProcessInfo.thermalState`, which says
+  "fair" for both moderate and heavy. Measured on the M5 Pro, lid closed in the open, CPU and GPU
+  loaded: heavy after about 70 s, steady for over 5 min, never trapping. The user chose to sleep
+  from "very hot" (trapping, or `serious`) only: heavy is the plateau of long jobs. Each journal
+  event holds the level; the daemon logs every change, journals those while it stays awake with the
+  lid closed, and the heat guard looks again after the 5 s settle delay. No temperature in degrees
+  without private interfaces. Not verified: sleep on a very hot Mac (level never reached).
 - Watchdog (spec E4, 2026-11-28): the app calls `appHeartbeat` every 5 s from a common-modes
   timer (and holds off App Nap while sleep is held off); 6 silent checks while awake make the
   daemon act as if the app quit, until it reports again. Quit, crash or stuck with the lid closed:

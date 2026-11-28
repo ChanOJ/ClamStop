@@ -96,7 +96,7 @@ struct SafetyTab: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     ToggleRow(title: "Sleep when the Mac gets hot",
-                              note: "With the lid closed, a warm Mac goes to sleep to cool down.",
+                              note: "With the lid closed, a very hot Mac goes to sleep to cool down.",
                               recommended: true,
                               isOn: setting(model, \.heatGuard))
                     if !model.settings.heatGuard {

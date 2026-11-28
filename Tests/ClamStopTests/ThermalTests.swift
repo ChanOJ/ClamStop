@@ -32,16 +32,25 @@ import Testing
         due.forEach { $0.1() }
     }
 
-    @Test func levels() {
-        #expect(ThermalLevel(.nominal) == .nominal)
-        #expect(ThermalLevel(.critical) == .critical)
-        #expect(ThermalLevel.fair < .serious)
-        #expect(ThermalLevel.allCases.filter(\.isTooHot) == [.serious, .critical])
+    @Test func pressureLevels() {
+        #expect((0...4).map { ThermalLevel(pressure: $0) } == ThermalLevel.allCases)
+        #expect(ThermalLevel(pressure: 99) == .sleeping)
+        #expect(ThermalLevel.allCases.filter(\.isTooHot) == [.trapping, .sleeping])
+    }
+
+    @Test func theWarmerReadingCounts() {
+        // Seen on an M5 Pro: `fair` while the pressure level is heavy.
+        #expect(ThermalLevel(pressure: 2, state: .fair) == .heavy)
+        #expect(!ThermalLevel(pressure: 2, state: .fair).isTooHot)
+        // `serious` stays enough on its own, as before the pressure level was read.
+        #expect(ThermalLevel(pressure: 0, state: .serious).isTooHot)
+        #expect(ThermalLevel(pressure: nil, state: .nominal) == .nominal)
+        #expect(ThermalLevel(pressure: 3, state: .fair).isTooHot)
     }
 
     @Test func notedOnlyWhileStayingAwakeWithTheLidClosed() {
         let (controller, effects, journal) = setUp()
-        controller.thermalChanged(.fair)
+        controller.thermalChanged(.moderate)
         #expect(!journal.events.contains { $0.0 == .thermalChanged })
         keepAwakeWithTheLidClosed(controller, effects)
         controller.thermalChanged(.nominal)
@@ -54,7 +63,7 @@ import Testing
         keepAwakeWithTheLidClosed(controller, effects)
         #expect(controller.keepingAwakeForAgents)
         effects.context.thermalPressure = true
-        controller.thermalChanged(.serious)
+        controller.thermalChanged(.trapping)
         settle(effects)
         #expect(!controller.keepingAwakeForAgents)
         #expect(effects.sleepRequests == 1)
@@ -71,11 +80,11 @@ import Testing
         let facts = HealthFacts(service: .running, status: nil, system: nil, inApplicationsFolder: true,
                                 notifications: .allowed, openAtLogin: true, menuBarIconShown: true,
                                 agentsMissingHooks: [])
-        let event = SleepEvent(date: Date(), kind: .sleep, thermal: "fair")
+        let event = SleepEvent(date: Date(), kind: .sleep, thermal: "heavy")
         let text = DiagnosticsReport(date: Date(), appVersion: "1", macOSVersion: "27", model: "Mac",
-                                     facts: facts, events: [event], log: .success(""), thermalLevel: .serious)
+                                     facts: facts, events: [event], log: .success(""), thermalLevel: .trapping)
             .text(home: "/Users/someone")
-        #expect(text.contains("Thermal level: serious"))
-        #expect(text.contains("sleep thermal=fair"))
+        #expect(text.contains("Thermal level: trapping"))
+        #expect(text.contains("sleep thermal=heavy"))
     }
 }
