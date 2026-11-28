@@ -93,9 +93,16 @@ branch from `origin/main`.
 
 ## Distribution
 
-Apple Developer Program: the user will enroll later. Until then CI builds unsigned (ad-hoc)
-artifacts and the README documents opening the app despite Gatekeeper; signing (Developer ID) and
-notarization are wired in CI behind secrets and skipped when they are absent.
+- Developer ID signing and notarization work since 2026-11-28 (Apple Developer Program, company
+  account). `release.yml` signs, notarizes and writes the Sparkle appcast on `v*` tags; "Run
+  workflow" is a dry run (version 0.0.0) that publishes nothing. Ask the user before pushing a tag.
+- `ci.yml` still builds ad-hoc artifacts, and so do local builds without `SIGN_IDENTITY`.
+- Six secrets in GitHub Actions, copies in Proton Pass (`docs/signing.md`, `docs/updates.md`):
+  never print or commit them; the user enters them. The certificate expires on 2027-12-28.
+- Verified on the dry run of 2026-11-28: `spctl` and `stapler` accept the downloaded DMG and app,
+  hardened runtime on every executable, the appcast's EdDSA signature matches the public key, the
+  signed binary launches. Not verified: installing a Developer ID build (service approval, Team ID
+  XPC requirement), replacing an installed ad-hoc build, a Sparkle update between signed releases.
 
 ## Updates
 

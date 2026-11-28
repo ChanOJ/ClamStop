@@ -30,7 +30,8 @@ The full edition updates itself with [Sparkle 2](https://sparkle-project.org) (p
 
 ## Create the signing key (once)
 
-The private key never goes into the repository. It lives in Proton Pass and in a GitHub secret.
+Done on 2026-11-28: the steps below are only for a new key. The private key never goes into the
+repository. It lives in Proton Pass and in a GitHub secret.
 
 1. Build once so that SwiftPM downloads Sparkle and its tools:
 
@@ -51,7 +52,7 @@ The private key never goes into the repository. It lives in Proton Pass and in a
    .build/artifacts/sparkle/Sparkle/bin/generate_keys --account clamstop -x ~/Downloads/clamstop-sparkle-private-key.txt
    ```
 
-4. In Proton Pass, create a **Note** item named `ClamStop Sparkle EdDSA private key` and paste the
+4. In Proton Pass, create a **Note** item named `ClamStop Sparkle EdDSA key pair` and paste the
    content of that file (one line of base64), plus the public key from step 2.
 5. Add the GitHub secret from the file:
 

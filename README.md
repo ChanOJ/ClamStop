@@ -189,9 +189,10 @@ same hooks as the Cursor app is not documented.
 
 ### Opening an unsigned build
 
-Release notes say whether a build is notarized. Builds that are not (every build until the
-project has an Apple Developer account) are blocked by Gatekeeper at first launch. Only bypass
-this for a DMG downloaded from this repository, or for a build of your own.
+Release notes say whether a build is notarized. Releases signed with a Developer ID and
+notarized open normally. Builds that are not (your own builds, those of a fork) are blocked by
+Gatekeeper at first launch. Only bypass this for a DMG downloaded from this repository, or for a
+build of your own.
 
 On macOS 15 Sequoia or later:
 
@@ -260,8 +261,9 @@ macOS refused the new build, start again at step 1):
 launchctl print system/io.github.chanoj.clamstop.daemon | grep -E "state|last exit"
 ```
 
-Builds signed with a Developer ID (releases once the project has an Apple Developer account)
-keep the same signature from one version to the next and do not need any of this.
+Builds signed with a Developer ID keep the same signature from one version to the next and do
+not need any of this. Replacing an unsigned build with a signed one changes the signature: follow
+these steps once if the service does not start.
 
 ## Uninstall
 
@@ -364,7 +366,7 @@ icon is drawn by `swift scripts/make-icon.swift`, which writes `Resources/AppIco
 ## Releases
 
 Pushing a `v*` tag builds the DMG and publishes a GitHub Release with its SHA-256 checksum.
-Once the Apple credentials are configured, the same workflow signs and notarizes it: see
+With the Apple credentials configured, the same workflow signs and notarizes it: see
 [docs/signing.md](docs/signing.md).
 
 Signed releases also publish the feed that installed copies check for updates (Sparkle), see
