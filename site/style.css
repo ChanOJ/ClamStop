@@ -96,6 +96,10 @@ nav a:hover { text-decoration: underline; }
 
 main > section { padding-block: 3rem; scroll-margin-top: 1rem; }
 
+.help { padding-block: 2rem 3rem; }
+.help h1 { display: flex; align-items: center; gap: 0.75rem; font-size: clamp(1.75rem, 6vw, 2.5rem); }
+.help h2 { margin: 2rem 0 0.5rem; font-size: 1.35rem; }
+
 .hero { text-align: center; padding-block: 3.5rem 2.5rem; }
 .app-icon { width: 128px; height: 128px; }
 .lead { max-width: 38rem; margin: 0 auto 1.75rem; font-size: 1.2rem; color: var(--muted); }
