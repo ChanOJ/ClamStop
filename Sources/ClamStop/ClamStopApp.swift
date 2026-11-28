@@ -302,8 +302,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             journalWindow = window
         }
         model.loadSleepLog()
-        NSApp.activate()
-        journalWindow?.makeKeyAndOrderFront(nil)
+        journalWindow?.showInFront()
     }
 
     private func launchedAsLoginItem(_ notification: Notification) -> Bool {
@@ -313,6 +312,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
         return false
+    }
+}
+
+extension NSWindow {
+    /// Show in front of the other apps' windows. `NSApp.activate()` alone is a request that macOS
+    /// can turn down, for instance the first time after the app was opened in the background: the
+    /// window then opened behind the app in use (seen 2026-11-28).
+    func showInFront() {
+        NSApp.activate()
+        makeKeyAndOrderFront(nil)
+        orderFrontRegardless()
     }
 }
 
@@ -342,8 +352,7 @@ final class FittedWindow {
 
     func show() {
         fit()
-        NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
+        window.showInFront()
     }
 
     func close() {
