@@ -30,9 +30,10 @@ enum AwakeReason: CaseIterable {
         }
     }
 
-    /// The sparkles are thin and look smaller than the filled symbols at the same size.
+    /// The thin sparkles and the narrow hourglass look smaller than the cup at the same size (the
+    /// hourglass was hard to make out at 7 points, reported 2026-11-28).
     var badgePointSize: CGFloat {
-        self == .agents ? 9.5 : 7
+        self == .session ? 7 : 9.5
     }
 }
 
