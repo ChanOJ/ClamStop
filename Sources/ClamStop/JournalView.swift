@@ -18,19 +18,16 @@ struct JournalView: View {
                 Divider()
                 // Not a `List`: VoiceOver stopped at the first day's name (reported 2026-11-28).
                 ScrollView {
-                    // Day names are not pinned: VoiceOver would read them after all the rows.
+                    // Not `Section` headers: VoiceOver would read them after all the rows.
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(days) { day in
-                            Section {
-                                ForEach(day.entries) { entry in
-                                    JournalRow(entry: entry)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 4)
-                                    Divider()
-                                        .padding(.horizontal, 16)
-                                }
-                            } header: {
-                                dayHeader(day.date)
+                            dayHeader(day.date)
+                            ForEach(day.entries) { entry in
+                                JournalRow(entry: entry)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 4)
+                                Divider()
+                                    .padding(.horizontal, 16)
                             }
                         }
                     }
