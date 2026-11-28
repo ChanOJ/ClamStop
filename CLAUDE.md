@@ -242,6 +242,8 @@ branch from `origin/main`.
   process tree CPU; transcript dates) and holds `pmset -a disablesleep 1`, which must be set
   before the lid closes (a Mac without display sleeps at once otherwise).
   `ClamStopDaemon --foreground --simulate-agent SECONDS` tests it without hooks.
+  `AgentHookFile` writes through symbolic links and deletes its backup when the hook is removed;
+  only a copy in an Applications folder repoints outdated hooks on its own.
 - Hook stdout is added to Claude's context on UserPromptSubmit: the hook prints nothing and
   always exits 0. Process anchor: the nearest ancestor named `claude`/`codex`, never the outermost
   (the Claude desktop app, "Claude", hosts Code sessions and is always busy).
