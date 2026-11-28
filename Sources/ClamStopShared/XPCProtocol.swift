@@ -11,6 +11,8 @@ import Foundation
     func restoreDefaults(reply: @escaping (Data) -> Void)
     /// Replace every setting at once: JSON-encoded `ClamStopSettings`.
     func setSettings(_ settings: Data, reply: @escaping (Data) -> Void)
+    /// From the running app, every few seconds: the watchdog's heartbeat (spec E4).
+    func appHeartbeat()
     /// From `ClamStop --agent-hook`: JSON-encoded `AgentHookMessage`. Replies with the status.
     func agentEvent(_ message: Data, reply: @escaping (Data) -> Void)
     /// JSON-encoded `[SleepEvent]` (empty `Data` on error).

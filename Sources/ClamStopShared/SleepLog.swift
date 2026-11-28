@@ -87,6 +87,8 @@ public enum KeepAwakeEnd: String, Sendable, CaseIterable {
     case unplugged
     case batteryFloor
     case lowBattery
+    case appQuit
+    case appUnresponsive
 }
 
 /// One line of the journal.

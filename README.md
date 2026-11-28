@@ -75,6 +75,10 @@ The menu bar menu has **Stay Awake**: keep the Mac awake until you turn it off, 
 8 hours, or until a time of day. It does not sleep when idle, and with the lid closed it stays
 awake within the Safety guards (on power adapter only by default); any sleep ends it.
 
+If the app stops responding while ClamStop keeps the Mac awake, the background service lets go
+after 30 seconds, and puts a Mac with its lid closed to sleep unless macOS would keep it awake on
+its own (external screen and power adapter).
+
 ClamStop works only while the app runs. Once you quit it (it asks first while Stay Awake is on),
 your Mac sleeps as macOS decides, as if ClamStop were not installed, until you open it again.
 Turn on **Open at login** so that it starts with your Mac.

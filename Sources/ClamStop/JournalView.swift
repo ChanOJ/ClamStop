@@ -162,6 +162,8 @@ private struct JournalRow: View {
         case .heat: String(localized: "Mac too hot")
         case .unplugged: String(localized: "power adapter unplugged")
         case .batteryFloor, .lowBattery: String(localized: "battery too low")
+        case .appQuit: String(localized: "ClamStop quit")
+        case .appUnresponsive: String(localized: "ClamStop stopped responding")
         }
     }
 
