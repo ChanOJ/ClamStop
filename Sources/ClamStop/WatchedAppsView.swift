@@ -10,7 +10,7 @@ struct WatchedAppsSection: View {
     var body: some View {
         Section {
             OptionRow(title: "Stay awake while these apps work",
-                      note: "While one of them is busy, your Mac stays awake, even with the lid closed, then sleeps as usual.") {
+                      note: "While one of them is busy, your Mac stays awake, even with the lid closed. It sleeps as usual about \(Int(AppTracker.gracePeriod)) seconds after they are all done, in case one starts again.") {
                 Menu("Add App…") {
                     ForEach(model.knownApps.filter { known in
                         !model.settings.watchedApps.contains { $0.watchesTheSame(as: known) }

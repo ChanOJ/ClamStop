@@ -31,7 +31,7 @@ struct StayAwakeTab: View {
             }
             Section {
                 OptionRow(title: "Stay awake while AI agents work",
-                          note: "Claude Code, Codex, Cursor and others. Your Mac sleeps when they are all done.") {
+                          note: "Claude Code, Codex, Cursor and others. Your Mac sleeps about \(Int(AgentTracker.gracePeriod)) seconds after they are all done, in case one starts again.") {
                     HStack(spacing: 6) {
                         HelpButton("About AI agents", isPresented: $model.showAgentHelp) { AgentHelpView() }
                         Toggle("Stay awake while AI agents work", isOn: setting(model, \.keepAwakeForAgents))
