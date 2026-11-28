@@ -116,6 +116,10 @@ notarization are wired in CI behind secrets and skipped when they are absent.
   Recording permission). `screencapture` from Claude's shell returns a black image: the menu bar
   itself must be checked by eye.
 
+- Accessibility: add `--dump-accessibility` to a `--snapshot` run to print the tree VoiceOver gets
+  (controls may be named by `titled by`). Seen 2026-11-28: a `List` blocked VoiceOver and section
+  headers were read last; keyboard shortcuts on digits must use key codes (French layout).
+
 ## Blockers for a sandboxed Mac App Store edition (not verified on a sandboxed build)
 
 - No privileged helper: a sandboxed App Store app cannot install a root LaunchDaemon
