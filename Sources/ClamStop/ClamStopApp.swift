@@ -37,11 +37,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var welcomeWindow: FittedWindow?
     private var untilWindow: FittedWindow?
     private var journalWindow: NSWindow?
+    private var awakeWindow: NSWindow?
+    private var awakeTimer: Timer?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Tooltips (such as "Why ClamStop?") after 1 s instead of the system's ~2 s.
         UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 1000])
         model.onShowJournal = { [weak self] in self?.showJournal() }
+        model.onShowAwake = { [weak self] in self?.showAwake() }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -196,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Development aid: `ClamStop --snapshot /path/to/file.png [--tab name]
-    /// [--show-help [agent]] [--welcome step] [--until] [--journal]` renders the visible windows to
+    /// [--show-help [agent]] [--welcome step] [--until] [--journal] [--awake]` renders the visible windows to
     /// PNG files (no Screen Recording permission needed), for docs and reviews.
     private func snapshotIfRequested() {
         guard let path = Self.argument(after: "--snapshot") else { return }
@@ -215,6 +218,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showSessionUntil()
         } else if args.contains("--journal") {
             showJournal()
+        } else if args.contains("--awake") {
+            showAwake()
         } else {
             showSettings()
         }
@@ -340,22 +345,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         untilWindow?.show()
     }
 
-    /// The sleep journal (spec H3): resizable, unlike the other windows.
+    /// The sleep journal (spec H3).
     func showJournal() {
         if journalWindow == nil {
-            let controller = NSHostingController(rootView: JournalView(model: model))
-            controller.sizingOptions = []
-            let window = SettingsWindow(contentViewController: controller)
-            window.title = String(localized: "Sleep Journal")
-            window.styleMask = [.titled, .closable, .resizable]
-            window.isReleasedWhenClosed = false
-            window.setContentSize(NSSize(width: 520, height: 560))
-            window.contentMinSize = NSSize(width: 420, height: 300)
-            window.center()
-            journalWindow = window
+            journalWindow = resizableWindow(title: String(localized: "Sleep Journal"),
+                                            rootView: JournalView(model: model))
         }
         model.loadSleepLog()
         journalWindow?.showInFront()
+    }
+
+    /// "What keeps my Mac awake?" (spec H2): read again every few seconds while it is open.
+    func showAwake() {
+        if awakeWindow == nil {
+            let window = resizableWindow(title: String(localized: "What Keeps My Mac Awake?"),
+                                         rootView: AwakeView(model: model))
+            awakeWindow = window
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window,
+                                                   queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.awakeTimer?.invalidate()
+                    self?.awakeTimer = nil
+                }
+            }
+        }
+        model.awakeList = nil
+        Task { await model.loadAwakeList() }
+        if awakeTimer == nil {
+            awakeTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [model] _ in
+                Task { @MainActor in await model.loadAwakeList() }
+            }
+            awakeTimer?.tolerance = 1
+        }
+        awakeWindow?.showInFront()
+    }
+
+    /// A list in a window of its own: resizable, unlike the other windows.
+    private func resizableWindow<Content: View>(title: String, rootView: Content) -> NSWindow {
+        let controller = NSHostingController(rootView: rootView)
+        controller.sizingOptions = []
+        let window = SettingsWindow(contentViewController: controller)
+        window.title = title
+        window.styleMask = [.titled, .closable, .resizable]
+        window.isReleasedWhenClosed = false
+        window.setContentSize(NSSize(width: 520, height: 560))
+        window.contentMinSize = NSSize(width: 420, height: 300)
+        window.center()
+        return window
     }
 
     private func launchedAsLoginItem(_ notification: Notification) -> Bool {

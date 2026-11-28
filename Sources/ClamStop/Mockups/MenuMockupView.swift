@@ -80,6 +80,7 @@ struct MenuMockupView: View {
                 MenuItem(title: "Hibernate Now", icon: .symbol("snowflake"))
             }
             MenuSeparator()
+            MenuItem(title: "What Keeps My Mac Awake…", icon: .symbol("eye"))
             MenuItem(title: "Settings…", icon: .symbol("gearshape"), shortcut: "⌘,")
             MenuItem(title: "Quit ClamStop", icon: .symbol("door.left.hand.open"), shortcut: "⌘Q")
         }

@@ -2,7 +2,8 @@ import SwiftUI
 import ClamStopDiagnostics
 import ClamStopShared
 
-/// Diagnostics: the health check (spec H4), the sleep journal (H3) and problem reports.
+/// Diagnostics: the health check (spec H4), what keeps the Mac awake (H2), the sleep journal (H3)
+/// and problem reports.
 struct DiagnosticsTab: View {
     @ObservedObject var model: AppModel
 
@@ -31,15 +32,21 @@ struct DiagnosticsTab: View {
     }
 }
 
-/// Sleep journal, in its own window (spec H3).
+/// What keeps the Mac awake (spec H2) and the sleep journal (H3), each in its own window.
 private struct JournalSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         Section {
+            OptionRow(title: "What keeps my Mac awake?",
+                      note: "The apps and services that stop your Mac from sleeping on its own, and since when.") {
+                Button("Show…") { model.onShowAwake() }
+                    .accessibilityLabel("Show what keeps my Mac awake")
+            }
             OptionRow(title: "Sleep journal",
                       note: "When the lid closed and opened, when your Mac slept, woke and hibernated, and the battery used. Kept for 30 days, on this Mac only.") {
                 Button("Show…") { model.onShowJournal() }
+                    .accessibilityLabel("Show the sleep journal")
                     .disabled(!model.serviceRunning)
             }
         }
@@ -54,7 +61,7 @@ private struct ReportSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Report a problem")
                     .accessibilityAddTraits(.isHeader)
-                Footnote("The diagnostics hold your settings (with the names of watched apps and commands), the checks above, the sleep journal and ClamStop’s log of the last hour. ClamStop sends nothing by itself: you read the report and send it.")
+                Footnote("The diagnostics hold your settings (with the names of watched apps and commands), the checks above, the apps keeping your Mac awake, the sleep journal and ClamStop’s log of the last hour. ClamStop sends nothing by itself: you read the report and send it.")
                 if Edition.current == .full {
                     Footnote("GitHub needs an account, and its issues are public.")
                 }

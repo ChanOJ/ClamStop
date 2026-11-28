@@ -212,7 +212,7 @@ screen offers both directions instead of assuming one.
 ### Menu bar menu
 
 Status line, *Stay awake* submenu (Until I turn it off, 5, 10, 15, 30 min, 1, 2, 5, 8 h,
-Until..., While an app runs...), *Sleep now*, *Settings...*, *Donate...* (full edition),
+Until..., While an app runs...), *Sleep now*, *What keeps my Mac awake...*, *Settings...*, *Donate...* (full edition),
 *Quit ClamStop*. Optional: left-click on the icon starts or stops a session with the default duration, as in KeepingYouAwake. Remaining time shown when a session
 runs. Quitting while a session or lid hold is active asks once and restores normal sleep.
 

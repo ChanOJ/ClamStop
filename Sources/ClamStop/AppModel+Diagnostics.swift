@@ -70,6 +70,34 @@ extension AppModel {
         }
     }
 
+    /// Read what holds sleep off now (spec H2).
+    func loadAwakeList() async {
+        if Self.previewSettings {
+            awakeList = Self.previewAwakeList()
+            return
+        }
+        // The service's answer says it; without one, ask macOS.
+        let sleepDisabled = serviceRunning ? nil : await SystemProbe.sleepState().sleepDisabled
+        awakeList = AssertionReader.awakeList(status: serviceRunning ? status : nil, sleepDisabled: sleepDisabled)
+    }
+
+    /// Sample values for `--preview-settings --awake`.
+    private static func previewAwakeList() -> AwakeList {
+        let now = Date()
+        func holder(_ name: String, _ app: String?, _ ago: TimeInterval, screen: Bool = false,
+                    _ detail: String) -> AwakeList.Holder {
+            AwakeList.Holder(name: name, appBundlePath: app, keepsMac: !screen, keepsScreen: screen,
+                             since: now - ago, details: [detail])
+        }
+        return AwakeList(
+            clamStop: [.session(since: now - 720, until: nil), .agents(names: ["Claude Code"], since: now - 240)],
+            apps: [holder("Music", "/System/Applications/Music.app", 9360, "Playing audio"),
+                   holder("Safari", "/Applications/Safari.app", 600, screen: true, "Video playing"),
+                   holder("caffeinate", nil, 20, "caffeinate command-line tool")],
+            system: [holder("Time Machine backup", nil, 1800, "Backup Job"),
+                     holder("Handoff and sharing", nil, 300, "Handoff")])
+    }
+
     private var appVersionAndBuild: String {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? ClamStopVersion.current
@@ -94,10 +122,13 @@ extension AppModel {
         await readHealthFacts()
         let events = serviceRunning ? try? await client.sleepLog() : nil
         let log = await SystemProbe.recentLog()
-        return DiagnosticsReport(date: Date(), appVersion: appVersionAndBuild,
+        await loadAwakeList()
+        var report = DiagnosticsReport(date: Date(), appVersion: appVersionAndBuild,
                                  macOSVersion: SystemProbe.macOSVersion, model: SystemProbe.hardwareModel,
                                  facts: healthFacts, events: events, log: log,
                                  thermalLevel: .current)
+        report.awake = awakeList
+        return report
     }
 
     /// Collect the diagnostics (a few seconds, mostly the log), hand them over, say what happened.

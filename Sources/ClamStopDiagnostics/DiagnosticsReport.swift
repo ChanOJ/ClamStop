@@ -10,6 +10,8 @@ public struct DiagnosticsReport: Sendable {
     public var macOSVersion: String
     public var model: String
     public var thermalLevel: ThermalLevel?
+    /// What holds sleep off (spec H2): names, kinds and durations, never the assertions' names.
+    public var awake: AwakeList?
     public var facts: HealthFacts
     /// nil when the service did not give its journal.
     public var events: [SleepEvent]?
@@ -70,6 +72,11 @@ public struct DiagnosticsReport: Sendable {
             head.append("not read")
         }
 
+        if let awake {
+            head += ["", "## Holding sleep off"]
+            head += Self.lines(awake, now: date)
+        }
+
         // The status holds the settings; its notices are in the journal and the log already.
         head += ["", "## Service status"]
         if var status {
@@ -128,6 +135,26 @@ public struct DiagnosticsReport: Sendable {
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(value) else { return "cannot be encoded" }
         return String(decoding: data, as: UTF8.self)
+    }
+
+    private static func lines(_ awake: AwakeList, now: Date) -> [String] {
+        func age(_ since: Date) -> String { "for \(max(0, Int(now.timeIntervalSince(since) / 60))) min" }
+        func line(_ holder: AwakeList.Holder) -> String {
+            let kinds = [holder.keepsMac ? "mac" : nil, holder.keepsScreen ? "screen" : nil]
+            return "\(kinds.compactMap { $0 }.joined(separator: "+")) \(holder.name) \(age(holder.since))"
+        }
+        var lines = awake.clamStop.map { reason in
+            switch reason {
+            case .session(let since, _): "ClamStop session \(age(since))"
+            case .agents(let names, let since): "ClamStop agents \(names.joined(separator: ", ")) \(age(since))"
+            case .apps(let names): "ClamStop watched apps \(names.joined(separator: ", "))"
+            case .rule: "ClamStop rule"
+            }
+        }
+        if awake.sleepDisabledElsewhere { lines.append("disablesleep on") }
+        lines += awake.apps.map(line)
+        lines += awake.system.map { "macOS " + line($0) }
+        return lines.isEmpty ? ["nothing"] : lines
     }
 
     private static func line(_ event: SleepEvent) -> String {
